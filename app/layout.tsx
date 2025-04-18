@@ -1,61 +1,24 @@
-import type React from "react"
-import { Inter, Fraunces } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
-import AIAssistant from "@/components/ai-assistant"
-import ServiceWorkerRegister from "./sw-register"
-import "./globals.css"
+import { Providers } from './providers';
+import { Inter } from 'next/font/google';
+import './globals.css';
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-})
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-})
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: "HomeScholar - Your Homeschool Resource Hub",
-  description:
-    "Discover, organize, and share homeschool resources. Connect with other homeschoolers and track your progress all in one place.",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "HomeScholar",
-  },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
-    generator: 'v0.dev'
-}
+  title: 'A to Z Family Homeschool App',
+  description: 'A comprehensive homeschool management application',
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="theme-color" content="#ffffff" />
-      </head>
-      <body className={`${inter.variable} ${fraunces.variable} font-sans`}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          {children}
-          <AIAssistant />
-          <ServiceWorkerRegister />
-        </ThemeProvider>
+    <html lang="en">
+      <body className={inter.className}>
+        <Providers>{children}</Providers>
       </body>
     </html>
-  )
+  );
 }

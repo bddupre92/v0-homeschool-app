@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "env": {
+    "NEXTAUTH_URL": "https://atozfamily.org",
+    "NEXTAUTH_SECRET": "${NEXTAUTH_SECRET}"
+  },
+  "build": {
+    "env": {
+      "DATABASE_URL": "${DATABASE_URL}"
+    }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
+}
