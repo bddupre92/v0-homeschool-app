@@ -1,8 +1,8 @@
-// This file contains responsive design optimizations for mobile devices
+/* This file contains responsive design optimizations for mobile devices */
 
-// Mobile-first media queries
+/* Mobile-first media queries */
 @media (max-width: 640px) {
-  // Navigation adjustments
+  /* Navigation adjustments */
   .main-navigation {
     padding: 0.75rem 1rem;
   }
@@ -11,28 +11,28 @@
     gap: 0.5rem;
   }
   
-  // Content spacing
+  /* Content spacing */
   .content-container {
     padding: 1rem;
   }
   
-  // Card layouts
+  /* Card layouts */
   .card-grid {
     grid-template-columns: 1fr;
   }
   
-  // Form elements
+  /* Form elements */
   .form-container {
     padding: 1rem;
   }
   
-  // Button sizing
+  /* Button sizing */
   .action-button {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
   }
   
-  // Typography
+  /* Typography */
   h1 {
     font-size: 1.75rem;
   }
@@ -42,20 +42,20 @@
   }
 }
 
-// Tablet media queries
+/* Tablet media queries */
 @media (min-width: 641px) and (max-width: 1024px) {
-  // Two-column layouts
+  /* Two-column layouts */
   .card-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  // Content spacing
+  /* Content spacing */
   .content-container {
     padding: 1.5rem;
   }
 }
 
-// Touch-friendly targets
+/* Touch-friendly targets */
 @media (pointer: coarse) {
   .interactive-element {
     min-height: 44px;
@@ -66,20 +66,20 @@
     padding: 0.625rem;
   }
   
-  // Increase spacing between interactive elements
+  /* Increase spacing between interactive elements */
   .button-group {
     gap: 0.75rem;
   }
 }
 
-// Orientation changes
+/* Orientation changes */
 @media (orientation: portrait) {
   .split-layout {
     flex-direction: column;
   }
 }
 
-// Responsive typography
+/* Responsive typography */
 html {
   font-size: 16px;
 }
@@ -90,13 +90,13 @@ html {
   }
 }
 
-// Responsive images
+/* Responsive images */
 .responsive-image {
   max-width: 100%;
   height: auto;
 }
 
-// Improved touch feedback
+/* Improved touch feedback */
 .touch-feedback {
   transition: transform 0.1s ease, opacity 0.1s ease;
 }
@@ -106,32 +106,32 @@ html {
   opacity: 0.9;
 }
 
-// Viewport height adjustments for mobile browsers
+/* Viewport height adjustments for mobile browsers */
 .full-height {
   height: 100vh;
   height: -webkit-fill-available;
   height: stretch;
 }
 
-// Fix for iOS Safari 100vh issue
+/* Fix for iOS Safari 100vh issue */
 .ios-height-fix {
   min-height: -webkit-fill-available;
 }
 
-// Improved scrolling on touch devices
+/* Improved scrolling on touch devices */
 .smooth-scroll {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
 }
 
-// Hide elements on small screens
+/* Hide elements on small screens */
 @media (max-width: 480px) {
   .hide-on-mobile {
     display: none;
   }
 }
 
-// Show elements only on small screens
+/* Show elements only on small screens */
 .show-on-mobile {
   display: none;
 }
@@ -142,7 +142,7 @@ html {
   }
 }
 
-// Adjust board layout for mobile
+/* Adjust board layout for mobile */
 @media (max-width: 768px) {
   .board-columns {
     flex-direction: column;
@@ -154,9 +154,9 @@ html {
   }
 }
 
-// Ensure form inputs are large enough on mobile
+/* Ensure form inputs are large enough on mobile */
 @media (max-width: 640px) {
   input, select, textarea, button {
-    font-size: 16px; // Prevents iOS zoom on focus
+    font-size: 16px; /* Prevents iOS zoom on focus */
   }
 }
