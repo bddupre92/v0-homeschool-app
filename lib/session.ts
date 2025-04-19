@@ -1,30 +1,30 @@
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "./auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
+export async function getSession() {
+  return await getServerSession(authOptions);
+}
 
 export async function getCurrentUser() {
-  const session = await getServerSession(authOptions);
+  const session = await getSession();
   
-  return session?.user;
-}
+  if (!session?.user?.email) {
+    return null;
+  }
 
-export async function isAuthenticated() {
-  const user = await getCurrentUser();
-  
-  return !!user;
-}
+  try {
+    const user = await prisma.user.findUnique({
+      where: {
+        email: session.user.email,
+      },
+    });
 
-export async function hasRole(role: string) {
-  const user = await getCurrentUser();
-  
-  return user?.role === role;
-}
+    if (!user) {
+      return null;
+    }
 
-export async function isAdmin() {
-  return hasRole("ADMIN");
-}
-
-export async function isParent() {
-  const user = await getCurrentUser();
-  
-  return user?.role === "ADMIN" || user?.role === "PARENT";
+    return user;
+  } catch (error) {
+    return null;
+  }
 }
