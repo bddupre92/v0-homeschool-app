@@ -1,934 +1,571 @@
-'use client';
+"use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-interface Board {
+// Define types for our data context
+type Board = {
   id: string;
   title: string;
-  description: string | null;
-  status: string;
-  visibility: string;
-  createdAt: string;
-  updatedAt: string;
-  userId: string;
-  items?: BoardItem[];
-}
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-interface BoardItem {
+type BoardItem = {
   id: string;
-  title: string;
-  content: string | null;
-  type: string;
-  position: number;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
   boardId: string;
-  userId: string;
-}
-
-interface Resource {
-  id: string;
   title: string;
-  description: string | null;
-  type: string;
-  url: string | null;
-  filePath: string | null;
-  tags: string | null;
-  visibility: string;
-  createdAt: string;
-  updatedAt: string;
-  userId: string;
-}
-
-interface Lesson {
-  id: string;
-  title: string;
-  description: string | null;
-  subject: string | null;
-  gradeLevel: string | null;
-  duration: number | null;
-  content: string | null;
-  createdAt: string;
-  updatedAt: string;
-  resources: Resource[];
-}
-
-interface Planner {
-  id: string;
-  title: string;
-  description: string | null;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-  updatedAt: string;
-  items?: PlannerItem[];
-}
-
-interface PlannerItem {
-  id: string;
-  title: string;
-  description: string | null;
-  date: string;
-  startTime: string | null;
-  endTime: string | null;
+  content?: string;
   status: string;
-  createdAt: string;
-  updatedAt: string;
-  plannerId: string;
-  lessonId: string | null;
-  userId: string;
-  lesson?: Lesson;
-}
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-interface DataContextType {
+type Resource = {
+  id: string;
+  title: string;
+  description?: string;
+  url?: string;
+  category: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type Planner = {
+  id: string;
+  title: string;
+  description?: string;
+  startDate?: Date;
+  endDate?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type PlannerItem = {
+  id: string;
+  plannerId: string;
+  title: string;
+  description?: string;
+  date?: Date;
+  completed: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type DataContextType = {
   // Boards
   boards: Board[];
-  currentBoard: Board | null;
-  loadBoards: () => Promise<void>;
-  getBoard: (id: string) => Promise<void>;
-  createBoard: (data: Partial<Board>) => Promise<Board>;
-  updateBoard: (id: string, data: Partial<Board>) => Promise<Board>;
+  loadingBoards: boolean;
+  errorBoards: string | null;
+  fetchBoards: () => Promise<void>;
+  createBoard: (data: { title: string; description?: string }) => Promise<Board>;
+  updateBoard: (id: string, data: { title?: string; description?: string }) => Promise<Board>;
   deleteBoard: (id: string) => Promise<void>;
   
   // Board Items
-  boardItems: BoardItem[];
-  currentBoardItem: BoardItem | null;
-  loadBoardItems: (boardId: string) => Promise<void>;
-  getBoardItem: (boardId: string, itemId: string) => Promise<void>;
-  createBoardItem: (boardId: string, data: Partial<BoardItem>) => Promise<BoardItem>;
-  updateBoardItem: (boardId: string, itemId: string, data: Partial<BoardItem>) => Promise<BoardItem>;
+  boardItems: Record<string, BoardItem[]>;
+  loadingBoardItems: boolean;
+  errorBoardItems: string | null;
+  fetchBoardItems: (boardId: string) => Promise<void>;
+  createBoardItem: (boardId: string, data: { title: string; content?: string; status: string }) => Promise<BoardItem>;
+  updateBoardItem: (boardId: string, itemId: string, data: { title?: string; content?: string; status?: string }) => Promise<BoardItem>;
   deleteBoardItem: (boardId: string, itemId: string) => Promise<void>;
   
   // Resources
   resources: Resource[];
-  currentResource: Resource | null;
-  loadResources: () => Promise<void>;
-  getResource: (id: string) => Promise<void>;
-  createResource: (data: Partial<Resource>) => Promise<Resource>;
-  updateResource: (id: string, data: Partial<Resource>) => Promise<Resource>;
+  loadingResources: boolean;
+  errorResources: string | null;
+  fetchResources: () => Promise<void>;
+  createResource: (data: { title: string; description?: string; url?: string; category: string }) => Promise<Resource>;
+  updateResource: (id: string, data: { title?: string; description?: string; url?: string; category?: string }) => Promise<Resource>;
   deleteResource: (id: string) => Promise<void>;
-  
-  // Lessons
-  lessons: Lesson[];
-  currentLesson: Lesson | null;
-  loadLessons: () => Promise<void>;
-  getLesson: (id: string) => Promise<void>;
-  createLesson: (data: Partial<Lesson>) => Promise<Lesson>;
-  updateLesson: (id: string, data: Partial<Lesson>) => Promise<Lesson>;
-  deleteLesson: (id: string) => Promise<void>;
   
   // Planners
   planners: Planner[];
-  currentPlanner: Planner | null;
-  loadPlanners: () => Promise<void>;
-  getPlanner: (id: string) => Promise<void>;
-  createPlanner: (data: Partial<Planner>) => Promise<Planner>;
-  updatePlanner: (id: string, data: Partial<Planner>) => Promise<Planner>;
+  loadingPlanners: boolean;
+  errorPlanners: string | null;
+  fetchPlanners: () => Promise<void>;
+  createPlanner: (data: { title: string; description?: string; startDate?: Date; endDate?: Date }) => Promise<Planner>;
+  updatePlanner: (id: string, data: { title?: string; description?: string; startDate?: Date; endDate?: Date }) => Promise<Planner>;
   deletePlanner: (id: string) => Promise<void>;
   
   // Planner Items
-  plannerItems: PlannerItem[];
-  currentPlannerItem: PlannerItem | null;
-  loadPlannerItems: (plannerId: string) => Promise<void>;
-  getPlannerItem: (plannerId: string, itemId: string) => Promise<void>;
-  createPlannerItem: (plannerId: string, data: Partial<PlannerItem>) => Promise<PlannerItem>;
-  updatePlannerItem: (plannerId: string, itemId: string, data: Partial<PlannerItem>) => Promise<PlannerItem>;
+  plannerItems: Record<string, PlannerItem[]>;
+  loadingPlannerItems: boolean;
+  errorPlannerItems: string | null;
+  fetchPlannerItems: (plannerId: string) => Promise<void>;
+  createPlannerItem: (plannerId: string, data: { title: string; description?: string; date?: Date; completed?: boolean }) => Promise<PlannerItem>;
+  updatePlannerItem: (plannerId: string, itemId: string, data: { title?: string; description?: string; date?: Date; completed?: boolean }) => Promise<PlannerItem>;
   deletePlannerItem: (plannerId: string, itemId: string) => Promise<void>;
-  
-  // Loading states
-  loading: boolean;
-  error: string | null;
-}
+};
 
+// Create the context with default values
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+// Provider component
 export function DataProvider({ children }: { children: ReactNode }) {
-  // State for boards
+  // Boards state
   const [boards, setBoards] = useState<Board[]>([]);
-  const [currentBoard, setCurrentBoard] = useState<Board | null>(null);
-  
-  // State for board items
-  const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
-  const [currentBoardItem, setCurrentBoardItem] = useState<BoardItem | null>(null);
-  
-  // State for resources
-  const [resources, setResources] = useState<Resource[]>([]);
-  const [currentResource, setCurrentResource] = useState<Resource | null>(null);
-  
-  // State for lessons
-  const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
-  
-  // State for planners
-  const [planners, setPlanners] = useState<Planner[]>([]);
-  const [currentPlanner, setCurrentPlanner] = useState<Planner | null>(null);
-  
-  // State for planner items
-  const [plannerItems, setPlannerItems] = useState<PlannerItem[]>([]);
-  const [currentPlannerItem, setCurrentPlannerItem] = useState<PlannerItem | null>(null);
-  
-  // Loading and error states
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadingBoards, setLoadingBoards] = useState(false);
+  const [errorBoards, setErrorBoards] = useState<string | null>(null);
 
-  // Board functions
-  const loadBoards = async () => {
-    setLoading(true);
-    setError(null);
+  // Board Items state
+  const [boardItems, setBoardItems] = useState<Record<string, BoardItem[]>>({});
+  const [loadingBoardItems, setLoadingBoardItems] = useState(false);
+  const [errorBoardItems, setErrorBoardItems] = useState<string | null>(null);
+
+  // Resources state
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [loadingResources, setLoadingResources] = useState(false);
+  const [errorResources, setErrorResources] = useState<string | null>(null);
+
+  // Planners state
+  const [planners, setPlanners] = useState<Planner[]>([]);
+  const [loadingPlanners, setLoadingPlanners] = useState(false);
+  const [errorPlanners, setErrorPlanners] = useState<string | null>(null);
+
+  // Planner Items state
+  const [plannerItems, setPlannerItems] = useState<Record<string, PlannerItem[]>>({});
+  const [loadingPlannerItems, setLoadingPlannerItems] = useState(false);
+  const [errorPlannerItems, setErrorPlannerItems] = useState<string | null>(null);
+
+  // Boards functions
+  const fetchBoards = async () => {
+    setLoadingBoards(true);
+    setErrorBoards(null);
     try {
       const response = await fetch('/api/boards');
       if (!response.ok) {
-        throw new Error('Failed to load boards');
+        throw new Error('Failed to fetch boards');
       }
       const data = await response.json();
       setBoards(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading boards:', err);
+    } catch (error) {
+      setErrorBoards(error instanceof Error ? error.message : 'An error occurred');
+      console.error('Error fetching boards:', error);
     } finally {
-      setLoading(false);
+      setLoadingBoards(false);
     }
   };
 
-  const getBoard = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/boards/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to load board');
-      }
-      const data = await response.json();
-      setCurrentBoard(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading board:', err);
-    } finally {
-      setLoading(false);
+  const createBoard = async (data: { title: string; description?: string }): Promise<Board> => {
+    const response = await fetch('/api/boards', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to create board');
     }
+    
+    const newBoard = await response.json();
+    setBoards(prev => [...prev, newBoard]);
+    return newBoard;
   };
 
-  const createBoard = async (data: Partial<Board>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/boards', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create board');
-      }
-      const newBoard = await response.json();
-      setBoards([...boards, newBoard]);
-      return newBoard;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error creating board:', err);
-      throw err;
-    } finally {
-      setLoading(false);
+  const updateBoard = async (id: string, data: { title?: string; description?: string }): Promise<Board> => {
+    const response = await fetch(`/api/boards/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update board');
     }
+    
+    const updatedBoard = await response.json();
+    setBoards(prev => prev.map(board => board.id === id ? updatedBoard : board));
+    return updatedBoard;
   };
 
-  const updateBoard = async (id: string, data: Partial<Board>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/boards/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update board');
-      }
-      const updatedBoard = await response.json();
-      setBoards(boards.map(board => board.id === id ? updatedBoard : board));
-      if (currentBoard && currentBoard.id === id) {
-        setCurrentBoard(updatedBoard);
-      }
-      return updatedBoard;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error updating board:', err);
-      throw err;
-    } finally {
-      setLoading(false);
+  const deleteBoard = async (id: string): Promise<void> => {
+    const response = await fetch(`/api/boards/${id}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to delete board');
     }
-  };
-
-  const deleteBoard = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/boards/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete board');
-      }
-      setBoards(boards.filter(board => board.id !== id));
-      if (currentBoard && currentBoard.id === id) {
-        setCurrentBoard(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error deleting board:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    
+    setBoards(prev => prev.filter(board => board.id !== id));
+    // Also remove board items for this board
+    setBoardItems(prev => {
+      const newBoardItems = { ...prev };
+      delete newBoardItems[id];
+      return newBoardItems;
+    });
   };
 
   // Board Items functions
-  const loadBoardItems = async (boardId: string) => {
-    setLoading(true);
-    setError(null);
+  const fetchBoardItems = async (boardId: string) => {
+    setLoadingBoardItems(true);
+    setErrorBoardItems(null);
     try {
       const response = await fetch(`/api/boards/${boardId}/items`);
       if (!response.ok) {
-        throw new Error('Failed to load board items');
+        throw new Error('Failed to fetch board items');
       }
       const data = await response.json();
-      setBoardItems(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading board items:', err);
+      setBoardItems(prev => ({
+        ...prev,
+        [boardId]: data,
+      }));
+    } catch (error) {
+      setErrorBoardItems(error instanceof Error ? error.message : 'An error occurred');
+      console.error('Error fetching board items:', error);
     } finally {
-      setLoading(false);
+      setLoadingBoardItems(false);
     }
   };
 
-  const getBoardItem = async (boardId: string, itemId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/boards/${boardId}/items/${itemId}`);
-      if (!response.ok) {
-        throw new Error('Failed to load board item');
-      }
-      const data = await response.json();
-      setCurrentBoardItem(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading board item:', err);
-    } finally {
-      setLoading(false);
+  const createBoardItem = async (boardId: string, data: { title: string; content?: string; status: string }): Promise<BoardItem> => {
+    const response = await fetch(`/api/boards/${boardId}/items`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to create board item');
     }
+    
+    const newItem = await response.json();
+    setBoardItems(prev => ({
+      ...prev,
+      [boardId]: [...(prev[boardId] || []), newItem],
+    }));
+    return newItem;
   };
 
-  const createBoardItem = async (boardId: string, data: Partial<BoardItem>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/boards/${boardId}/items`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create board item');
-      }
-      const newItem = await response.json();
-      setBoardItems([...boardItems, newItem]);
-      return newItem;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error creating board item:', err);
-      throw err;
-    } finally {
-      setLoading(false);
+  const updateBoardItem = async (boardId: string, itemId: string, data: { title?: string; content?: string; status?: string }): Promise<BoardItem> => {
+    const response = await fetch(`/api/boards/${boardId}/items/${itemId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update board item');
     }
+    
+    const updatedItem = await response.json();
+    setBoardItems(prev => ({
+      ...prev,
+      [boardId]: prev[boardId]?.map(item => item.id === itemId ? updatedItem : item) || [],
+    }));
+    return updatedItem;
   };
 
-  const updateBoardItem = async (boardId: string, itemId: string, data: Partial<BoardItem>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/boards/${boardId}/items/${itemId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update board item');
-      }
-      const updatedItem = await response.json();
-      setBoardItems(boardItems.map(item => item.id === itemId ? updatedItem : item));
-      if (currentBoardItem && currentBoardItem.id === itemId) {
-        setCurrentBoardItem(updatedItem);
-      }
-      return updatedItem;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error updating board item:', err);
-      throw err;
-    } finally {
-      setLoading(false);
+  const deleteBoardItem = async (boardId: string, itemId: string): Promise<void> => {
+    const response = await fetch(`/api/boards/${boardId}/items/${itemId}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to delete board item');
     }
-  };
-
-  const deleteBoardItem = async (boardId: string, itemId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/boards/${boardId}/items/${itemId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete board item');
-      }
-      setBoardItems(boardItems.filter(item => item.id !== itemId));
-      if (currentBoardItem && currentBoardItem.id === itemId) {
-        setCurrentBoardItem(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error deleting board item:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    
+    setBoardItems(prev => ({
+      ...prev,
+      [boardId]: prev[boardId]?.filter(item => item.id !== itemId) || [],
+    }));
   };
 
   // Resources functions
-  const loadResources = async () => {
-    setLoading(true);
-    setError(null);
+  const fetchResources = async () => {
+    setLoadingResources(true);
+    setErrorResources(null);
     try {
       const response = await fetch('/api/resources');
       if (!response.ok) {
-        throw new Error('Failed to load resources');
+        throw new Error('Failed to fetch resources');
       }
       const data = await response.json();
       setResources(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading resources:', err);
+    } catch (error) {
+      setErrorResources(error instanceof Error ? error.message : 'An error occurred');
+      console.error('Error fetching resources:', error);
     } finally {
-      setLoading(false);
+      setLoadingResources(false);
     }
   };
 
-  const getResource = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/resources/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to load resource');
-      }
-      const data = await response.json();
-      setCurrentResource(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading resource:', err);
-    } finally {
-      setLoading(false);
+  const createResource = async (data: { title: string; description?: string; url?: string; category: string }): Promise<Resource> => {
+    const response = await fetch('/api/resources', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to create resource');
     }
+    
+    const newResource = await response.json();
+    setResources(prev => [...prev, newResource]);
+    return newResource;
   };
 
-  const createResource = async (data: Partial<Resource>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/resources', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create resource');
-      }
-      const newResource = await response.json();
-      setResources([...resources, newResource]);
-      return newResource;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error creating resource:', err);
-      throw err;
-    } finally {
-      setLoading(false);
+  const updateResource = async (id: string, data: { title?: string; description?: string; url?: string; category?: string }): Promise<Resource> => {
+    const response = await fetch(`/api/resources/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update resource');
     }
+    
+    const updatedResource = await response.json();
+    setResources(prev => prev.map(resource => resource.id === id ? updatedResource : resource));
+    return updatedResource;
   };
 
-  const updateResource = async (id: string, data: Partial<Resource>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/resources/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update resource');
-      }
-      const updatedResource = await response.json();
-      setResources(resources.map(resource => resource.id === id ? updatedResource : resource));
-      if (currentResource && currentResource.id === id) {
-        setCurrentResource(updatedResource);
-      }
-      return updatedResource;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error updating resource:', err);
-      throw err;
-    } finally {
-      setLoading(false);
+  const deleteResource = async (id: string): Promise<void> => {
+    const response = await fetch(`/api/resources/${id}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to delete resource');
     }
-  };
-
-  const deleteResource = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/resources/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete resource');
-      }
-      setResources(resources.filter(resource => resource.id !== id));
-      if (currentResource && currentResource.id === id) {
-        setCurrentResource(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error deleting resource:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Lessons functions
-  const loadLessons = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/lessons');
-      if (!response.ok) {
-        throw new Error('Failed to load lessons');
-      }
-      const data = await response.json();
-      setLessons(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading lessons:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getLesson = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/lessons/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to load lesson');
-      }
-      const data = await response.json();
-      setCurrentLesson(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading lesson:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createLesson = async (data: Partial<Lesson>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/lessons', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create lesson');
-      }
-      const newLesson = await response.json();
-      setLessons([...lessons, newLesson]);
-      return newLesson;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error creating lesson:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateLesson = async (id: string, data: Partial<Lesson>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/lessons/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update lesson');
-      }
-      const updatedLesson = await response.json();
-      setLessons(lessons.map(lesson => lesson.id === id ? updatedLesson : lesson));
-      if (currentLesson && currentLesson.id === id) {
-        setCurrentLesson(updatedLesson);
-      }
-      return updatedLesson;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error updating lesson:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const deleteLesson = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/lessons/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete lesson');
-      }
-      setLessons(lessons.filter(lesson => lesson.id !== id));
-      if (currentLesson && currentLesson.id === id) {
-        setCurrentLesson(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error deleting lesson:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    
+    setResources(prev => prev.filter(resource => resource.id !== id));
   };
 
   // Planners functions
-  const loadPlanners = async () => {
-    setLoading(true);
-    setError(null);
+  const fetchPlanners = async () => {
+    setLoadingPlanners(true);
+    setErrorPlanners(null);
     try {
       const response = await fetch('/api/planners');
       if (!response.ok) {
-        throw new Error('Failed to load planners');
+        throw new Error('Failed to fetch planners');
       }
       const data = await response.json();
       setPlanners(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading planners:', err);
+    } catch (error) {
+      setErrorPlanners(error instanceof Error ? error.message : 'An error occurred');
+      console.error('Error fetching planners:', error);
     } finally {
-      setLoading(false);
+      setLoadingPlanners(false);
     }
   };
 
-  const getPlanner = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/planners/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to load planner');
-      }
-      const data = await response.json();
-      setCurrentPlanner(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading planner:', err);
-    } finally {
-      setLoading(false);
+  const createPlanner = async (data: { title: string; description?: string; startDate?: Date; endDate?: Date }): Promise<Planner> => {
+    const response = await fetch('/api/planners', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to create planner');
     }
+    
+    const newPlanner = await response.json();
+    setPlanners(prev => [...prev, newPlanner]);
+    return newPlanner;
   };
 
-  const createPlanner = async (data: Partial<Planner>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/planners', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create planner');
-      }
-      const newPlanner = await response.json();
-      setPlanners([...planners, newPlanner]);
-      return newPlanner;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error creating planner:', err);
-      throw err;
-    } finally {
-      setLoading(false);
+  const updatePlanner = async (id: string, data: { title?: string; description?: string; startDate?: Date; endDate?: Date }): Promise<Planner> => {
+    const response = await fetch(`/api/planners/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update planner');
     }
+    
+    const updatedPlanner = await response.json();
+    setPlanners(prev => prev.map(planner => planner.id === id ? updatedPlanner : planner));
+    return updatedPlanner;
   };
 
-  const updatePlanner = async (id: string, data: Partial<Planner>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/planners/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update planner');
-      }
-      const updatedPlanner = await response.json();
-      setPlanners(planners.map(planner => planner.id === id ? updatedPlanner : planner));
-      if (currentPlanner && currentPlanner.id === id) {
-        setCurrentPlanner(updatedPlanner);
-      }
-      return updatedPlanner;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error updating planner:', err);
-      throw err;
-    } finally {
-      setLoading(false);
+  const deletePlanner = async (id: string): Promise<void> => {
+    const response = await fetch(`/api/planners/${id}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to delete planner');
     }
-  };
-
-  const deletePlanner = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/planners/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete planner');
-      }
-      setPlanners(planners.filter(planner => planner.id !== id));
-      if (currentPlanner && currentPlanner.id === id) {
-        setCurrentPlanner(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error deleting planner:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    
+    setPlanners(prev => prev.filter(planner => planner.id !== id));
+    // Also remove planner items for this planner
+    setPlannerItems(prev => {
+      const newPlannerItems = { ...prev };
+      delete newPlannerItems[id];
+      return newPlannerItems;
+    });
   };
 
   // Planner Items functions
-  const loadPlannerItems = async (plannerId: string) => {
-    setLoading(true);
-    setError(null);
+  const fetchPlannerItems = async (plannerId: string) => {
+    setLoadingPlannerItems(true);
+    setErrorPlannerItems(null);
     try {
       const response = await fetch(`/api/planners/${plannerId}/items`);
       if (!response.ok) {
-        throw new Error('Failed to load planner items');
+        throw new Error('Failed to fetch planner items');
       }
       const data = await response.json();
-      setPlannerItems(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading planner items:', err);
+      setPlannerItems(prev => ({
+        ...prev,
+        [plannerId]: data,
+      }));
+    } catch (error) {
+      setErrorPlannerItems(error instanceof Error ? error.message : 'An error occurred');
+      console.error('Error fetching planner items:', error);
     } finally {
-      setLoading(false);
+      setLoadingPlannerItems(false);
     }
   };
 
-  const getPlannerItem = async (plannerId: string, itemId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/planners/${plannerId}/items/${itemId}`);
-      if (!response.ok) {
-        throw new Error('Failed to load planner item');
-      }
-      const data = await response.json();
-      setCurrentPlannerItem(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading planner item:', err);
-    } finally {
-      setLoading(false);
+  const createPlannerItem = async (plannerId: string, data: { title: string; description?: string; date?: Date; completed?: boolean }): Promise<PlannerItem> => {
+    const response = await fetch(`/api/planners/${plannerId}/items`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to create planner item');
     }
+    
+    const newItem = await response.json();
+    setPlannerItems(prev => ({
+      ...prev,
+      [plannerId]: [...(prev[plannerId] || []), newItem],
+    }));
+    return newItem;
   };
 
-  const createPlannerItem = async (plannerId: string, data: Partial<PlannerItem>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/planners/${plannerId}/items`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create planner item');
-      }
-      const newItem = await response.json();
-      setPlannerItems([...plannerItems, newItem]);
-      return newItem;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error creating planner item:', err);
-      throw err;
-    } finally {
-      setLoading(false);
+  const updatePlannerItem = async (plannerId: string, itemId: string, data: { title?: string; description?: string; date?: Date; completed?: boolean }): Promise<PlannerItem> => {
+    const response = await fetch(`/api/planners/${plannerId}/items/${itemId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update planner item');
     }
+    
+    const updatedItem = await response.json();
+    setPlannerItems(prev => ({
+      ...prev,
+      [plannerId]: prev[plannerId]?.map(item => item.id === itemId ? updatedItem : item) || [],
+    }));
+    return updatedItem;
   };
 
-  const updatePlannerItem = async (plannerId: string, itemId: string, data: Partial<PlannerItem>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/planners/${plannerId}/items/${itemId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update planner item');
-      }
-      const updatedItem = await response.json();
-      setPlannerItems(plannerItems.map(item => item.id === itemId ? updatedItem : item));
-      if (currentPlannerItem && currentPlannerItem.id === itemId) {
-        setCurrentPlannerItem(updatedItem);
-      }
-      return updatedItem;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error updating planner item:', err);
-      throw err;
-    } finally {
-      setLoading(false);
+  const deletePlannerItem = async (plannerId: string, itemId: string): Promise<void> => {
+    const response = await fetch(`/api/planners/${plannerId}/items/${itemId}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to delete planner item');
     }
-  };
-
-  const deletePlannerItem = async (plannerId: string, itemId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/planners/${plannerId}/items/${itemId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete planner item');
-      }
-      setPlannerItems(plannerItems.filter(item => item.id !== itemId));
-      if (currentPlannerItem && currentPlannerItem.id === itemId) {
-        setCurrentPlannerItem(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error deleting planner item:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    
+    setPlannerItems(prev => ({
+      ...prev,
+      [plannerId]: prev[plannerId]?.filter(item => item.id !== itemId) || [],
+    }));
   };
 
   const value = {
     // Boards
     boards,
-    currentBoard,
-    loadBoards,
-    getBoard,
+    loadingBoards,
+    errorBoards,
+    fetchBoards,
     createBoard,
     updateBoard,
     deleteBoard,
     
     // Board Items
     boardItems,
-    currentBoardItem,
-    loadBoardItems,
-    getBoardItem,
+    loadingBoardItems,
+    errorBoardItems,
+    fetchBoardItems,
     createBoardItem,
     updateBoardItem,
     deleteBoardItem,
     
     // Resources
     resources,
-    currentResource,
-    loadResources,
-    getResource,
+    loadingResources,
+    errorResources,
+    fetchResources,
     createResource,
     updateResource,
     deleteResource,
     
-    // Lessons
-    lessons,
-    currentLesson,
-    loadLessons,
-    getLesson,
-    createLesson,
-    updateLesson,
-    deleteLesson,
-    
     // Planners
     planners,
-    currentPlanner,
-    loadPlanners,
-    getPlanner,
+    loadingPlanners,
+    errorPlanners,
+    fetchPlanners,
     createPlanner,
     updatePlanner,
     deletePlanner,
     
     // Planner Items
     plannerItems,
-    currentPlannerItem,
-    loadPlannerItems,
-    getPlannerItem,
+    loadingPlannerItems,
+    errorPlannerItems,
+    fetchPlannerItems,
     createPlannerItem,
     updatePlannerItem,
     deletePlannerItem,
-    
-    // Loading states
-    loading,
-    error,
   };
 
-  return (
-    <DataContext.Provider value={value}>
-      {children}
-    </DataContext.Provider>
-  );
+  return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
 
+// Custom hook to use the data context
 export function useData() {
   const context = useContext(DataContext);
   if (context === undefined) {

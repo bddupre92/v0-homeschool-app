@@ -1,14 +1,7 @@
-'use client';
+import { DataProvider } from "@/lib/data-context";
+import { SessionProvider } from "next-auth/react";
 
-import { ReactNode } from 'react';
-import { SessionProvider } from 'next-auth/react';
-import { DataProvider } from '@/lib/data-context';
-
-interface ProvidersProps {
-  children: ReactNode;
-}
-
-export function Providers({ children }: ProvidersProps) {
+export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <DataProvider>

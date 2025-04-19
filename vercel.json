@@ -12,11 +12,5 @@
     "env": {
       "DATABASE_URL": "${DATABASE_URL}"
     }
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ]
+  }
 }
