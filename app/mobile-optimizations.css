@@ -1,0 +1,162 @@
+/* This file contains responsive design optimizations for mobile devices */
+
+/* Mobile-first media queries */
+@media (max-width: 640px) {
+  /* Navigation adjustments */
+  .main-navigation {
+    padding: 0.75rem 1rem;
+  }
+  
+  .nav-items {
+    gap: 0.5rem;
+  }
+  
+  /* Content spacing */
+  .content-container {
+    padding: 1rem;
+  }
+  
+  /* Card layouts */
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Form elements */
+  .form-container {
+    padding: 1rem;
+  }
+  
+  /* Button sizing */
+  .action-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  /* Typography */
+  h1 {
+    font-size: 1.75rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+}
+
+/* Tablet media queries */
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Two-column layouts */
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Content spacing */
+  .content-container {
+    padding: 1.5rem;
+  }
+}
+
+/* Touch-friendly targets */
+@media (pointer: coarse) {
+  .interactive-element {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .button, .link, .input {
+    padding: 0.625rem;
+  }
+  
+  /* Increase spacing between interactive elements */
+  .button-group {
+    gap: 0.75rem;
+  }
+}
+
+/* Orientation changes */
+@media (orientation: portrait) {
+  .split-layout {
+    flex-direction: column;
+  }
+}
+
+/* Responsive typography */
+html {
+  font-size: 16px;
+}
+
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* Responsive images */
+.responsive-image {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Improved touch feedback */
+.touch-feedback {
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.touch-feedback:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+/* Viewport height adjustments for mobile browsers */
+.full-height {
+  height: 100vh;
+  height: -webkit-fill-available;
+  height: stretch;
+}
+
+/* Fix for iOS Safari 100vh issue */
+.ios-height-fix {
+  min-height: -webkit-fill-available;
+}
+
+/* Improved scrolling on touch devices */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Hide elements on small screens */
+@media (max-width: 480px) {
+  .hide-on-mobile {
+    display: none;
+  }
+}
+
+/* Show elements only on small screens */
+.show-on-mobile {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .show-on-mobile {
+    display: block;
+  }
+}
+
+/* Adjust board layout for mobile */
+@media (max-width: 768px) {
+  .board-columns {
+    flex-direction: column;
+  }
+  
+  .board-column {
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+}
+
+/* Ensure form inputs are large enough on mobile */
+@media (max-width: 640px) {
+  input, select, textarea, button {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+}

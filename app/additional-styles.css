@@ -1,0 +1,104 @@
+/* Ensure consistent styling for auth forms */
+.auth-form {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background-color: var(--background);
+}
+
+/* Add animations for page transitions */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Enhance card hover effects */
+.resource-card, .board-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.resource-card:hover, .board-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Improve mobile responsiveness */
+@media (max-width: 640px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .nav-items {
+    padding: 0.5rem;
+  }
+}
+
+/* Fix dark mode contrast issues */
+.dark .card {
+  background-color: hsl(224, 71%, 4%);
+  border-color: hsl(215, 25%, 27%);
+}
+
+.dark .form-input {
+  background-color: hsl(224, 71%, 4%);
+  border-color: hsl(215, 25%, 27%);
+}
+
+/* Add consistent focus styles */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Enhance button hover states */
+.btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+/* Add subtle animations to UI elements */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Ensure consistent spacing */
+.section-spacing {
+  margin-bottom: 2rem;
+}
+
+.content-spacing {
+  margin-bottom: 1rem;
+}
+
+/* Fix navigation menu on mobile */
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 250px;
+  z-index: 50;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+}
+
+.mobile-menu.open {
+  transform: translateX(0);
+}
+
+/* Add consistent border radius */
+.rounded-consistent {
+  border-radius: 0.5rem;
+}
