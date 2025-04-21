@@ -1,360 +1,511 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { useData } from "@/lib/data-context"
-import AuthGuard from "@/components/auth/auth-guard"
-import Navigation from "@/components/navigation"
+import { useState } from "react"
+import Link from "next/link"
+import { useParams } from "next/navigation"
+import { ArrowLeft, Edit, Grid3X3, List, MoreHorizontal, Plus, Search, Share2, Trash2, Users } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Pencil, Trash2, X, Check, ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import Navigation from "@/components/navigation"
 
-type BoardItemStatus = "todo" | "in-progress" | "completed"
+// Sample board data
+const boards = [
+  {
+    id: "1",
+    title: "Science Experiments",
+    description: "Collection of hands-on science activities",
+    coverImage:
+      "https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    isPrivate: false,
+    createdAt: "2025-03-15",
+    updatedAt: "2025-04-10",
+    owner: {
+      name: "Jane Smith",
+      avatar: "/placeholder.svg",
+    },
+    collaborators: [
+      {
+        name: "John Doe",
+        avatar: "/placeholder.svg",
+      },
+      {
+        name: "Sarah Johnson",
+        avatar: "/placeholder.svg",
+      },
+    ],
+    items: [
+      {
+        id: "i1",
+        title: "Water Cycle in a Bag",
+        description: "Easy demonstration of the water cycle using household items",
+        type: "activity",
+        tags: ["Science", "Elementary", "Hands-on"],
+        thumbnail: "/placeholder.svg?height=200&width=300",
+        source: "Science Explorers",
+        addedAt: "2025-03-20",
+      },
+      {
+        id: "i2",
+        title: "DIY Volcano Experiment",
+        description: "Create an erupting volcano with baking soda and vinegar",
+        type: "activity",
+        tags: ["Science", "Elementary", "Chemistry"],
+        thumbnail: "/placeholder.svg?height=200&width=300",
+        source: "Homeschool Science Club",
+        addedAt: "2025-03-22",
+      },
+      {
+        id: "i3",
+        title: "Plant Growth Observation Journal",
+        description: "Printable journal for tracking plant growth experiments",
+        type: "printable",
+        tags: ["Science", "Botany", "All Ages"],
+        thumbnail: "/placeholder.svg?height=200&width=300",
+        source: "Nature Study Collective",
+        addedAt: "2025-03-25",
+      },
+      {
+        id: "i4",
+        title: "Simple Machines Scavenger Hunt",
+        description: "Find examples of simple machines around your home",
+        type: "activity",
+        tags: ["Science", "Physics", "Elementary"],
+        thumbnail: "/placeholder.svg?height=200&width=300",
+        source: "STEM Activities for Kids",
+        addedAt: "2025-04-01",
+      },
+      {
+        id: "i5",
+        title: "States of Matter Experiments",
+        description: "Three easy experiments to demonstrate solids, liquids, and gases",
+        type: "activity",
+        tags: ["Science", "Chemistry", "Elementary"],
+        thumbnail: "/placeholder.svg?height=200&width=300",
+        source: "Chemistry for Kids",
+        addedAt: "2025-04-05",
+      },
+      {
+        id: "i6",
+        title: "Weather Observation Printables",
+        description: "Track weather patterns with these printable observation sheets",
+        type: "printable",
+        tags: ["Science", "Meteorology", "All Ages"],
+        thumbnail: "/placeholder.svg?height=200&width=300",
+        source: "Weather Watchers",
+        addedAt: "2025-04-08",
+      },
+    ],
+  },
+  {
+    id: "2",
+    title: "Math Games",
+    description: "Fun ways to practice math skills",
+    coverImage:
+      "https://images.unsplash.com/photo-1509228627152-72ae9ae6848d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    isPrivate: true,
+    createdAt: "2025-03-10",
+    updatedAt: "2025-04-05",
+    owner: {
+      name: "Jane Smith",
+      avatar: "/placeholder.svg",
+    },
+    collaborators: [],
+    items: [],
+  },
+]
 
 export default function BoardDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const boardId = params.id as string
-  
-  const { 
-    boards, loadingBoards, errorBoards, fetchBoards,
-    boardItems, loadingBoardItems, errorBoardItems, fetchBoardItems,
-    createBoardItem, updateBoardItem, deleteBoardItem, deleteBoard
-  } = useData()
-
-  const [board, setBoard] = useState<any>(null)
-  const [newItemTitle, setNewItemTitle] = useState("")
-  const [newItemStatus, setNewItemStatus] = useState<BoardItemStatus>("todo")
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [searchQuery, setSearchQuery] = useState("")
   const [isAddingItem, setIsAddingItem] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [editingItemId, setEditingItemId] = useState<string | null>(null)
-  const [editingItemTitle, setEditingItemTitle] = useState("")
+  const [isEditingBoard, setIsEditingBoard] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
-  useEffect(() => {
-    fetchBoards()
-    fetchBoardItems(boardId)
-  }, [boardId, fetchBoards, fetchBoardItems])
+  // Find the board by ID
+  const board = boards.find((b) => b.id === boardId)
 
-  useEffect(() => {
-    if (boards.length > 0) {
-      const foundBoard = boards.find(b => b.id === boardId)
-      setBoard(foundBoard)
-    }
-  }, [boards, boardId])
+  // Filter items based on search query
+  const filteredItems = board?.items.filter(
+    (item) =>
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())),
+  )
 
-  const handleAddItem = async () => {
-    if (!newItemTitle.trim()) {
-      setError("Item title is required")
-      return
-    }
-
-    setError(null)
-    try {
-      await createBoardItem(boardId, {
-        title: newItemTitle,
-        status: newItemStatus,
-        content: ""
-      })
-      setNewItemTitle("")
-      setIsAddingItem(false)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add item")
-    }
-  }
-
-  const handleUpdateItemStatus = async (itemId: string, newStatus: BoardItemStatus) => {
-    try {
-      await updateBoardItem(boardId, itemId, { status: newStatus })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update item")
-    }
-  }
-
-  const handleStartEditItem = (item: any) => {
-    setEditingItemId(item.id)
-    setEditingItemTitle(item.title)
-  }
-
-  const handleSaveEditItem = async () => {
-    if (!editingItemId) return
-    if (!editingItemTitle.trim()) {
-      setError("Item title is required")
-      return
-    }
-
-    setError(null)
-    try {
-      await updateBoardItem(boardId, editingItemId, { title: editingItemTitle })
-      setEditingItemId(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update item")
-    }
-  }
-
-  const handleCancelEditItem = () => {
-    setEditingItemId(null)
-  }
-
-  const handleDeleteItem = async (itemId: string) => {
-    try {
-      await deleteBoardItem(boardId, itemId)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete item")
-    }
-  }
-
-  const handleDeleteBoard = async () => {
-    setIsDeleting(true)
-    try {
-      await deleteBoard(boardId)
-      router.push("/boards")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete board")
-      setIsDeleting(false)
-    }
-  }
-
-  const renderBoardItems = (status: BoardItemStatus) => {
-    if (loadingBoardItems) {
-      return (
-        <div className="space-y-2">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      )
-    }
-
-    const items = boardItems[boardId]?.filter(item => item.status === status) || []
-
-    if (items.length === 0) {
-      return (
-        <div className="text-center py-8 text-muted-foreground">
-          No items in this column
-        </div>
-      )
-    }
-
+  if (!board) {
     return (
-      <div className="space-y-2">
-        {items.map(item => (
-          <Card key={item.id} className="bg-white dark:bg-gray-800">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                {editingItemId === item.id ? (
-                  <div className="flex-1 flex items-center gap-2">
-                    <Input
-                      value={editingItemTitle}
-                      onChange={(e) => setEditingItemTitle(e.target.value)}
-                      className="flex-1"
-                      autoFocus
-                    />
-                    <Button size="icon" variant="ghost" onClick={handleSaveEditItem}>
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={handleCancelEditItem}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="font-medium">{item.title}</div>
-                    <div className="flex items-center gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => handleStartEditItem(item)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDeleteItem(item.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </CardContent>
-            <CardFooter className="p-2 pt-0 flex justify-between">
-              {status !== "todo" && (
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => handleUpdateItemStatus(item.id, "todo")}
-                >
-                  Move to Todo
-                </Button>
-              )}
-              {status !== "in-progress" && (
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => handleUpdateItemStatus(item.id, "in-progress")}
-                >
-                  Move to In Progress
-                </Button>
-              )}
-              {status !== "completed" && (
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => handleUpdateItemStatus(item.id, "completed")}
-                >
-                  Mark Completed
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
-        ))}
+      <div className="min-h-screen flex flex-col">
+        <Navigation />
+        <main className="flex-1 container py-8 px-4 md:px-6 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold mb-4">Board Not Found</h1>
+            <p className="text-muted-foreground mb-6">
+              The board you're looking for doesn't exist or has been removed.
+            </p>
+            <Button asChild>
+              <Link href="/boards">Back to Boards</Link>
+            </Button>
+          </div>
+        </main>
       </div>
-    )
-  }
-
-  if (loadingBoards && !board) {
-    return (
-      <AuthGuard>
-        <div className="flex min-h-screen flex-col">
-          <Navigation />
-          <main className="flex-1 p-4 md:p-6">
-            <div className="mx-auto max-w-7xl">
-              <div className="flex items-center mb-8">
-                <Link href="/boards">
-                  <Button variant="ghost" size="icon" className="mr-2">
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Skeleton className="h-8 w-64" />
-              </div>
-              <Skeleton className="h-[600px] w-full" />
-            </div>
-          </main>
-        </div>
-      </AuthGuard>
-    )
-  }
-
-  if (errorBoards || !board) {
-    return (
-      <AuthGuard>
-        <div className="flex min-h-screen flex-col">
-          <Navigation />
-          <main className="flex-1 p-4 md:p-6">
-            <div className="mx-auto max-w-7xl">
-              <Alert variant="destructive" className="mb-4">
-                <AlertDescription>
-                  {errorBoards || "Board not found"}
-                </AlertDescription>
-              </Alert>
-              <Link href="/boards">
-                <Button>Back to Boards</Button>
-              </Link>
-            </div>
-          </main>
-        </div>
-      </AuthGuard>
     )
   }
 
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen flex-col">
-        <Navigation />
-        <main className="flex-1 p-4 md:p-6">
-          <div className="mx-auto max-w-7xl">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-              <div className="flex items-center">
-                <Link href="/boards">
-                  <Button variant="ghost" size="icon" className="mr-2">
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-3xl font-bold tracking-tight">{board.title}</h1>
-                  {board.description && (
-                    <p className="text-muted-foreground">{board.description}</p>
+    <div className="min-h-screen flex flex-col">
+      <Navigation />
+
+      <main className="flex-1 container py-8 px-4 md:px-6">
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" asChild className="gap-1">
+              <Link href="/boards">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Boards
+              </Link>
+            </Button>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div
+                className="w-16 h-16 rounded-md bg-cover bg-center shrink-0"
+                style={{ backgroundImage: `url(${board.coverImage})` }}
+              />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-3xl font-bold">{board.title}</h1>
+                  {board.isPrivate && (
+                    <Badge variant="outline" className="text-muted-foreground">
+                      Private
+                    </Badge>
                   )}
                 </div>
+                <p className="text-muted-foreground">{board.description}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Link href={`/boards/${boardId}/edit`}>
-                  <Button variant="outline">
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit Board
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex -space-x-2">
+                <Avatar className="border-2 border-background">
+                  <AvatarImage src={board.owner.avatar || "/placeholder.svg"} alt={board.owner.name} />
+                  <AvatarFallback>
+                    {board.owner.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+                {board.collaborators.slice(0, 2).map((collaborator, index) => (
+                  <Avatar key={index} className="border-2 border-background">
+                    <AvatarImage src={collaborator.avatar || "/placeholder.svg"} alt={collaborator.name} />
+                    <AvatarFallback>
+                      {collaborator.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+                {board.collaborators.length > 2 && (
+                  <Avatar className="border-2 border-background bg-muted">
+                    <AvatarFallback>+{board.collaborators.length - 2}</AvatarFallback>
+                  </Avatar>
+                )}
+              </div>
+
+              <Button variant="outline" className="gap-1">
+                <Share2 className="h-4 w-4" />
+                Share
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <MoreHorizontal className="h-4 w-4" />
                   </Button>
-                </Link>
-                <Button variant="destructive" onClick={handleDeleteBoard} disabled={isDeleting}>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {isDeleting ? "Deleting..." : "Delete Board"}
-                </Button>
-              </div>
-            </div>
-
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <div className="mb-6">
-              {isAddingItem ? (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="space-y-4">
-                      <Input
-                        placeholder="Enter item title"
-                        value={newItemTitle}
-                        onChange={(e) => setNewItemTitle(e.target.value)}
-                        autoFocus
-                      />
-                      <div className="flex items-center gap-2">
-                        <Button onClick={handleAddItem}>Add Item</Button>
-                        <Button variant="outline" onClick={() => setIsAddingItem(false)}>Cancel</Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Button onClick={() => setIsAddingItem(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Item
-                </Button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle>Todo</CardTitle>
-                  <CardDescription>Items to be started</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {renderBoardItems("todo")}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle>In Progress</CardTitle>
-                  <CardDescription>Items being worked on</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {renderBoardItems("in-progress")}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle>Completed</CardTitle>
-                  <CardDescription>Finished items</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {renderBoardItems("completed")}
-                </CardContent>
-              </Card>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Board Options</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setIsEditingBoard(true)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Board
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Users className="mr-2 h-4 w-4" />
+                    Manage Collaborators
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Board
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
-        </main>
-      </div>
-    </AuthGuard>
+
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="relative w-full sm:w-auto max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search items..."
+                className="pl-8 w-full sm:w-[300px]"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+              <div className="flex items-center border rounded-md">
+                <Button
+                  variant={viewMode === "grid" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="rounded-r-none"
+                  onClick={() => setViewMode("grid")}
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                  <span className="sr-only">Grid view</span>
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="rounded-l-none"
+                  onClick={() => setViewMode("list")}
+                >
+                  <List className="h-4 w-4" />
+                  <span className="sr-only">List view</span>
+                </Button>
+              </div>
+
+              <Button onClick={() => setIsAddingItem(true)} className="gap-1">
+                <Plus className="h-4 w-4" />
+                Add Item
+              </Button>
+            </div>
+          </div>
+
+          {filteredItems && filteredItems.length > 0 ? (
+            viewMode === "grid" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredItems.map((item) => (
+                  <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow resource-card">
+                    <div className="aspect-video relative">
+                      <img
+                        src={item.thumbnail || "/placeholder.svg"}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <CardHeader className="p-4 pb-2">
+                      <CardTitle className="text-lg">{item.title}</CardTitle>
+                      <CardDescription className="line-clamp-2">{item.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0 pb-2">
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {item.tags.slice(0, 3).map((tag) => (
+                          <Badge key={tag} variant="secondary" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Source: {item.source}</div>
+                    </CardContent>
+                    <CardFooter className="p-4 pt-2 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        Added {new Date(item.addedAt).toLocaleDateString()}
+                      </span>
+                      <Button size="sm" variant="outline">
+                        View
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredItems.map((item) => (
+                  <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                    <div className="flex flex-col md:flex-row">
+                      <div className="md:w-1/4 aspect-video md:aspect-auto md:h-auto">
+                        <img
+                          src={item.thumbnail || "/placeholder.svg"}
+                          alt={item.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-bold text-lg">{item.title}</h3>
+                            <p className="text-muted-foreground mt-1">{item.description}</p>
+                          </div>
+                          <Badge variant="outline">{item.type}</Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-3">
+                          {item.tags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between mt-4">
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <div>Source: {item.source}</div>
+                            <div>Added {new Date(item.addedAt).toLocaleDateString()}</div>
+                          </div>
+                          <Button size="sm">View Resource</Button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="rounded-full bg-muted p-6 mb-4">
+                <Grid3X3 className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">No items found</h3>
+              <p className="text-muted-foreground mb-6 max-w-md">
+                {searchQuery
+                  ? `No items match your search for "${searchQuery}". Try a different search term.`
+                  : "This board doesn't have any items yet. Add your first item to get started."}
+              </p>
+              <Button onClick={() => setIsAddingItem(true)}>Add Your First Item</Button>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Add Item Dialog */}
+      <Dialog open={isAddingItem} onOpenChange={setIsAddingItem}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Add Item to Board</DialogTitle>
+            <DialogDescription>Add a resource or activity to your "{board.title}" board.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="title">Title</Label>
+              <Input id="title" placeholder="Enter item title" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea id="description" placeholder="Enter item description" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="type">Type</Label>
+              <Input id="type" placeholder="e.g., activity, printable, resource" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="tags">Tags (comma separated)</Label>
+              <Input id="tags" placeholder="e.g., Science, Elementary, Hands-on" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="source">Source</Label>
+              <Input id="source" placeholder="Where did you find this resource?" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="thumbnail">Thumbnail URL</Label>
+              <Input id="thumbnail" placeholder="Enter image URL" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddingItem(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => setIsAddingItem(false)}>Add Item</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Board Dialog */}
+      <Dialog open={isEditingBoard} onOpenChange={setIsEditingBoard}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Edit Board</DialogTitle>
+            <DialogDescription>Update your board details.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="board-title">Title</Label>
+              <Input id="board-title" defaultValue={board.title} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="board-description">Description</Label>
+              <Textarea id="board-description" defaultValue={board.description} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="board-cover">Cover Image URL</Label>
+              <Input id="board-cover" defaultValue={board.coverImage} />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox id="board-private" defaultChecked={board.isPrivate} />
+              <Label htmlFor="board-private">Make this board private</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditingBoard(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => setIsEditingBoard(false)}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Board Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>Delete Board</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this board? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-destructive font-medium">
+              All items in this board will be removed. This action is permanent.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(false)}>
+              Delete Board
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

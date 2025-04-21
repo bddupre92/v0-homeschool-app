@@ -1,9 +1,12 @@
 import type React from "react"
 import { Inter, Fraunces } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/contexts/auth-context"
+import { AnalyticsProvider } from "@/lib/analytics"
+import { CacheProvider } from "@/lib/cache"
 import AIAssistant from "@/components/ai-assistant"
 import ServiceWorkerRegister from "./sw-register"
-import { Providers } from "./providers"
+import { Suspense } from "react"
 import "./globals.css"
 
 const inter = Inter({
@@ -17,14 +20,14 @@ const fraunces = Fraunces({
 })
 
 export const metadata = {
-  title: "A to Z Family - Your Homeschool Resource Hub",
+  title: "HomeScholar - Your Homeschool Resource Hub",
   description:
     "Discover, organize, and share homeschool resources. Connect with other homeschoolers and track your progress all in one place.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "A to Z Family",
+    title: "HomeScholar",
   },
   viewport: {
     width: "device-width",
@@ -32,7 +35,23 @@ export const metadata = {
     maximumScale: 1,
     userScalable: false,
   },
-  generator: 'v0.dev'
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://homescholar.vercel.app",
+    title: "HomeScholar - Your Homeschool Resource Hub",
+    description: "Discover, organize, and share homeschool resources.",
+    siteName: "HomeScholar",
+    images: [
+      {
+        url: "https://homescholar.vercel.app/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "HomeScholar",
+      },
+    ],
+  },
+    generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -51,13 +70,19 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
       </head>
       <body className={`${inter.variable} ${fraunces.variable} font-sans`}>
-        <Providers>
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-            {children}
-            <AIAssistant />
-            <ServiceWorkerRegister />
-          </ThemeProvider>
-        </Providers>
+        <CacheProvider>
+          <AnalyticsProvider>
+            <AuthProvider>
+              <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+                <Suspense>
+                  {children}
+                  <AIAssistant />
+                </Suspense>
+                <ServiceWorkerRegister />
+              </ThemeProvider>
+            </AuthProvider>
+          </AnalyticsProvider>
+        </CacheProvider>
       </body>
     </html>
   )
