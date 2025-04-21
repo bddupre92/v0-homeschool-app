@@ -19,11 +19,16 @@ export function middleware(request: NextRequest) {
   // Get the session cookie
   const session = request.cookies.get("session")?.value
 
-  // If the path is protected and there's no session, redirect to sign-in
-  if (isProtectedPath && !session) {
-    const signInUrl = new URL("/sign-in", request.url)
-    signInUrl.searchParams.set("callbackUrl", pathname)
-    return NextResponse.redirect(signInUrl)
+  // For client-side auth, we'll let the ProtectedRoute component handle the redirect
+  // This prevents the middleware from redirecting authenticated users
+  if (isProtectedPath) {
+    // Only redirect if we're absolutely sure there's no session
+    // This allows client-side auth to work properly
+    if (!session && !request.cookies.has("firebase-auth-token")) {
+      const signInUrl = new URL("/sign-in", request.url)
+      signInUrl.searchParams.set("callbackUrl", pathname)
+      return NextResponse.redirect(signInUrl)
+    }
   }
 
   // If the path is for authentication and there's a session, redirect to dashboard

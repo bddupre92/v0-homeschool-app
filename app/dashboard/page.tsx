@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import Navigation from "@/components/navigation"
 import PersonalizedRecommendations from "@/components/personalized-recommendations"
+import WelcomeTour from "@/components/welcome-tour"
+import FeedbackButton from "@/components/feedback-button"
 
 export default function DashboardPage() {
   return (
@@ -137,6 +139,9 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      <WelcomeTour />
+      <FeedbackButton />
     </div>
   )
 }

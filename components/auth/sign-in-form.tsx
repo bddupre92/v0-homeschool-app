@@ -41,9 +41,21 @@ export default function SignInForm() {
 
     try {
       await signIn(data.email, data.password)
-      router.push("/dashboard")
-    } catch (err) {
-      setError("Failed to sign in. Please check your credentials.")
+
+      // Check if there's a callback URL in the query parameters
+      const searchParams = new URLSearchParams(window.location.search)
+      const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
+
+      router.push(callbackUrl)
+    } catch (err: any) {
+      // More specific error messages based on Firebase error codes
+      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
+        setError("Invalid email or password. Please try again.")
+      } else if (err.code === "auth/too-many-requests") {
+        setError("Too many failed login attempts. Please try again later.")
+      } else {
+        setError("Failed to sign in. Please check your credentials.")
+      }
       console.error(err)
     } finally {
       setIsLoading(false)
@@ -56,7 +68,12 @@ export default function SignInForm() {
 
     try {
       await signInWithGoogle()
-      router.push("/dashboard")
+
+      // Check if there's a callback URL in the query parameters
+      const searchParams = new URLSearchParams(window.location.search)
+      const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
+
+      router.push(callbackUrl)
     } catch (err) {
       setError("Failed to sign in with Google.")
       console.error(err)

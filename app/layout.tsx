@@ -73,7 +73,7 @@ export default function RootLayout({
         <CacheProvider>
           <AnalyticsProvider>
             <AuthProvider>
-              <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+              <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
                 <Suspense>
                   {children}
                   <AIAssistant />

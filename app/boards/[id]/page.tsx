@@ -176,6 +176,21 @@ export default function BoardDetailPage() {
     )
   }
 
+  const handleCreateBoard = async (formData) => {
+    try {
+      // Process form data
+      // ...
+
+      // Close the dialog after successful submission
+      setIsAddingItem(false)
+
+      // Show success message or refresh data
+    } catch (error) {
+      // Handle error
+      console.error("Error creating board:", error)
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
@@ -224,12 +239,7 @@ export default function BoardDetailPage() {
                 {board.collaborators.slice(0, 2).map((collaborator, index) => (
                   <Avatar key={index} className="border-2 border-background">
                     <AvatarImage src={collaborator.avatar || "/placeholder.svg"} alt={collaborator.name} />
-                    <AvatarFallback>
-                      {collaborator.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </AvatarFallback>
+                    <AvatarFallback>{collaborator.name.split(" ").map((n) => n[0])}</AvatarFallback>
                   </Avatar>
                 ))}
                 {board.collaborators.length > 2 && (

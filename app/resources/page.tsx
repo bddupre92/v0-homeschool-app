@@ -155,15 +155,22 @@ export default function ResourcesPage() {
     types: [],
   })
   const [sortBy, setSortBy] = useState("featured")
+  const [activeTab, setActiveTab] = useState("all")
 
   const handleFilterChange = (category, value) => {
     setSelectedFilters((prev) => {
-      const currentValues = prev[category]
+      const currentValues = [...prev[category]]
+      const index = currentValues.indexOf(value)
+
+      if (index === -1) {
+        currentValues.push(value)
+      } else {
+        currentValues.splice(index, 1)
+      }
+
       return {
         ...prev,
-        [category]: currentValues.includes(value)
-          ? currentValues.filter((v) => v !== value)
-          : [...currentValues, value],
+        [category]: currentValues,
       }
     })
   }
@@ -234,7 +241,7 @@ export default function ResourcesPage() {
             </Button>
           </div>
 
-          <Tabs defaultValue="all">
+          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <TabsList>
                 <TabsTrigger value="all">All Resources</TabsTrigger>

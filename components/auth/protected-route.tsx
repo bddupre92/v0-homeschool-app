@@ -18,8 +18,13 @@ export default function ProtectedRoute({
   const router = useRouter()
 
   useEffect(() => {
+    // Only redirect if we're sure the user is not authenticated
+    // This prevents flickering during initial load
     if (!loading && !user) {
-      router.push(redirectTo)
+      // Get the current path to pass as a callback URL
+      const currentPath = window.location.pathname
+      const redirectPath = `${redirectTo}?callbackUrl=${encodeURIComponent(currentPath)}`
+      router.push(redirectPath)
     }
   }, [user, loading, router, redirectTo])
 
@@ -28,7 +33,7 @@ export default function ProtectedRoute({
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-2">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-lg font-medium">Loading...</p>
+          <p className="text-lg font-medium">Verifying authentication...</p>
         </div>
       </div>
     )

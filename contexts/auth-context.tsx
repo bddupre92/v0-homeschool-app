@@ -56,6 +56,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(user)
 
       if (user) {
+        // Set a cookie to indicate the user is authenticated
+        // This helps the middleware detect authentication
+        document.cookie = "firebase-auth-token=true; path=/; max-age=3600; SameSite=Strict"
+
         // Fetch user profile from Firestore
         try {
           const userDocRef = doc(db, "users", user.uid)
@@ -84,6 +88,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.error("Error fetching user profile:", error)
         }
       } else {
+        // Clear the auth cookie when the user signs out
+        document.cookie = "firebase-auth-token=; path=/; max-age=0; SameSite=Strict"
         setUserProfile(null)
       }
 
@@ -116,6 +122,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const signOut = async () => {
+    // Clear the auth cookie when the user signs out
+    document.cookie = "firebase-auth-token=; path=/; max-age=0; SameSite=Strict"
     return firebaseSignOut(auth)
   }
 

@@ -65,8 +65,8 @@
     "vue-router": "latest",
     "firebase": "latest",
     "firebase-admin": "latest",
-    "react-icons": "latest",
-    "@vercel/analytics": "latest"
+    "@vercel/analytics": "latest",
+    "react-icons": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
