@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Book, Search, Grid3X3, Calendar, MessageSquare, Settings, Menu, LogOut, User } from "lucide-react"
+import { Book, Search, Grid3X3, Calendar, MessageSquare, Settings, Menu, LogOut, User, Scroll } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -23,6 +23,7 @@ const navItems = [
   { name: "Resources", href: "/resources", icon: Book },
   { name: "Search", href: "/search", icon: Search },
   { name: "Boards", href: "/boards", icon: Grid3X3 },
+  { name: "Scroll", href: "/scroll", icon: Scroll },
   { name: "Planner", href: "/planner", icon: Calendar },
   { name: "Community", href: "/community", icon: MessageSquare },
 ]

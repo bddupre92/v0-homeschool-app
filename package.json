@@ -63,10 +63,13 @@
     "svelte": "latest",
     "vue": "latest",
     "vue-router": "latest",
+    "@emotion/is-prop-valid": "latest",
     "firebase": "latest",
     "firebase-admin": "latest",
     "@vercel/analytics": "latest",
-    "react-icons": "latest"
+    "react-icons": "latest",
+    "react-intersection-observer": "latest",
+    "framer-motion": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
