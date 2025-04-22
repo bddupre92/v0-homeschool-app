@@ -8,6 +8,10 @@ import AIAssistant from "@/components/ai-assistant"
 import ServiceWorkerRegister from "./sw-register"
 import { Suspense } from "react"
 import "./globals.css"
+import { CookieConsent } from "@/components/cookie-consent"
+import { Footer } from "@/components/footer"
+import { ErrorTrackingProvider } from "@/lib/error-tracking"
+import { PerformanceMonitoringProvider } from "@/lib/performance-monitoring"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -72,15 +76,21 @@ export default function RootLayout({
       <body className={`${inter.variable} ${fraunces.variable} font-sans`}>
         <CacheProvider>
           <AnalyticsProvider>
-            <AuthProvider>
-              <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-                <Suspense>
-                  {children}
-                  <AIAssistant />
-                </Suspense>
-                <ServiceWorkerRegister />
-              </ThemeProvider>
-            </AuthProvider>
+            <ErrorTrackingProvider>
+              <PerformanceMonitoringProvider>
+                <AuthProvider>
+                  <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+                    <Suspense>
+                      {children}
+                      <AIAssistant />
+                    </Suspense>
+                    <ServiceWorkerRegister />
+                    <Footer />
+                    <CookieConsent />
+                  </ThemeProvider>
+                </AuthProvider>
+              </PerformanceMonitoringProvider>
+            </ErrorTrackingProvider>
           </AnalyticsProvider>
         </CacheProvider>
       </body>

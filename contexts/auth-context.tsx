@@ -30,6 +30,8 @@ interface AuthContextProps {
   updateUserEmail: (email: string) => Promise<void>
   updateUserPassword: (password: string) => Promise<void>
   updateUserProfile: (data: Partial<UserProfile>) => Promise<void>
+  isAdmin: () => boolean
+  isModerator: () => boolean
 }
 
 interface UserProfile {
@@ -42,6 +44,7 @@ interface UserProfile {
   interests?: string[]
   createdAt?: any
   lastLogin?: any
+  role?: "user" | "admin" | "moderator"
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined)
@@ -50,6 +53,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Add a function to check if user has admin role
+  const isAdmin = () => {
+    return userProfile?.role === "admin"
+  }
+
+  // Add a function to check if user has moderator role
+  const isModerator = () => {
+    return userProfile?.role === "admin" || userProfile?.role === "moderator"
+  }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -183,6 +196,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     updateUserEmail,
     updateUserPassword,
     updateUserProfile,
+    isAdmin,
+    isModerator,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

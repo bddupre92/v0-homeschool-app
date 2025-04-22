@@ -18,6 +18,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "../contexts/auth-context"
+import { NotificationsPopover } from "@/components/notifications"
 
 const navItems = [
   { name: "Resources", href: "/resources", icon: Book },
@@ -119,12 +120,7 @@ export default function Navigation() {
             <>
               {user ? (
                 <>
-                  <Link href="/settings">
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                      <Settings className="h-5 w-5" />
-                      <span className="sr-only">Settings</span>
-                    </Button>
-                  </Link>
+                  <NotificationsPopover />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="rounded-full">

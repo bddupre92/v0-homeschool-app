@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { useErrorTracking } from "@/lib/error-tracking"
 
 export default function ErrorBoundary({
   error,
@@ -10,10 +11,12 @@ export default function ErrorBoundary({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const { captureError } = useErrorTracking()
+
   useEffect(() => {
-    // Log the error to an error reporting service
-    console.error(error)
-  }, [error])
+    // Log the error to our error tracking service
+    captureError(error, "ErrorBoundary")
+  }, [error, captureError])
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">

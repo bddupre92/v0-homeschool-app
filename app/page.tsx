@@ -4,6 +4,7 @@ import { ArrowRight, BookOpen, Users, Calendar, Award } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import Navigation from "@/components/navigation"
+import { Footer } from "@/components/footer"
 
 export default function HomePage() {
   return (
@@ -25,12 +26,14 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                <Button size="lg" className="gap-1">
-                  Get Started
-                  <ArrowRight className="h-4 w-4" />
+                <Button size="lg" className="gap-1" asChild>
+                  <Link href="/sign-up">
+                    Get Started
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </Button>
-                <Button size="lg" variant="outline">
-                  Learn More
+                <Button size="lg" variant="outline" asChild>
+                  <Link href="/about">Learn More</Link>
                 </Button>
               </div>
             </div>
@@ -43,11 +46,13 @@ export default function HomePage() {
                 priority
               />
               <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/50 to-transparent">
-                <Button variant="secondary" size="lg" className="gap-2">
-                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                  Watch Video
+                <Button variant="secondary" size="lg" className="gap-2" asChild>
+                  <Link href="/about#video">
+                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                    Watch Video
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -122,25 +127,31 @@ export default function HomePage() {
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8 mt-8">
             {[
               {
+                id: "1",
                 title: "Nature Study: Exploring Your Backyard Ecosystem",
                 tags: ["Elementary", "Science", "Montessori"],
                 image:
                   "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
               },
               {
+                id: "2",
                 title: "Hands-On Fractions: Beyond the Worksheet",
                 tags: ["Middle School", "Math", "Classical"],
                 image:
                   "https://images.unsplash.com/photo-1588075592446-265fd1e6e76f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
               },
               {
+                id: "3",
                 title: "Creating a Literature-Rich Home Environment",
                 tags: ["Elementary", "Language Arts", "Charlotte Mason"],
                 image:
                   "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80",
               },
-            ].map((resource, index) => (
-              <div key={index} className="group relative overflow-hidden rounded-lg border shadow-sm resource-card">
+            ].map((resource) => (
+              <div
+                key={resource.id}
+                className="group relative overflow-hidden rounded-lg border shadow-sm resource-card"
+              >
                 <div className="aspect-video w-full overflow-hidden">
                   <Image
                     src={resource.image || "/placeholder.svg"}
@@ -163,16 +174,18 @@ export default function HomePage() {
                     ))}
                   </div>
                 </div>
-                <Link href="#" className="absolute inset-0">
+                <Link href={`/resources/${resource.id}`} className="absolute inset-0">
                   <span className="sr-only">View {resource.title}</span>
                 </Link>
               </div>
             ))}
           </div>
           <div className="flex justify-center mt-8">
-            <Button variant="outline" className="gap-1">
-              View All Resources
-              <ArrowRight className="h-4 w-4" />
+            <Button variant="outline" className="gap-1" asChild>
+              <Link href="/resources">
+                View All Resources
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
           </div>
         </div>
@@ -189,9 +202,11 @@ export default function HomePage() {
               </p>
             </div>
             <div className="flex flex-col gap-2 min-[400px]:flex-row">
-              <Button size="lg" variant="secondary" className="gap-1">
-                Get Started for Free
-                <ArrowRight className="h-4 w-4" />
+              <Button size="lg" variant="secondary" className="gap-1" asChild>
+                <Link href="/sign-up">
+                  Get Started for Free
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
               </Button>
             </div>
           </div>
@@ -199,24 +214,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-6 md:py-0">
-        <div className="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
-          <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
-            © 2025 HomeScholar. All rights reserved.
-          </p>
-          <div className="flex items-center gap-4">
-            <Link href="#" className="text-sm font-medium hover:underline">
-              Terms
-            </Link>
-            <Link href="#" className="text-sm font-medium hover:underline">
-              Privacy
-            </Link>
-            <Link href="#" className="text-sm font-medium hover:underline">
-              Contact
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

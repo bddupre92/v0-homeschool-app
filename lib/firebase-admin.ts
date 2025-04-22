@@ -32,3 +32,6 @@ if (!getApps().length) {
 export const adminDb = getFirestore()
 export const adminAuth = getAuth()
 export const adminStorage = getStorage()
+
+// Add the db export that's being referenced elsewhere
+export const db = adminDb

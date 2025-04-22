@@ -51,7 +51,7 @@ export default function SignUpForm() {
 
     try {
       await signUp(data.email, data.password, data.name)
-      router.push("/dashboard")
+      router.push("/verify-email")
     } catch (err) {
       setError("Failed to create an account. Please try again.")
       console.error(err)

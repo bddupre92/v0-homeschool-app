@@ -2,7 +2,19 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useInView } from "react-intersection-observer"
-import { Heart, MessageCircle, Share2, Bookmark, Plus, ChevronUp, ChevronDown, Calendar, Grid3X3 } from "lucide-react"
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  Bookmark,
+  Plus,
+  ChevronUp,
+  ChevronDown,
+  Calendar,
+  Grid3X3,
+  Sparkles,
+  Filter,
+} from "lucide-react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 
@@ -22,9 +34,12 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import Navigation from "@/components/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { PreferenceSelector } from "@/components/preference-selector"
+import { useRecommendations } from "@/hooks/use-recommendations"
+import type { ContentItem } from "@/lib/recommendation-service"
 
 // Sample data for the scroll feed
-const scrollItems = [
+const scrollItems: ContentItem[] = [
   {
     id: "1",
     type: "resource",
@@ -41,8 +56,6 @@ const scrollItems = [
       comments: 28,
       saves: 156,
     },
-    liked: false,
-    saved: false,
   },
   {
     id: "2",
@@ -62,8 +75,6 @@ const scrollItems = [
       comments: 42,
       saves: 89,
     },
-    liked: true,
-    saved: false,
   },
   {
     id: "3",
@@ -82,8 +93,6 @@ const scrollItems = [
       comments: 15,
       saves: 203,
     },
-    liked: false,
-    saved: true,
     items: 24,
   },
   {
@@ -103,8 +112,6 @@ const scrollItems = [
       comments: 37,
       saves: 289,
     },
-    liked: false,
-    saved: false,
   },
   {
     id: "5",
@@ -123,8 +130,6 @@ const scrollItems = [
       comments: 64,
       saves: 217,
     },
-    liked: false,
-    saved: false,
   },
   {
     id: "6",
@@ -142,8 +147,6 @@ const scrollItems = [
       comments: 23,
       saves: 142,
     },
-    liked: false,
-    saved: false,
   },
   {
     id: "7",
@@ -162,8 +165,6 @@ const scrollItems = [
       comments: 19,
       saves: 178,
     },
-    liked: true,
-    saved: false,
     items: 18,
   },
   {
@@ -182,8 +183,6 @@ const scrollItems = [
       comments: 31,
       saves: 67,
     },
-    liked: false,
-    saved: false,
   },
   {
     id: "9",
@@ -202,8 +201,6 @@ const scrollItems = [
       comments: 27,
       saves: 203,
     },
-    liked: false,
-    saved: false,
   },
   {
     id: "10",
@@ -222,8 +219,6 @@ const scrollItems = [
       comments: 22,
       saves: 231,
     },
-    liked: false,
-    saved: false,
     items: 32,
   },
 ]
@@ -246,31 +241,57 @@ const plannerItems = [
 export default function ScrollPage() {
   const [activeTab, setActiveTab] = useState("for-you")
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [loadedItems, setLoadedItems] = useState(scrollItems.slice(0, 3))
+  const [loadedItems, setLoadedItems] = useState<ContentItem[]>([])
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false)
-  const [selectedItem, setSelectedItem] = useState(null)
+  const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
   const [isCommentsOpen, setIsCommentsOpen] = useState(false)
-  const [likedItems, setLikedItems] = useState({})
-  const [savedItems, setSavedItems] = useState({})
   const [isLoading, setIsLoading] = useState(false)
-  const scrollContainerRef = useRef(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
+
+  // Use our recommendations hook
+  const {
+    preferences,
+    updatePreferences,
+    recommendedContent,
+    isLoading: isRecommendationsLoading,
+    handleLikeContent,
+    handleSaveContent,
+    isContentLiked,
+    isContentSaved,
+  } = useRecommendations(scrollItems)
+
+  // Initialize loaded items with recommended content
+  useEffect(() => {
+    if (recommendedContent.length > 0 && loadedItems.length === 0) {
+      const initialItems = recommendedContent.slice(0, 3).map((item) => item.item)
+      setLoadedItems(initialItems)
+    }
+  }, [recommendedContent, loadedItems.length])
 
   // Load more items when reaching the end
   const loadMoreItems = () => {
-    if (isLoading) return
+    if (isLoading || isRecommendationsLoading) return
 
     setIsLoading(true)
 
     // Simulate API call delay
     setTimeout(() => {
-      const nextItems = scrollItems.slice(loadedItems.length, loadedItems.length + 3)
+      const currentIds = new Set(loadedItems.map((item) => item.id))
+
+      // Get next batch of recommended items that aren't already loaded
+      const nextItems = recommendedContent
+        .map((item) => item.item)
+        .filter((item) => !currentIds.has(item.id))
+        .slice(0, 3)
+
       if (nextItems.length > 0) {
-        setLoadedItems([...loadedItems, ...nextItems])
+        setLoadedItems((prev) => [...prev, ...nextItems])
       } else {
-        // If we've reached the end, loop back to the beginning
-        setLoadedItems([...loadedItems, ...scrollItems.slice(0, 3)])
+        // If we've reached the end of recommendations, loop back to the beginning
+        setLoadedItems((prev) => [...prev, ...recommendedContent.slice(0, 3).map((item) => item.item)])
       }
+
       setIsLoading(false)
     }, 1500)
   }
@@ -288,47 +309,43 @@ export default function ScrollPage() {
   }, [inView])
 
   // Handle like action
-  const handleLike = (itemId) => {
-    setLikedItems((prev) => ({
-      ...prev,
-      [itemId]: !prev[itemId],
-    }))
+  const handleLike = (item: ContentItem) => {
+    handleLikeContent(item)
+    // In a real app, this would call an API to like the content
   }
 
   // Handle save action
-  const handleSave = (item) => {
+  const handleSave = (item: ContentItem) => {
     setSelectedItem(item)
     setIsSaveModalOpen(true)
   }
 
   // Handle comments action
-  const handleComments = (item) => {
+  const handleComments = (item: ContentItem) => {
     setSelectedItem(item)
     setIsCommentsOpen(true)
   }
 
   // Handle share action
-  const handleShare = (item) => {
+  const handleShare = (item: ContentItem) => {
     // In a real app, this would open a share dialog
     alert(`Sharing "${item.title}"`)
   }
 
   // Handle saving to a board
-  const handleSaveToBoard = (boardId) => {
-    setSavedItems((prev) => ({
-      ...prev,
-      [selectedItem.id]: true,
-    }))
+  const handleSaveToBoard = (boardId: string) => {
+    if (selectedItem) {
+      handleSaveContent(selectedItem)
+    }
     setIsSaveModalOpen(false)
     // In a real app, this would save the item to the selected board
   }
 
   // Handle saving to planner
-  const handleSaveToPlanner = (plannerId) => {
-    setSavedItems((prev) => ({
-      ...prev,
-      [selectedItem.id]: true,
-    }))
+  const handleSaveToPlanner = (plannerId: string) => {
+    if (selectedItem) {
+      handleSaveContent(selectedItem)
+    }
     setIsSaveModalOpen(false)
     // In a real app, this would save the item to the selected planner item
   }
@@ -362,68 +379,104 @@ export default function ScrollPage() {
       <main className="flex-1 flex flex-col">
         <div className="container px-4 py-4 md:py-6">
           <Tabs defaultValue="for-you" value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex-1"></div>
               <TabsList>
                 <TabsTrigger value="for-you">For You</TabsTrigger>
                 <TabsTrigger value="following">Following</TabsTrigger>
                 <TabsTrigger value="trending">Trending</TabsTrigger>
               </TabsList>
+              <div className="flex-1 flex justify-end">
+                <PreferenceSelector
+                  preferences={preferences}
+                  onUpdatePreferences={updatePreferences}
+                  trigger={
+                    <Button variant="ghost" size="sm" className="flex items-center gap-1">
+                      <Filter className="h-4 w-4" />
+                      <span className="hidden sm:inline">Customize</span>
+                    </Button>
+                  }
+                />
+              </div>
             </div>
 
             <TabsContent value="for-you" className="mt-0">
-              <div className="relative">
-                {/* Navigation buttons */}
-                <div className="hidden md:block fixed right-8 bottom-1/2 transform translate-y-1/2 z-10">
-                  <div className="flex flex-col gap-4">
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="rounded-full shadow-lg"
-                      onClick={scrollToPrevious}
-                      disabled={currentIndex === 0}
-                    >
-                      <ChevronUp className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="rounded-full shadow-lg"
-                      onClick={scrollToNext}
-                      disabled={currentIndex >= loadedItems.length - 1}
-                    >
-                      <ChevronDown className="h-5 w-5" />
-                    </Button>
+              {isRecommendationsLoading && loadedItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Skeleton className="h-8 w-64 mb-4" />
+                  <Skeleton className="h-4 w-48 mb-8" />
+                  <div className="space-y-8 w-full max-w-3xl">
+                    <ScrollCardSkeleton />
+                    <ScrollCardSkeleton />
                   </div>
                 </div>
+              ) : (
+                <div className="relative">
+                  {/* Personalization indicator */}
+                  <div className="flex items-center justify-center mb-6 text-sm text-muted-foreground">
+                    <Sparkles className="h-4 w-4 mr-2 text-primary" />
+                    <span>Content personalized based on your preferences</span>
+                  </div>
 
-                {/* Scroll feed */}
-                <div className="flex flex-col gap-8 items-center pb-8" ref={scrollContainerRef}>
-                  {loadedItems.map((item, index) => (
-                    <div
-                      key={`${item.id}-${index}`}
-                      className="w-full max-w-3xl"
-                      ref={index === loadedItems.length - 1 ? endOfListRef : null}
-                    >
-                      <ScrollCard
-                        item={item}
-                        onLike={() => handleLike(item.id)}
-                        onSave={() => handleSave(item)}
-                        onComment={() => handleComments(item)}
-                        onShare={() => handleShare(item)}
-                        isLiked={likedItems[item.id] || item.liked}
-                        isSaved={savedItems[item.id] || item.saved}
-                      />
+                  {/* Navigation buttons */}
+                  <div className="hidden md:block fixed right-8 bottom-1/2 transform translate-y-1/2 z-10">
+                    <div className="flex flex-col gap-4">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="rounded-full shadow-lg"
+                        onClick={scrollToPrevious}
+                        disabled={currentIndex === 0}
+                      >
+                        <ChevronUp className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="rounded-full shadow-lg"
+                        onClick={scrollToNext}
+                        disabled={currentIndex >= loadedItems.length - 1}
+                      >
+                        <ChevronDown className="h-5 w-5" />
+                      </Button>
                     </div>
-                  ))}
+                  </div>
 
-                  {/* Loading indicator */}
-                  {isLoading && (
-                    <div className="w-full max-w-3xl">
-                      <ScrollCardSkeleton />
-                    </div>
-                  )}
+                  {/* Scroll feed */}
+                  <div className="flex flex-col gap-8 items-center pb-8" ref={scrollContainerRef}>
+                    {loadedItems.map((item, index) => {
+                      // Create a ref callback for the last item to detect when we need to load more
+                      const isLastItem = index === loadedItems.length - 1
+
+                      return (
+                        <div
+                          key={`${item.id}-${index}`}
+                          className="w-full max-w-3xl"
+                          ref={isLastItem ? endOfListRef : null}
+                        >
+                          <ScrollCard
+                            item={item}
+                            onLike={() => handleLike(item)}
+                            onSave={() => handleSave(item)}
+                            onComment={() => handleComments(item)}
+                            onShare={() => handleShare(item)}
+                            isLiked={isContentLiked(item.id)}
+                            isSaved={isContentSaved(item.id)}
+                            matchScore={recommendedContent.find((rec) => rec.item.id === item.id)?.score}
+                          />
+                        </div>
+                      )
+                    })}
+
+                    {/* Loading indicator */}
+                    {isLoading && (
+                      <div className="w-full max-w-3xl">
+                        <ScrollCardSkeleton />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </TabsContent>
 
             <TabsContent value="following" className="mt-0">
@@ -628,7 +681,7 @@ export default function ScrollPage() {
 }
 
 // Scroll Card Component
-function ScrollCard({ item, onLike, onSave, onComment, onShare, isLiked, isSaved }) {
+function ScrollCard({ item, onLike, onSave, onComment, onShare, isLiked, isSaved, matchScore }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -645,6 +698,15 @@ function ScrollCard({ item, onLike, onSave, onComment, onShare, isLiked, isSaved
             {item.type}
           </Badge>
         </div>
+
+        {/* Match score badge */}
+        {matchScore && (
+          <div className="absolute top-4 right-4">
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+              {matchScore}% Match
+            </Badge>
+          </div>
+        )}
 
         {/* Action buttons */}
         <div className="absolute bottom-4 right-4 flex flex-col gap-2">

@@ -1,7 +1,8 @@
 "use client"
 
-import { createContext, useContext, type ReactNode } from "react"
-import { Analytics } from "@vercel/analytics/react"
+import { createContext, useContext, useEffect, type ReactNode } from "react"
+import { usePathname, useSearchParams } from "next/navigation"
+import { trackEvent, trackPageView, AnalyticsComponent } from "./analytics-service"
 
 interface AnalyticsContextProps {
   trackEvent: (eventName: string, properties?: Record<string, any>) => void
@@ -12,26 +13,22 @@ const AnalyticsContext = createContext<AnalyticsContextProps>({
 })
 
 export function AnalyticsProvider({ children }: { children: ReactNode }) {
-  // Function to track events
-  const trackEvent = (eventName: string, properties?: Record<string, any>) => {
-    // Track event with Vercel Analytics
-    if (typeof window !== "undefined" && window.va) {
-      window.va("event", {
-        name: eventName,
-        ...properties,
-      })
-    }
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
-    // Log events in development
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[Analytics] ${eventName}`, properties)
+  // Track page views
+  useEffect(() => {
+    if (pathname) {
+      const url = searchParams?.size ? `${pathname}?${searchParams.toString()}` : pathname
+
+      trackPageView(url)
     }
-  }
+  }, [pathname, searchParams])
 
   return (
     <AnalyticsContext.Provider value={{ trackEvent }}>
       {children}
-      <Analytics />
+      <AnalyticsComponent />
     </AnalyticsContext.Provider>
   )
 }

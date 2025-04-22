@@ -264,9 +264,15 @@ export default function PersonalizedRecommendations() {
                   </div>
                 </Link>
               ))}
-              <Button variant="ghost" className="w-full flex items-center justify-center gap-1 text-muted-foreground">
-                View more recommendations
-                <ChevronRight className="h-4 w-4" />
+              <Button
+                variant="ghost"
+                className="w-full flex items-center justify-center gap-1 text-muted-foreground"
+                asChild
+              >
+                <Link href="/resources">
+                  View more recommendations
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
               </Button>
             </TabsContent>
 
@@ -299,9 +305,15 @@ export default function PersonalizedRecommendations() {
                   </div>
                 </Link>
               ))}
-              <Button variant="ghost" className="w-full flex items-center justify-center gap-1 text-muted-foreground">
-                View more trending resources
-                <ChevronRight className="h-4 w-4" />
+              <Button
+                variant="ghost"
+                className="w-full flex items-center justify-center gap-1 text-muted-foreground"
+                asChild
+              >
+                <Link href="/resources">
+                  View more trending resources
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
               </Button>
             </TabsContent>
 
@@ -331,9 +343,15 @@ export default function PersonalizedRecommendations() {
                   </div>
                 </Link>
               ))}
-              <Button variant="ghost" className="w-full flex items-center justify-center gap-1 text-muted-foreground">
-                View more new resources
-                <ChevronRight className="h-4 w-4" />
+              <Button
+                variant="ghost"
+                className="w-full flex items-center justify-center gap-1 text-muted-foreground"
+                asChild
+              >
+                <Link href="/resources">
+                  View more new resources
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
               </Button>
             </TabsContent>
           </Tabs>

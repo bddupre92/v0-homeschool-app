@@ -1,0 +1,10 @@
+# https://homescholar.vercel.app/robots.txt
+User-agent: *
+Allow: /
+
+# Disallow admin routes
+Disallow: /admin/
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://homescholar.vercel.app/sitemap.xml
