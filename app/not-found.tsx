@@ -1,13 +1,22 @@
+"use client"; // Keep it client for now, though it might not matter for a simple version
+
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import Navigation from "@/components/navigation"
+
+// Intentionally NOT importing or using the <Navigation /> component
 
 export default function NotFound() {
   return (
     <div className="min-h-screen flex flex-col">
-      <Navigation />
+      {/* <Navigation /> - REMOVED */}
+      <div style={{ padding: '1rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <Link href="/">
+          <h1 style={{ fontWeight: 'bold', fontSize: '1.5rem' }}>HomeScholar</h1>
+        </Link>
+        <p>Simplified Navigation for 404</p>
+      </div>
       <main className="flex-1 container py-8 px-4 md:px-6 flex items-center justify-center">
         <div className="text-center max-w-md">
           <h1 className="text-6xl font-bold mb-4">404</h1>

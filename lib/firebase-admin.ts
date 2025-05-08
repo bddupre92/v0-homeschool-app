@@ -5,26 +5,21 @@ import { getStorage } from "firebase-admin/storage"
 
 // Check if we already have an initialized app
 if (!getApps().length) {
-  // If we're in a production environment, use the environment variables
-  if (process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        // The private key needs to have newlines replaced
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, "\n"),
-      }),
-      databaseURL: `https://${process.env.FIREBASE_ADMIN_PROJECT_ID}.firebaseio.com`,
-      storageBucket: `${process.env.FIREBASE_ADMIN_PROJECT_ID}.appspot.com`,
-    })
-  } else {
-    // For local development, use a service account key file
+  // Always use a service account key file
+  // Ensure service-account.json is in the root of your project and gitignored
+  try {
     const serviceAccount = require("../service-account.json")
     initializeApp({
       credential: cert(serviceAccount),
       databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`,
       storageBucket: `${serviceAccount.project_id}.appspot.com`,
     })
+    console.log("Firebase Admin SDK initialized using service-account.json");
+  } catch (error) {
+    console.error("Failed to initialize Firebase Admin SDK with service-account.json:", error);
+    // Fallback or further error handling if needed, 
+    // for now, we'll let it fail if the JSON is missing/corrupt
+    // as it's critical for admin operations.
   }
 }
 
