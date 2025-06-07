@@ -2,16 +2,17 @@ import type React from "react"
 import { Inter, Fraunces } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
-// import { AnalyticsProvider } from "@/lib/analytics"
-// import { CacheProvider } from "@/lib/cache"
-// import AIAssistant from "@/components/ai-assistant"
-// import ServiceWorkerRegister from "./sw-register"
+import { AnalyticsProvider } from "@/lib/analytics"
+import { CacheProvider } from "@/lib/cache"
+import AIAssistant from "@/components/ai-assistant"
+import ServiceWorkerRegister from "./sw-register"
 import { Suspense } from "react"
 import "./globals.css"
-// import { CookieConsent } from "@/components/cookie-consent"
-// import { Footer } from "@/components/footer"
-// import { ErrorTrackingProvider } from "@/lib/error-tracking"
-// import { PerformanceMonitoringProvider } from "@/lib/performance-monitoring"
+import { CookieConsent } from "@/components/cookie-consent"
+import { Footer } from "@/components/footer"
+import { ErrorTrackingProvider } from "@/lib/error-tracking"
+import { PerformanceMonitoringProvider } from "@/lib/performance-monitoring"
+import { SessionInitializer } from "@/components/session-initializer"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,6 +34,12 @@ export const metadata = {
     statusBarStyle: "default",
     title: "HomeScholar",
   },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -49,15 +56,8 @@ export const metadata = {
       },
     ],
   },
-  generator: 'v0.dev'
+    generator: 'v0.dev'
 }
-
-export const viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
 
 export default function RootLayout({
   children,
@@ -75,25 +75,26 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
       </head>
       <body className={`${inter.variable} ${fraunces.variable} font-sans`}>
-        {/* <CacheProvider>
+        <CacheProvider>
           <AnalyticsProvider>
             <ErrorTrackingProvider>
-              <PerformanceMonitoringProvider> */}
+              <PerformanceMonitoringProvider>
                 <AuthProvider>
                   <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
                     <Suspense>
                       {children}
-                      {/* <AIAssistant /> */}
+                      <AIAssistant />
                     </Suspense>
-                    {/* <ServiceWorkerRegister /> */}
-                    {/* <Footer /> */}
-                    {/* <CookieConsent /> */}
+                    <ServiceWorkerRegister />
+                    <Footer />
+                    <CookieConsent />
+                    <SessionInitializer />
                   </ThemeProvider>
                 </AuthProvider>
-            {/* </PerformanceMonitoringProvider>
+              </PerformanceMonitoringProvider>
             </ErrorTrackingProvider>
           </AnalyticsProvider>
-        </CacheProvider> */}
+        </CacheProvider>
       </body>
     </html>
   )

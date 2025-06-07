@@ -12,6 +12,10 @@ import {
   sendPasswordResetEmail,
   updateEmail,
   updatePassword,
+  sendEmailVerification as firebaseSendEmailVerification,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  setPersistence as firebaseSetPersistence,
   type User,
   type UserCredential,
 } from "firebase/auth"
@@ -22,16 +26,19 @@ interface AuthContextProps {
   user: User | null
   userProfile: UserProfile | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<UserCredential>
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<UserCredential>
   signUp: (email: string, password: string, displayName: string) => Promise<UserCredential>
   signOut: () => Promise<void>
-  signInWithGoogle: () => Promise<UserCredential>
+  signInWithGoogle: (rememberMe?: boolean) => Promise<UserCredential>
   resetPassword: (email: string) => Promise<void>
   updateUserEmail: (email: string) => Promise<void>
   updateUserPassword: (password: string) => Promise<void>
   updateUserProfile: (data: Partial<UserProfile>) => Promise<void>
+  sendEmailVerification: () => Promise<void>
   isAdmin: () => boolean
   isModerator: () => boolean
+  refreshToken: () => Promise<string | undefined>
+  isEmailVerified: () => boolean
 }
 
 interface UserProfile {
@@ -45,6 +52,8 @@ interface UserProfile {
   createdAt?: any
   lastLogin?: any
   role?: "user" | "admin" | "moderator"
+  failedLoginAttempts?: number
+  lastFailedLogin?: any
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined)
@@ -63,6 +72,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isModerator = () => {
     return userProfile?.role === "admin" || userProfile?.role === "moderator"
   }
+
+  // Add a function to check if email is verified
+  const isEmailVerified = () => {
+    return user?.emailVerified ?? false
+  }
+
+  // Add token refresh function
+  const refreshToken = async () => {
+    try {
+      if (user) {
+        return await user.getIdToken(true)
+      }
+    } catch (error) {
+      console.error("Error refreshing token:", error)
+    }
+    return undefined
+  }
+
+  // Set up token refresh interval
+  useEffect(() => {
+    const tokenRefreshInterval = setInterval(
+      async () => {
+        await refreshToken()
+      },
+      10 * 60 * 1000,
+    ) // Refresh every 10 minutes
+
+    return () => clearInterval(tokenRefreshInterval)
+  }, [user])
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -89,6 +127,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               photoURL: user.photoURL,
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp(),
+              failedLoginAttempts: 0,
             }
 
             await setDoc(userDocRef, newUserProfile)
@@ -110,15 +149,67 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     })
 
     return () => unsubscribe()
-  }, [])
+  }, [auth, db])
 
-  const signIn = async (email: string, password: string) => {
-    return signInWithEmailAndPassword(auth, email, password)
+  const signIn = async (email: string, password: string, rememberMe = false) => {
+    // Set persistence based on remember me option
+    const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence
+    await firebaseSetPersistence(auth, persistenceType)
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+
+      // Reset failed login attempts on successful login
+      if (userCredential.user) {
+        const userDocRef = doc(db, "users", userCredential.user.uid)
+        await setDoc(
+          userDocRef,
+          {
+            failedLoginAttempts: 0,
+            lastLogin: serverTimestamp(),
+          },
+          { merge: true },
+        )
+      }
+
+      return userCredential
+    } catch (error) {
+      // Track failed login attempts
+      if (email) {
+        try {
+          // Find user by email (this is a simplified approach)
+          // In production, you might want to use a Cloud Function for this
+          const snapshot = await db.collection("users").where("email", "==", email).limit(1).get()
+
+          if (!snapshot.empty) {
+            const userDoc = snapshot.docs[0]
+            const userData = userDoc.data() as UserProfile
+            const attempts = (userData.failedLoginAttempts || 0) + 1
+
+            await setDoc(
+              doc(db, "users", userDoc.id),
+              {
+                failedLoginAttempts: attempts,
+                lastFailedLogin: serverTimestamp(),
+              },
+              { merge: true },
+            )
+          }
+        } catch (err) {
+          console.error("Error tracking failed login:", err)
+        }
+      }
+
+      throw error
+    }
   }
 
   const signUp = async (email: string, password: string, displayName: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(userCredential.user, { displayName })
+
+    // Send email verification
+    await firebaseSendEmailVerification(userCredential.user)
 
     // Create user profile in Firestore
     const userDocRef = doc(db, "users", userCredential.user.uid)
@@ -129,6 +220,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       photoURL: null,
       createdAt: serverTimestamp(),
       lastLogin: serverTimestamp(),
+      failedLoginAttempts: 0,
     })
 
     return userCredential
@@ -140,13 +232,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return firebaseSignOut(auth)
   }
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (rememberMe = false) => {
+    // Set persistence based on remember me option
+    const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence
+    await firebaseSetPersistence(auth, persistenceType)
+
     const provider = new GoogleAuthProvider()
     return signInWithPopup(auth, provider)
   }
 
   const resetPassword = async (email: string) => {
-    return sendPasswordResetEmail(auth, email)
+    return sendPasswordResetEmail(auth, email, {
+      url: `${window.location.origin}/sign-in`,
+      handleCodeInApp: false,
+    })
+  }
+
+  const sendEmailVerification = async () => {
+    if (!user) throw new Error("No user logged in")
+    return firebaseSendEmailVerification(user, {
+      url: `${window.location.origin}/dashboard`,
+      handleCodeInApp: false,
+    })
   }
 
   const updateUserEmail = async (email: string) => {
@@ -196,8 +303,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     updateUserEmail,
     updateUserPassword,
     updateUserProfile,
+    sendEmailVerification,
     isAdmin,
     isModerator,
+    refreshToken,
+    isEmailVerified,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

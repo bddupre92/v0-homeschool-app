@@ -1,59 +1,60 @@
-const fs = require("fs")
-const path = require("path")
-const glob = require("glob")
+// Generate sitemap for the homeschool app
+console.log("Generating sitemap...")
 
-// Configuration
-const baseUrl = "https://homescholar.vercel.app" // Replace with your actual domain
-const outputPath = "public/sitemap.xml"
-const ignorePaths = [
-  "app/api/**/*",
-  "app/admin/**/*",
-  "app/**/loading.tsx",
-  "app/**/error.tsx",
-  "app/layout.tsx",
-  "app/not-found.tsx",
+const baseUrl = "https://your-homeschool-app.vercel.app"
+
+// Define all the routes in your app
+const routes = [
+  "/",
+  "/about",
+  "/dashboard",
+  "/boards",
+  "/boards/create",
+  "/resources",
+  "/planner",
+  "/search",
+  "/scroll",
+  "/community",
+  "/community/events",
+  "/community/groups",
+  "/community/locations",
+  "/profile",
+  "/settings",
+  "/sign-in",
+  "/sign-up",
+  "/privacy-policy",
+  "/terms-of-service",
 ]
 
-// Find all page files
-const pageFiles = glob.sync("app/**/page.tsx", {
-  ignore: ignorePaths,
-})
-
-console.log(`Found ${pageFiles.length} pages to include in sitemap`)
-
-// Generate sitemap
+// Generate sitemap XML
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  ${pageFiles
-    .map((file) => {
-      // Convert file path to URL path
-      let urlPath = file
-        .replace("app/", "/")
-        .replace("/page.tsx", "")
-        .replace(/\/\[(.+)\]/g, "/:$1") // Convert [param] to :param for display
-
-      // Handle index routes
-      if (urlPath === "/") {
-        urlPath = ""
-      }
-
-      // Skip dynamic routes for simplicity
-      if (urlPath.includes(":")) {
-        return ""
-      }
-
-      return `
-  <url>
-    <loc>${baseUrl}${urlPath}</loc>
-    <lastmod>${new Date().toISOString()}</lastmod>
+${routes
+  .map(
+    (route) => `  <url>
+    <loc>${baseUrl}${route}</loc>
+    <lastmod>${new Date().toISOString().split("T")[0]}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`
-    })
-    .filter(Boolean)
-    .join("")}
+    <priority>${route === "/" ? "1.0" : "0.8"}</priority>
+  </url>`,
+  )
+  .join("\n")}
 </urlset>`
 
-// Write sitemap to file
-fs.writeFileSync(outputPath, sitemap)
-console.log(`Sitemap generated at ${outputPath}`)
+console.log("Generated sitemap.xml:")
+console.log(sitemap)
+
+console.log("\nTo use this sitemap:")
+console.log("1. Copy the XML content above")
+console.log("2. Save it as 'public/sitemap.xml' in your project")
+console.log("3. Submit the sitemap to Google Search Console")
+console.log("4. Add the sitemap URL to your robots.txt file")
+
+// Also generate robots.txt content
+const robotsTxt = `User-agent: *
+Allow: /
+
+Sitemap: ${baseUrl}/sitemap.xml`
+
+console.log("\nGenerated robots.txt:")
+console.log(robotsTxt)

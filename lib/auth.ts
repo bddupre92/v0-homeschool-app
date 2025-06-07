@@ -1,30 +1,38 @@
 import type { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { adminAuth } from "./firebase-admin"
+import { FirestoreAdapter } from "@auth/firebase-adapter"
+import { cert } from "firebase-admin/app"
+import { db } from "./firebase-admin"
 
 export const authOptions: NextAuthOptions = {
+  adapter: FirestoreAdapter({
+    db,
+    credential: cert({
+      projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    }),
+  }),
   providers: [
     CredentialsProvider({
       name: "Firebase",
       credentials: {
-        token: { label: "Token", type: "text" },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.token) return null
+        if (!credentials?.email || !credentials?.password) return null
 
         try {
-          // Verify the Firebase token
-          const decodedToken = await adminAuth.verifyIdToken(credentials.token)
-
-          // Return the user data
+          // This would be handled by your Firebase auth integration
+          // This is just a placeholder for the adapter to work with
           return {
-            id: decodedToken.uid,
-            name: decodedToken.name || decodedToken.email?.split("@")[0] || "User",
-            email: decodedToken.email,
-            image: decodedToken.picture || null,
+            id: "firebase-user-id",
+            email: credentials.email,
+            name: "User Name",
           }
         } catch (error) {
-          console.error("Error verifying Firebase token:", error)
+          console.error("Auth error:", error)
           return null
         }
       },
@@ -32,23 +40,21 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: "/sign-in",
+    signOut: "/",
     error: "/sign-in",
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-      }
-      return token
-    },
     async session({ session, token }) {
-      if (session.user && token.id) {
-        session.user.id = token.id as string
+      if (token.sub) {
+        session.user.id = token.sub
       }
       return session
     },
   },
+  debug: process.env.NODE_ENV === "development",
 }

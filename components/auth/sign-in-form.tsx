@@ -6,6 +6,8 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { FcGoogle } from "react-icons/fc"
+import { Loader2, AlertCircle, Info } from "lucide-react"
+import Link from "next/link"
 
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
@@ -13,10 +15,12 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Checkbox } from "@/components/ui/checkbox"
 
 const formSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
+  rememberMe: z.boolean().default(false),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -24,6 +28,7 @@ type FormValues = z.infer<typeof formSchema>
 export default function SignInForm() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [failedAttempts, setFailedAttempts] = useState(0)
   const { signIn, signInWithGoogle } = useAuth()
   const router = useRouter()
 
@@ -32,6 +37,7 @@ export default function SignInForm() {
     defaultValues: {
       email: "",
       password: "",
+      rememberMe: false,
     },
   })
 
@@ -40,7 +46,7 @@ export default function SignInForm() {
     setIsLoading(true)
 
     try {
-      await signIn(data.email, data.password)
+      await signIn(data.email, data.password, data.rememberMe)
 
       // Check if there's a callback URL in the query parameters
       const searchParams = new URLSearchParams(window.location.search)
@@ -48,11 +54,18 @@ export default function SignInForm() {
 
       router.push(callbackUrl)
     } catch (err: any) {
+      // Increment failed attempts
+      setFailedAttempts((prev) => prev + 1)
+
       // More specific error messages based on Firebase error codes
       if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
         setError("Invalid email or password. Please try again.")
       } else if (err.code === "auth/too-many-requests") {
-        setError("Too many failed login attempts. Please try again later.")
+        setError("Too many failed login attempts. Please try again later or reset your password.")
+      } else if (err.code === "auth/unauthorized-domain") {
+        setError(
+          "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
+        )
       } else {
         setError("Failed to sign in. Please check your credentials.")
       }
@@ -67,16 +80,28 @@ export default function SignInForm() {
     setIsLoading(true)
 
     try {
-      await signInWithGoogle()
+      const rememberMe = form.getValues("rememberMe")
+      await signInWithGoogle(rememberMe)
 
       // Check if there's a callback URL in the query parameters
       const searchParams = new URLSearchParams(window.location.search)
       const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
 
       router.push(callbackUrl)
-    } catch (err) {
-      setError("Failed to sign in with Google.")
-      console.error(err)
+    } catch (err: any) {
+      console.error("Google sign in error:", err)
+
+      if (err.code === "auth/popup-closed-by-user") {
+        setError("Sign-in was cancelled. Please try again.")
+      } else if (err.code === "auth/cancelled-popup-request") {
+        setError("Another sign-in attempt is in progress. Please wait.")
+      } else if (err.code === "auth/unauthorized-domain") {
+        setError(
+          "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
+        )
+      } else {
+        setError("Failed to sign in with Google.")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -91,9 +116,23 @@ export default function SignInForm() {
       <CardContent>
         {error && (
           <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
+
+        {failedAttempts >= 3 && (
+          <Alert variant="warning" className="mb-4">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Multiple failed login attempts detected.
+              <Link href="/reset-password" className="ml-1 underline">
+                Forgot your password?
+              </Link>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -119,7 +158,8 @@ export default function SignInForm() {
                     <Button
                       variant="link"
                       className="p-0 h-auto text-sm"
-                      onClick={() => router.push("/forgot-password")}
+                      onClick={() => router.push("/reset-password")}
+                      type="button"
                     >
                       Forgot password?
                     </Button>
@@ -131,8 +171,29 @@ export default function SignInForm() {
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="rememberMe"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md p-2">
+                  <FormControl>
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Remember me</FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign In"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </Button>
           </form>
         </Form>

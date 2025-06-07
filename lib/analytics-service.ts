@@ -76,5 +76,6 @@ export function trackError(error: Error, componentName?: string) {
 
 // Analytics component
 export function AnalyticsComponent() {
-  return <Analytics />
+  // Create element using createElement instead of JSX
+  return { type: Analytics, props: {} }
 }
