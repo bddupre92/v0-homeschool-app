@@ -1,116 +1,112 @@
-"use client"
-
-import { useLocalStorageCache } from "./cache"
-
-// Cache expiration times (in milliseconds)
-const CACHE_TIMES = {
-  SHORT: 5 * 60 * 1000, // 5 minutes
-  MEDIUM: 30 * 60 * 1000, // 30 minutes
-  LONG: 24 * 60 * 60 * 1000, // 24 hours
+interface CacheItem<T> {
+  data: T
+  timestamp: number
+  expiration?: number
 }
 
-export type CachePolicy = "no-cache" | "cache-first" | "network-first" | "cache-only" | "network-only"
-
-export interface CacheOptions {
-  policy?: CachePolicy
-  expiration?: number
+interface CachePolicy {
+  defaultExpiration: number
+  maxSize: number
   namespace?: string
 }
 
-export function useCacheService() {
-  const { getItem, setItem } = useLocalStorageCache()
+class CacheService {
+  private cache = new Map<string, CacheItem<any>>()
+  private policy: CachePolicy
 
-  const getCacheKey = (key: string, namespace?: string) => {
+  constructor(policy: CachePolicy = { defaultExpiration: 300000, maxSize: 100 }) {
+    this.policy = policy
+  }
+
+  private getCacheKey(key: string, namespace?: string): string {
     return namespace ? `${namespace}:${key}` : key
   }
-\
-  const isCacheValid = <T>(cachedData: { data: T; timestamp: number } | null, expiration: number): boolean => {
+
+  private isCacheValid<T>(cachedData: CacheItem<T> | null, expiration: number): boolean {
     if (!cachedData) return false
-    return Date.now() - cachedData.timestamp < expiration;
+    const now = Date.now()
+    const itemExpiration = cachedData.expiration || expiration
+    return now - cachedData.timestamp < itemExpiration
   }
 
-  const fetchWithCache = async <T>(
-    key: string,
-    fetchFn: () => Promise<T>,
-    options: CacheOptions = {}
-  ): Promise<T> => {
-    const { policy = "cache-first", expiration = CACHE_TIMES.MEDIUM, namespace = "firestore" } = options
-    const cacheKey = getCacheKey(key, namespace)
-
-    // Get cached data
-    const cachedData = getItem<{ data: T; timestamp: number } | null>(cacheKey, null)
-    const isValid = isCacheValid(cachedData, expiration)
-
-    // Handle different cache policies
-    switch (policy) {
-      case "no-cache":
-        return fetchFn()
-
-      case "cache-only":
-        if (cachedData) return cachedData.data
-        throw new Error(`No cached data found for key: ${key}`)
-
-      case "network-only":
-        const networkOnlyData = await fetchFn()
-        setItem(cacheKey, { data: networkOnlyData, timestamp: Date.now() })
-        return networkOnlyData
-
-      case "network-first":
-        try {
-          const networkFirstData = await fetchFn()
-          setItem(cacheKey, { data: networkFirstData, timestamp: Date.now() })
-          return networkFirstData
-        } catch (error) {
-          if (cachedData) {
-            console.warn(`Network request failed, using cached data for ${key}`, error)
-            return cachedData.data
-          }
-          throw error
-        }
-
-      case "cache-first":
-      default:
-        if (isValid) {
-          return cachedData!.data
-        }
-
-        try {
-          const freshData = await fetchFn()
-          setItem(cacheKey, { data: freshData, timestamp: Date.now() })
-          return freshData
-        } catch (error) {
-          if (cachedData) {
-            console.warn(`Network request failed, using stale cached data for ${key}`, error)
-            return cachedData.data
-          }
-          throw error
-        }
+  private evictOldest(): void {
+    if (this.cache.size >= this.policy.maxSize) {
+      const oldestKey = this.cache.keys().next().value
+      if (oldestKey) {
+        this.cache.delete(oldestKey)
+      }
     }
   }
 
-  const invalidateCache = (key: string, namespace?: string) => {
-    const cacheKey = getCacheKey(key, namespace)
-    setItem(cacheKey, null)
-  }
-
-  const prefetchAndCache = async <T>(key: string, fetchFn: () => Promise<T>, options: CacheOptions = {}) => {
-    const { namespace = "firestore", expiration = CACHE_TIMES.MEDIUM } = options
-    const cacheKey = getCacheKey(key, namespace)
-
-    try {
-      const data = await fetchFn()
-      setItem(cacheKey, { data, timestamp: Date.now() })
-      return true
-    } catch (error) {
-      console.error(`Failed to prefetch data for ${key}`, error)
-      return false
+  set<T>(key: string, data: T, expiration?: number): void {
+    this.evictOldest()
+    const cacheKey = this.getCacheKey(key, this.policy.namespace)
+    const item: CacheItem<T> = {
+      data,
+      timestamp: Date.now(),
+      expiration: expiration || this.policy.defaultExpiration,
     }
+    this.cache.set(cacheKey, item)
   }
 
-  return {
-    fetchWithCache,
-    invalidateCache,
-    prefetchAndCache,
-    CACHE_TIMES,
+  get<T>(key: string, expiration?: number): T | null {
+    const cacheKey = this.getCacheKey(key, this.policy.namespace)
+    const cachedData = this.cache.get(cacheKey) as CacheItem<T> | undefined
+    const effectiveExpiration = expiration || this.policy.defaultExpiration
+
+    if (this.isCacheValid(cachedData || null, effectiveExpiration)) {
+      return cachedData!.data
+    }
+
+    if (cachedData) {
+      this.cache.delete(cacheKey)
+    }
+    return null
+  }
+
+  invalidate(key: string): void {
+    const cacheKey = this.getCacheKey(key, this.policy.namespace)
+    this.cache.delete(cacheKey)
+  }
+
+  clear(): void {
+    this.cache.clear()
+  }
+
+  size(): number {
+    return this.cache.size
+  }
+}
+
+// Create default cache instance
+export const defaultCache = new CacheService()
+
+// Utility functions for common caching patterns
+export async function fetchWithCache<T>(key: string, fetchFn: () => Promise<T>, expiration?: number): Promise<T> {
+  const cached = defaultCache.get<T>(key, expiration)
+  if (cached !== null) {
+    return cached
+  }
+
+  try {
+    const data = await fetchFn()
+    defaultCache.set(key, data, expiration)
+    return data
+  } catch (error) {
+    console.error(`Error fetching data for key ${key}:`, error)
+    throw error
+  }
+}
+
+export function invalidateCache(key: string): void {
+  defaultCache.invalidate(key)
+}
+
+export async function prefetchAndCache<T>(key: string, fetchFn: () => Promise<T>, expiration?: number): Promise<void> {
+  try {
+    const data = await fetchFn()
+    defaultCache.set(key, data, expiration)
+  } catch (error) {
+    console.error(`Error prefetching data for key ${key}:`, error)
   }
 }
