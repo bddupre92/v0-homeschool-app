@@ -1,7 +1,7 @@
 interface CacheItem<T> {
   data: T
   timestamp: number
-  expiration?: number
+  expiration: number
 }
 
 interface CachePolicy {
@@ -19,94 +19,118 @@ class CacheService {
   }
 
   private getCacheKey(key: string, namespace?: string): string {
-    return namespace ? `${namespace}:${key}` : key
+    const ns = namespace || this.policy.namespace
+    return ns ? `${ns}:${key}` : key
   }
 
-  private isCacheValid<T>(cachedData: CacheItem<T> | null, expiration: number): boolean {
+  private isCacheValid<T>(cachedData: CacheItem<T> | undefined): boolean {
     if (!cachedData) return false
-    const now = Date.now()
-    const itemExpiration = cachedData.expiration || expiration
-    return now - cachedData.timestamp < itemExpiration
+    return Date.now() - cachedData.timestamp < cachedData.expiration
   }
 
-  private evictOldest(): void {
+  private evictOldEntries(): void {
     if (this.cache.size >= this.policy.maxSize) {
-      const oldestKey = this.cache.keys().next().value
-      if (oldestKey) {
-        this.cache.delete(oldestKey)
+      const entries = Array.from(this.cache.entries())
+      entries.sort((a, b) => a[1].timestamp - b[1].timestamp)
+
+      // Remove oldest 25% of entries
+      const toRemove = Math.floor(entries.length * 0.25)
+      for (let i = 0; i < toRemove; i++) {
+        this.cache.delete(entries[i][0])
       }
     }
   }
 
-  set<T>(key: string, data: T, expiration?: number): void {
-    this.evictOldest()
-    const cacheKey = this.getCacheKey(key, this.policy.namespace)
+  set<T>(key: string, data: T, expiration?: number, namespace?: string): void {
+    this.evictOldEntries()
+
+    const cacheKey = this.getCacheKey(key, namespace)
     const item: CacheItem<T> = {
       data,
       timestamp: Date.now(),
       expiration: expiration || this.policy.defaultExpiration,
     }
+
     this.cache.set(cacheKey, item)
   }
 
-  get<T>(key: string, expiration?: number): T | null {
-    const cacheKey = this.getCacheKey(key, this.policy.namespace)
-    const cachedData = this.cache.get(cacheKey) as CacheItem<T> | undefined
-    const effectiveExpiration = expiration || this.policy.defaultExpiration
+  get<T>(key: string, namespace?: string): T | null {
+    const cacheKey = this.getCacheKey(key, namespace)
+    const cachedData = this.cache.get(cacheKey)
 
-    if (this.isCacheValid(cachedData || null, effectiveExpiration)) {
+    if (this.isCacheValid(cachedData)) {
       return cachedData!.data
     }
 
     if (cachedData) {
       this.cache.delete(cacheKey)
     }
+
     return null
   }
 
-  invalidate(key: string): void {
-    const cacheKey = this.getCacheKey(key, this.policy.namespace)
+  invalidate(key: string, namespace?: string): void {
+    const cacheKey = this.getCacheKey(key, namespace)
     this.cache.delete(cacheKey)
+  }
+
+  invalidateNamespace(namespace: string): void {
+    const keysToDelete: string[] = []
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(`${namespace}:`)) {
+        keysToDelete.push(key)
+      }
+    }
+    keysToDelete.forEach((key) => this.cache.delete(key))
   }
 
   clear(): void {
     this.cache.clear()
   }
 
-  size(): number {
-    return this.cache.size
+  getStats() {
+    return {
+      size: this.cache.size,
+      maxSize: this.policy.maxSize,
+      defaultExpiration: this.policy.defaultExpiration,
+    }
+  }
+
+  async fetchWithCache<T>(key: string, fetchFn: () => Promise<T>, expiration?: number, namespace?: string): Promise<T> {
+    const cached = this.get<T>(key, namespace)
+    if (cached !== null) {
+      return cached
+    }
+
+    try {
+      const data = await fetchFn()
+      this.set(key, data, expiration, namespace)
+      return data
+    } catch (error) {
+      console.error(`Cache fetch error for key ${key}:`, error)
+      throw error
+    }
+  }
+
+  prefetchAndCache<T>(key: string, fetchFn: () => Promise<T>, expiration?: number, namespace?: string): void {
+    // Don't prefetch if already cached
+    if (this.get(key, namespace) !== null) {
+      return
+    }
+
+    fetchFn()
+      .then((data) => this.set(key, data, expiration, namespace))
+      .catch((error) => console.warn(`Prefetch failed for key ${key}:`, error))
   }
 }
 
 // Create default cache instance
-export const defaultCache = new CacheService()
+export const cacheService = new CacheService({
+  defaultExpiration: 300000, // 5 minutes
+  maxSize: 200,
+  namespace: "atozfamily",
+})
 
-// Utility functions for common caching patterns
-export async function fetchWithCache<T>(key: string, fetchFn: () => Promise<T>, expiration?: number): Promise<T> {
-  const cached = defaultCache.get<T>(key, expiration)
-  if (cached !== null) {
-    return cached
-  }
-
-  try {
-    const data = await fetchFn()
-    defaultCache.set(key, data, expiration)
-    return data
-  } catch (error) {
-    console.error(`Error fetching data for key ${key}:`, error)
-    throw error
-  }
-}
-
-export function invalidateCache(key: string): void {
-  defaultCache.invalidate(key)
-}
-
-export async function prefetchAndCache<T>(key: string, fetchFn: () => Promise<T>, expiration?: number): Promise<void> {
-  try {
-    const data = await fetchFn()
-    defaultCache.set(key, data, expiration)
-  } catch (error) {
-    console.error(`Error prefetching data for key ${key}:`, error)
-  }
-}
+// Export the class for custom instances
+export { CacheService }
+export type { CachePolicy, CacheItem }

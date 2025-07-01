@@ -1,21 +1,29 @@
 {
-  "name": "HomeScholar",
-  "short_name": "HomeScholar",
-  "description": "Your complete homeschool resource hub",
+  "name": "AtoZ Family - Homeschool Resource Hub",
+  "short_name": "AtoZ Family",
+  "description": "Your complete homeschool resource platform",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#5e825e",
+  "theme_color": "#16a34a",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "categories": ["education", "productivity"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false
 }

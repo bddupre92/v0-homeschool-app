@@ -25,14 +25,14 @@ const fraunces = Fraunces({
 })
 
 export const metadata = {
-  title: "HomeScholar - Your Homeschool Resource Hub",
+  title: "AtoZ Family - Your Complete Homeschool Resource Hub",
   description:
-    "Discover, organize, and share homeschool resources. Connect with other homeschoolers and track your progress all in one place.",
+    "Discover, organize, and share homeschool resources with AtoZ Family. Connect with other homeschoolers, track progress, and access curated educational materials all in one place.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "HomeScholar",
+    title: "AtoZ Family",
   },
   viewport: {
     width: "device-width",
@@ -43,18 +43,25 @@ export const metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://homescholar.vercel.app",
-    title: "HomeScholar - Your Homeschool Resource Hub",
-    description: "Discover, organize, and share homeschool resources.",
-    siteName: "HomeScholar",
+    url: "https://atozfamily.org",
+    title: "AtoZ Family - Your Complete Homeschool Resource Hub",
+    description:
+      "Discover, organize, and share homeschool resources with AtoZ Family. Connect with other homeschoolers and track your progress.",
+    siteName: "AtoZ Family",
     images: [
       {
-        url: "https://homescholar.vercel.app/og-image.jpg",
+        url: "https://atozfamily.org/images/atozfamily-hero.jpg",
         width: 1200,
         height: 630,
-        alt: "HomeScholar",
+        alt: "AtoZ Family Homeschool Platform",
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AtoZ Family - Your Complete Homeschool Resource Hub",
+    description: "Discover, organize, and share homeschool resources with AtoZ Family.",
+    images: ["https://atozfamily.org/images/atozfamily-hero.jpg"],
   },
     generator: 'v0.dev'
 }
@@ -72,7 +79,8 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="theme-color" content="#ffffff" />
+        <meta name="theme-color" content="#16a34a" />
+        <link rel="canonical" href="https://atozfamily.org" />
       </head>
       <body className={`${inter.variable} ${fraunces.variable} font-sans`}>
         <CacheProvider>

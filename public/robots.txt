@@ -1,4 +1,4 @@
-# https://homescholar.vercel.app/robots.txt
+# https://atozfamily.org/robots.txt
 User-agent: *
 Allow: /
 
@@ -7,4 +7,4 @@ Disallow: /admin/
 Disallow: /api/
 
 # Sitemap
-Sitemap: https://homescholar.vercel.app/sitemap.xml
+Sitemap: https://atozfamily.org/sitemap.xml
