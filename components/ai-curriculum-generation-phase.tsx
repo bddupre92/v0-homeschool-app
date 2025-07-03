@@ -38,7 +38,7 @@ export default function AICurriculumGenerationPhase({
   const { toast } = useToast()
   const [generatedCurriculum, setGeneratedCurriculum] = useState<any>(null)
   const form = useForm<CurriculumFormValues>({
-    resolver: zodFormResolver(curriculumSchema),
+    resolver: zodFormResolver(curriculumSchema), // Using our custom resolver
     defaultValues: { childName: "", duration: "year", learningStyle: "", focusAreas: "" },
   })
 
@@ -171,10 +171,10 @@ export default function AICurriculumGenerationPhase({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Curriculum Duration</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select duration" />
+                          <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -194,7 +194,7 @@ export default function AICurriculumGenerationPhase({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Learning Style (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a style" />

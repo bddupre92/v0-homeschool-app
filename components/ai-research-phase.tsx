@@ -28,7 +28,7 @@ interface AIResearchPhaseProps {
 export default function AIResearchPhase({ onResearchComplete }: AIResearchPhaseProps) {
   const { toast } = useToast()
   const form = useForm<ResearchFormValues>({
-    resolver: zodFormResolver(researchSchema),
+    resolver: zodFormResolver(researchSchema), // Using our custom resolver
     defaultValues: { subject: "", grade: "", topics: "" },
   })
 
@@ -80,7 +80,7 @@ export default function AIResearchPhase({ onResearchComplete }: AIResearchPhaseP
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Subject</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select subject" />
@@ -103,7 +103,7 @@ export default function AIResearchPhase({ onResearchComplete }: AIResearchPhaseP
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Grade Level</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select grade" />
