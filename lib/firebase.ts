@@ -1,18 +1,10 @@
-import { initializeApp, getApps } from "firebase/app"
-import { getAuth } from "firebase/auth"
-import { getFirestore } from "firebase/firestore"
-import { getStorage } from "firebase/storage"
-
-const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
-
-if (!apiKey) {
-  console.error("NEXT_PUBLIC_FIREBASE_API_KEY is not defined in environment variables!")
-} else {
-  console.log("NEXT_PUBLIC_FIREBASE_API_KEY is defined:", apiKey.substring(0, 5) + "...") // Log first 5 characters for verification
-}
+import { initializeApp, getApps, getApp } from "firebase/app"
+import { getAuth, connectAuthEmulator } from "firebase/auth"
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
+import { getStorage, connectStorageEmulator } from "firebase/storage"
 
 const firebaseConfig = {
-  apiKey: apiKey,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseapp.com`,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`,
@@ -22,16 +14,33 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let app
-try {
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
-  console.log("Firebase app initialized successfully.")
-} catch (error) {
-  console.error("Firebase initialization error:", error)
-  throw error // Re-throw to prevent further execution if initialization fails
+if (getApps().length === 0) {
+  app = initializeApp(firebaseConfig)
+} else {
+  app = getApp()
 }
 
-const auth = getAuth(app)
-const db = getFirestore(app)
-const storage = getStorage(app)
+// Initialize Firebase services
+export const auth = getAuth(app)
+export const db = getFirestore(app)
+export const storage = getStorage(app)
 
-export { auth, db, storage }
+// Connect to emulators in development
+if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+  try {
+    // Only connect to emulators if not already connected
+    if (!auth.config.emulator) {
+      connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true })
+    }
+    if (!(db as any)._delegate._databaseId.projectId.includes("demo-")) {
+      connectFirestoreEmulator(db, "localhost", 8080)
+    }
+    if (!(storage as any)._delegate._host.includes("localhost")) {
+      connectStorageEmulator(storage, "localhost", 9199)
+    }
+  } catch (error) {
+    console.log("Emulators already connected or not available")
+  }
+}
+
+export default app

@@ -19,8 +19,7 @@ import {
   type User,
   type UserCredential,
 } from "firebase/auth"
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
-import { auth, db } from "../lib/firebase"
+import { doc, setDoc, getDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore"
 
 interface AuthContextProps {
   user: User | null
@@ -62,6 +61,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [firebaseInitialized, setFirebaseInitialized] = useState(false)
+
+  // Initialize Firebase lazily
+  const [auth, setAuth] = useState<any>(null)
+  const [db, setDb] = useState<any>(null)
+
+  useEffect(() => {
+    const initializeFirebase = async () => {
+      try {
+        const { auth: firebaseAuth, db: firebaseDb } = await import("../lib/firebase")
+        setAuth(firebaseAuth)
+        setDb(firebaseDb)
+        setFirebaseInitialized(true)
+      } catch (error) {
+        console.error("Failed to initialize Firebase:", error)
+        setLoading(false)
+      }
+    }
+
+    initializeFirebase()
+  }, [])
 
   // Add a function to check if user has admin role
   const isAdmin = () => {
@@ -92,6 +112,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Set up token refresh interval
   useEffect(() => {
+    if (!user) return
+
     const tokenRefreshInterval = setInterval(
       async () => {
         await refreshToken()
@@ -103,6 +125,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user])
 
   useEffect(() => {
+    if (!firebaseInitialized || !auth || !db) return
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user)
 
@@ -149,9 +173,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     })
 
     return () => unsubscribe()
-  }, [auth, db])
+  }, [firebaseInitialized, auth, db])
 
   const signIn = async (email: string, password: string, rememberMe = false) => {
+    if (!auth || !db) throw new Error("Firebase not initialized")
+
     // Set persistence based on remember me option
     const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence
     await firebaseSetPersistence(auth, persistenceType)
@@ -177,9 +203,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Track failed login attempts
       if (email) {
         try {
-          // Find user by email (this is a simplified approach)
-          // In production, you might want to use a Cloud Function for this
-          const snapshot = await db.collection("users").where("email", "==", email).limit(1).get()
+          // Find user by email
+          const usersRef = collection(db, "users")
+          const q = query(usersRef, where("email", "==", email))
+          const snapshot = await getDocs(q)
 
           if (!snapshot.empty) {
             const userDoc = snapshot.docs[0]
@@ -205,6 +232,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const signUp = async (email: string, password: string, displayName: string) => {
+    if (!auth || !db) throw new Error("Firebase not initialized")
+
     const userCredential = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(userCredential.user, { displayName })
 
@@ -227,12 +256,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const signOut = async () => {
+    if (!auth) throw new Error("Firebase not initialized")
+
     // Clear the auth cookie when the user signs out
     document.cookie = "firebase-auth-token=; path=/; max-age=0; SameSite=Strict"
     return firebaseSignOut(auth)
   }
 
   const signInWithGoogle = async (rememberMe = false) => {
+    if (!auth) throw new Error("Firebase not initialized")
+
     // Set persistence based on remember me option
     const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence
     await firebaseSetPersistence(auth, persistenceType)
@@ -242,6 +275,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const resetPassword = async (email: string) => {
+    if (!auth) throw new Error("Firebase not initialized")
+
     return sendPasswordResetEmail(auth, email, {
       url: `${window.location.origin}/sign-in`,
       handleCodeInApp: false,
@@ -257,7 +292,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const updateUserEmail = async (email: string) => {
-    if (!user) throw new Error("No user logged in")
+    if (!user || !db) throw new Error("No user logged in or Firebase not initialized")
     await updateEmail(user, email)
 
     // Update Firestore
@@ -271,7 +306,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const updateUserProfile = async (data: Partial<UserProfile>) => {
-    if (!user) throw new Error("No user logged in")
+    if (!user || !db) throw new Error("No user logged in or Firebase not initialized")
 
     // Update Firebase Auth profile if name or photo is changed
     if (data.displayName || data.photoURL) {
