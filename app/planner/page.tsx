@@ -15,6 +15,7 @@ import {
   Plus,
   Share2,
   Users,
+  Bot,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -53,6 +54,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import Navigation from "@/components/navigation"
+import AICurriculumWorkflow from "@/components/ai-curriculum-workflow"
 
 // Sample data for the planner
 const subjects = [
@@ -271,7 +273,7 @@ export default function PlannerPage() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-1">
+                  <Button variant="outline" className="gap-1 bg-transparent">
                     <Share2 className="h-4 w-4" />
                     Share
                   </Button>
@@ -296,7 +298,7 @@ export default function PlannerPage() {
 
               <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="gap-1">
+                  <Button variant="outline" className="gap-1 bg-transparent">
                     <Filter className="h-4 w-4" />
                     Filter
                     {filteredSubjects.length !== subjects.length && (
@@ -360,6 +362,10 @@ export default function PlannerPage() {
                   <FileText className="h-4 w-4" />
                   Curriculum
                 </TabsTrigger>
+                <TabsTrigger value="ai-builder" className="flex items-center gap-1">
+                  <Bot className="h-4 w-4" />
+                  AI Builder
+                </TabsTrigger>
               </TabsList>
 
               <div className="flex items-center gap-2">
@@ -372,7 +378,12 @@ export default function PlannerPage() {
                 <Button variant="outline" size="icon" onClick={handleNextWeek}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" className="ml-2" onClick={() => setCurrentDate(new Date())}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-2 bg-transparent"
+                  onClick={() => setCurrentDate(new Date())}
+                >
                   Today
                 </Button>
               </div>
@@ -518,7 +529,7 @@ export default function PlannerPage() {
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full bg-transparent">
                       Add Curriculum
                     </Button>
                   </CardFooter>
@@ -556,13 +567,16 @@ export default function PlannerPage() {
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button variant="outline" className="w-full gap-1">
+                    <Button variant="outline" className="w-full gap-1 bg-transparent">
                       <Plus className="h-4 w-4" />
                       Invite Collaborator
                     </Button>
                   </CardFooter>
                 </Card>
               </div>
+            </TabsContent>
+            <TabsContent value="ai-builder" className="mt-0">
+              <AICurriculumWorkflow />
             </TabsContent>
           </Tabs>
         </div>
@@ -676,7 +690,7 @@ export default function PlannerPage() {
                 <Button variant="outline" size="sm">
                   Edit
                 </Button>
-                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive bg-transparent">
                   Delete
                 </Button>
               </div>
