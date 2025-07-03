@@ -62,7 +62,6 @@
     "react-day-picker": "8.10.1",
     "react-dom": "^19",
     "react-hook-form": "latest",
-    "react-icons": "latest",
     "react-intersection-observer": "latest",
     "svelte": "latest",
     "tailwind-merge": "^2.5.5",
