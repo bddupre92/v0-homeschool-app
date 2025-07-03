@@ -21,6 +21,9 @@ export function middleware(request: NextRequest) {
 
   // For client-side auth, we'll let the ProtectedRoute component handle the redirect
   // This prevents the middleware from redirecting authenticated users
+  // DEV MODE: The block below is commented out to bypass auth for development.
+  // To re-enable, uncomment this block.
+  /*
   if (isProtectedPath) {
     // Only redirect if we're absolutely sure there's no session
     // This allows client-side auth to work properly
@@ -30,13 +33,30 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(signInUrl)
     }
   }
+  */
 
   // If the path is for authentication and there's a session, redirect to dashboard
   if (isAuthPath && session) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
-  return NextResponse.next()
+  // Add security headers
+  const response = NextResponse.next()
+
+  // Content Security Policy
+  response.headers.set(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.vercel-insights.com https://*.firebaseio.com https://*.googleapis.com; connect-src 'self' https://*.vercel-insights.com https://*.firebaseio.com https://*.googleapis.com https://api.mapbox.com; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://api.mapbox.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com; font-src 'self' data:; frame-src https://*.firebaseapp.com;",
+  )
+
+  // Other security headers
+  response.headers.set("X-Content-Type-Options", "nosniff")
+  response.headers.set("X-Frame-Options", "DENY")
+  response.headers.set("X-XSS-Protection", "1; mode=block")
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)")
+
+  return response
 }
 
 export const config = {

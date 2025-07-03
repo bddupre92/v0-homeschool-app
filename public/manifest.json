@@ -1,11 +1,11 @@
 {
-  "name": "HomeScholar",
-  "short_name": "HomeScholar",
+  "name": "AtoZ Family",
+  "short_name": "AtoZ Family",
   "description": "Your complete homeschool resource hub",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#5e825e",
+  "theme_color": "#16a34a",
   "icons": [
     {
       "src": "/icon-192x192.png",

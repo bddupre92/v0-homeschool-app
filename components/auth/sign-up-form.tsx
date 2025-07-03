@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { FcGoogle } from "react-icons/fc"
-import { Loader2 } from "lucide-react"
+import { Loader2, AlertCircle, CheckCircle, XCircle } from "lucide-react"
 
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
@@ -15,11 +15,21 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 
+const passwordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .refine((password) => /[A-Z]/.test(password), {
+    message: "Password must contain at least one uppercase letter",
+  })
+  .refine((password) => /[0-9]/.test(password), {
+    message: "Password must contain at least one number",
+  })
+
 const formSchema = z
   .object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     email: z.string().email("Invalid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    password: passwordSchema,
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -43,7 +53,16 @@ export default function SignUpForm() {
       password: "",
       confirmPassword: "",
     },
+    mode: "onChange",
   })
+
+  // Get current password value for requirements check
+  const password = form.watch("password")
+
+  // Password requirement checks
+  const hasMinLength = password.length >= 8
+  const hasUppercase = /[A-Z]/.test(password)
+  const hasNumber = /[0-9]/.test(password)
 
   const onSubmit = async (data: FormValues) => {
     setError(null)
@@ -52,9 +71,20 @@ export default function SignUpForm() {
     try {
       await signUp(data.email, data.password, data.name)
       router.push("/verify-email")
-    } catch (err) {
-      setError("Failed to create an account. Please try again.")
-      console.error(err)
+    } catch (err: any) {
+      console.error("Sign up error:", err)
+
+      if (err.code === "auth/email-already-in-use") {
+        setError("This email is already in use. Please try signing in instead.")
+      } else if (err.code === "auth/weak-password") {
+        setError("Password is too weak. Please choose a stronger password.")
+      } else if (err.code === "auth/unauthorized-domain") {
+        setError(
+          "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
+        )
+      } else {
+        setError("Failed to create an account. Please try again.")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -67,9 +97,20 @@ export default function SignUpForm() {
     try {
       await signInWithGoogle()
       router.push("/dashboard")
-    } catch (err) {
-      setError("Failed to sign in with Google.")
-      console.error(err)
+    } catch (err: any) {
+      console.error("Google sign in error:", err)
+
+      if (err.code === "auth/popup-closed-by-user") {
+        setError("Sign-up was cancelled. Please try again.")
+      } else if (err.code === "auth/cancelled-popup-request") {
+        setError("Another sign-up attempt is in progress. Please wait.")
+      } else if (err.code === "auth/unauthorized-domain") {
+        setError(
+          "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
+        )
+      } else {
+        setError("Failed to sign up with Google.")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -84,6 +125,7 @@ export default function SignUpForm() {
       <CardContent>
         {error && (
           <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -124,6 +166,33 @@ export default function SignUpForm() {
                   <FormControl>
                     <Input type="password" {...field} />
                   </FormControl>
+                  <div className="mt-2 space-y-1">
+                    <div className="text-sm font-medium">Password requirements:</div>
+                    <div className="text-xs flex items-center">
+                      {hasMinLength ? (
+                        <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
+                      ) : (
+                        <XCircle className="h-3 w-3 text-red-500 mr-1" />
+                      )}
+                      At least 8 characters
+                    </div>
+                    <div className="text-xs flex items-center">
+                      {hasUppercase ? (
+                        <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
+                      ) : (
+                        <XCircle className="h-3 w-3 text-red-500 mr-1" />
+                      )}
+                      At least one uppercase letter
+                    </div>
+                    <div className="text-xs flex items-center">
+                      {hasNumber ? (
+                        <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
+                      ) : (
+                        <XCircle className="h-3 w-3 text-red-500 mr-1" />
+                      )}
+                      At least one number
+                    </div>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

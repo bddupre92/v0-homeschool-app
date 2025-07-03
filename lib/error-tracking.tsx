@@ -1,63 +1,48 @@
 "use client"
 
 import { createContext, useContext, useEffect, type ReactNode } from "react"
-import { trackError } from "./analytics-service"
+import * as Sentry from "@sentry/nextjs"
 
 interface ErrorTrackingContextProps {
-  captureError: (error: Error, componentName?: string) => void
-  captureMessage: (message: string, componentName?: string) => void
+  captureException: (error: Error, context?: Record<string, any>) => void
+  captureMessage: (message: string, context?: Record<string, any>) => void
 }
 
 const ErrorTrackingContext = createContext<ErrorTrackingContextProps>({
-  captureError: () => {},
+  captureException: () => {},
   captureMessage: () => {},
 })
 
 export function ErrorTrackingProvider({ children }: { children: ReactNode }) {
-  // Capture unhandled errors
   useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      captureError(event.error || new Error(event.message))
-    }
-
-    const handleRejection = (event: PromiseRejectionEvent) => {
-      captureError(event.reason instanceof Error ? event.reason : new Error(String(event.reason)))
-    }
-
-    window.addEventListener("error", handleError)
-    window.addEventListener("unhandledrejection", handleRejection)
-
-    return () => {
-      window.removeEventListener("error", handleError)
-      window.removeEventListener("unhandledrejection", handleRejection)
+    if (process.env.NODE_ENV === "production") {
+      Sentry.init({
+        dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || "",
+        tracesSampleRate: 0.5,
+        replaysSessionSampleRate: 0.1,
+        replaysOnErrorSampleRate: 1.0,
+      })
     }
   }, [])
 
-  // Capture error
-  const captureError = (error: Error, componentName?: string) => {
-    console.error(`[Error${componentName ? ` in ${componentName}` : ""}]`, error)
-
-    // Track error with analytics
-    trackError(error, componentName)
-
-    // Here you would integrate with an error tracking service like Sentry
-    // if (typeof window !== "undefined" && window.Sentry) {
-    //   window.Sentry.captureException(error, { extra: { componentName } })
-    // }
+  const captureException = (error: Error, context?: Record<string, any>) => {
+    console.error("Error:", error)
+    if (process.env.NODE_ENV === "production") {
+      Sentry.captureException(error, { extra: context })
+    }
   }
 
-  // Capture message
-  const captureMessage = (message: string, componentName?: string) => {
-    console.warn(`[Warning${componentName ? ` in ${componentName}` : ""}]`, message)
-
-    // Here you would integrate with an error tracking service like Sentry
-    // if (typeof window !== "undefined" && window.Sentry) {
-    //   window.Sentry.captureMessage(message, { extra: { componentName } })
-    // }
+  const captureMessage = (message: string, context?: Record<string, any>) => {
+    console.log("Message:", message)
+    if (process.env.NODE_ENV === "production") {
+      Sentry.captureMessage(message, { extra: context })
+    }
   }
 
   return (
-    <ErrorTrackingContext.Provider value={{ captureError, captureMessage }}>{children}</ErrorTrackingContext.Provider>
+    <ErrorTrackingContext.Provider value={{ captureException, captureMessage }}>
+      {children}
+    </ErrorTrackingContext.Provider>
   )
 }
 

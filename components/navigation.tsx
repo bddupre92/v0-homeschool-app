@@ -65,7 +65,7 @@ export default function Navigation() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
                     <Book className="h-5 w-5 text-primary-foreground" />
                   </div>
-                  <span>HomeScholar</span>
+                  <span>AtoZ Family</span>
                 </Link>
                 <nav className="flex flex-col gap-2">
                   {navItems.map((item) => {
@@ -93,7 +93,7 @@ export default function Navigation() {
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
               <Book className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="hidden sm:inline-block">HomeScholar</span>
+            <span className="hidden sm:inline-block">AtoZ Family</span>
           </Link>
         </div>
         <nav className="hidden lg:flex items-center gap-1">

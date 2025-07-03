@@ -20,6 +20,7 @@ export default function LocationsPage() {
 
   const { loading: mapLoading, error: mapError } = useMapboxToken()
 
+  // This would come from your database in a real app
   const locations: Location[] = [
     {
       id: "1",
@@ -41,9 +42,69 @@ export default function LocationsPage() {
       category: "park",
       description: "Beautiful gardens with plants from around the world. Guided tours available.",
     },
-    // ... (other locations omitted for brevity)
-  ];
+    {
+      id: "3",
+      name: "Historical Village",
+      rating: "4.5",
+      visits: 215,
+      coordinates: [-122.4104, 37.7829],
+      address: "789 History Lane, San Francisco, CA",
+      category: "museum",
+      description: "Step back in time and experience life in the 1800s. Educational programs available.",
+    },
+    {
+      id: "4",
+      name: "Children's Theater",
+      rating: "4.7",
+      visits: 198,
+      coordinates: [-122.4254, 37.7769],
+      address: "101 Theater Blvd, San Francisco, CA",
+      category: "theater",
+      description: "Family-friendly performances and workshops for young actors.",
+    },
+    {
+      id: "5",
+      name: "Central Library",
+      rating: "4.4",
+      visits: 176,
+      coordinates: [-122.4154, 37.7789],
+      address: "200 Library Street, San Francisco, CA",
+      category: "library",
+      description: "Large collection of children's books and regular story time events.",
+    },
+    {
+      id: "6",
+      name: "Adventure Park",
+      rating: "4.9",
+      visits: 412,
+      coordinates: [-122.4294, 37.7719],
+      address: "300 Adventure Road, San Francisco, CA",
+      category: "park",
+      description: "Outdoor activities including hiking trails, playgrounds, and picnic areas.",
+    },
+    {
+      id: "7",
+      name: "Art Center",
+      rating: "4.3",
+      visits: 156,
+      coordinates: [-122.4354, 37.7739],
+      address: "400 Art Avenue, San Francisco, CA",
+      category: "museum",
+      description: "Art classes and exhibitions for all ages. Special homeschool programs available.",
+    },
+    {
+      id: "8",
+      name: "Science Center",
+      rating: "4.7",
+      visits: 289,
+      coordinates: [-122.4124, 37.7809],
+      address: "500 Science Boulevard, San Francisco, CA",
+      category: "museum",
+      description: "Hands-on science exhibits and regular demonstrations. STEM workshops for homeschoolers.",
+    },
+  ]
 
+  // Filter locations based on search query
   const filteredLocations = locations.filter(
     (location) =>
       location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -52,36 +113,48 @@ export default function LocationsPage() {
       location.category.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
+  // Get color based on category
   const getCategoryColor = (category: string): string => {
     const colors: { [key: string]: string } = {
-      museum: "#f97316", park: "#22c55e", library: "#8b5cf6", 
-      theater: "#ec4899", school: "#3b82f6", restaurant: "#ef4444", 
-      cafe: "#a16207", default: "#6b7280", 
-    };
-    return colors[category] || colors.default;
-  };
+      museum: "#f97316", // orange
+      park: "#22c55e", // green
+      library: "#8b5cf6", // purple
+      theater: "#ec4899", // pink
+      school: "#3b82f6", // blue
+      restaurant: "#ef4444", // red
+      cafe: "#a16207", // amber
+      default: "#6b7280", // gray
+    }
+
+    return colors[category] || colors.default
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
 
       <main className="flex-1 container py-8 px-4 md:px-6">
-        <Tabs value={viewMode} onValueChange={setViewMode} className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold">Field Trip Locations</h1>
               <p className="text-muted-foreground">Discover popular homeschool field trip destinations</p>
             </div>
-            <TabsList>
-              <TabsTrigger value="grid" className="flex items-center gap-1">
-                <Grid className="h-4 w-4" />
-                Grid
-              </TabsTrigger>
-              <TabsTrigger value="map" className="flex items-center gap-1">
-                <MapIcon className="h-4 w-4" />
-                Map
-              </TabsTrigger>
-            </TabsList>
+
+            <div className="flex items-center gap-2">
+              <Tabs value={viewMode} onValueChange={setViewMode}>
+                <TabsList>
+                  <TabsTrigger value="grid" className="flex items-center gap-1">
+                    <Grid className="h-4 w-4" />
+                    Grid
+                  </TabsTrigger>
+                  <TabsTrigger value="map" className="flex items-center gap-1">
+                    <MapIcon className="h-4 w-4" />
+                    Map
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -95,6 +168,7 @@ export default function LocationsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+
             <Button variant="outline" className="gap-1">
               <Filter className="h-4 w-4" />
               Filter
@@ -187,7 +261,6 @@ export default function LocationsPage() {
             )}
           </TabsContent>
 
-          {/* This bottom list might need to be outside the TabsContent or handled differently if it's not part of the tabbed view */}
           <div className="grid gap-4 mt-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredLocations.map((location) => (
               <div
@@ -197,7 +270,9 @@ export default function LocationsPage() {
                 }`}
                 onClick={() => {
                   setSelectedLocation(location.id)
-                  // if (viewMode === "map") { ... }
+                  if (viewMode === "map") {
+                    // Center the map on this location
+                  }
                 }}
               >
                 <div className="flex-1">
@@ -220,7 +295,7 @@ export default function LocationsPage() {
               </div>
             ))}
           </div>
-        </Tabs> {/* Moved the closing Tabs tag to wrap the content sections */}
+        </div>
       </main>
     </div>
   )

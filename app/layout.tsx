@@ -2,16 +2,18 @@ import type React from "react"
 import { Inter, Fraunces } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
-// import { AnalyticsProvider } from "@/lib/analytics"
-// import { CacheProvider } from "@/lib/cache"
-// import AIAssistant from "@/components/ai-assistant"
-// import ServiceWorkerRegister from "./sw-register"
+import { AnalyticsProvider } from "@/lib/analytics"
+import { CacheProvider } from "@/lib/cache"
+import AIAssistant from "@/components/ai-assistant"
+import ServiceWorkerRegister from "./sw-register"
 import { Suspense } from "react"
 import "./globals.css"
-// import { CookieConsent } from "@/components/cookie-consent"
-// import { Footer } from "@/components/footer"
-// import { ErrorTrackingProvider } from "@/lib/error-tracking"
-// import { PerformanceMonitoringProvider } from "@/lib/performance-monitoring"
+import { CookieConsent } from "@/components/cookie-consent"
+import { Footer } from "@/components/footer"
+import { ErrorTrackingProvider } from "@/lib/error-tracking"
+import { PerformanceMonitoringProvider } from "@/lib/performance-monitoring"
+import { SessionInitializer } from "@/components/session-initializer"
+import QueryProvider from "@/components/query-provider"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,40 +26,45 @@ const fraunces = Fraunces({
 })
 
 export const metadata = {
-  title: "HomeScholar - Your Homeschool Resource Hub",
+  title: "AtoZ Family - Your Homeschool Resource Hub",
   description:
-    "Discover, organize, and share homeschool resources. Connect with other homeschoolers and track your progress all in one place.",
+    "Discover, organize, and share homeschool resources with AtoZ Family. Connect with other homeschoolers and track your progress all in one place.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "HomeScholar",
+    title: "AtoZ Family",
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
   },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://homescholar.vercel.app",
-    title: "HomeScholar - Your Homeschool Resource Hub",
-    description: "Discover, organize, and share homeschool resources.",
-    siteName: "HomeScholar",
+    url: "https://atozfamily.org",
+    title: "AtoZ Family - Your Homeschool Resource Hub",
+    description: "Discover, organize, and share homeschool resources with AtoZ Family.",
+    siteName: "AtoZ Family",
     images: [
       {
-        url: "https://homescholar.vercel.app/og-image.jpg",
+        url: "https://atozfamily.org/images/atozfamily-hero.jpg",
         width: 1200,
         height: 630,
-        alt: "HomeScholar",
+        alt: "AtoZ Family Homeschool Platform",
       },
     ],
   },
-  generator: 'v0.dev'
+  twitter: {
+    card: "summary_large_image",
+    title: "AtoZ Family - Your Homeschool Resource Hub",
+    description: "Discover, organize, and share homeschool resources with AtoZ Family.",
+    images: ["https://atozfamily.org/images/atozfamily-hero.jpg"],
+  },
+    generator: 'v0.dev'
 }
-
-export const viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
 
 export default function RootLayout({
   children,
@@ -75,25 +82,28 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
       </head>
       <body className={`${inter.variable} ${fraunces.variable} font-sans`}>
-        {/* <CacheProvider>
+        <CacheProvider>
           <AnalyticsProvider>
             <ErrorTrackingProvider>
-              <PerformanceMonitoringProvider> */}
+              <PerformanceMonitoringProvider>
                 <AuthProvider>
-                  <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-                    <Suspense>
-                      {children}
-                      {/* <AIAssistant /> */}
-                    </Suspense>
-                    {/* <ServiceWorkerRegister /> */}
-                    {/* <Footer /> */}
-                    {/* <CookieConsent /> */}
-                  </ThemeProvider>
+                  <QueryProvider>
+                    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+                      <Suspense>
+                        {children}
+                        <AIAssistant />
+                      </Suspense>
+                      <ServiceWorkerRegister />
+                      <Footer />
+                      <CookieConsent />
+                      <SessionInitializer />
+                    </ThemeProvider>
+                  </QueryProvider>
                 </AuthProvider>
-            {/* </PerformanceMonitoringProvider>
+              </PerformanceMonitoringProvider>
             </ErrorTrackingProvider>
           </AnalyticsProvider>
-        </CacheProvider> */}
+        </CacheProvider>
       </body>
     </html>
   )
