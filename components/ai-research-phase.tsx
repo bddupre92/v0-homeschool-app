@@ -33,23 +33,24 @@ export default function AIResearchPhase({ onResearchComplete }: AIResearchPhaseP
   })
 
   const researchMutation = useMutation({
-    mutationFn: async (data: ResearchFormValues) => {
+    mutationFn: async (data: ResearchFormValues): Promise<ResearchResult[]> => {
       const response = await fetch("/api/ai/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       })
       if (!response.ok) {
-        throw new Error("Failed to fetch research results.")
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || "Failed to fetch research results.")
       }
       return response.json()
     },
-    onSuccess: (data: ResearchResult[]) => {
+    onSuccess: (data, variables) => {
       toast({ title: "Research Complete", description: "We've gathered some resources for you." })
-      onResearchComplete(form.getValues(), data)
+      onResearchComplete(variables, data)
     },
-    onError: (error) => {
-      toast({ title: "Research Failed", description: (error as Error).message, variant: "destructive" })
+    onError: (error: Error) => {
+      toast({ title: "Research Failed", description: error.message, variant: "destructive" })
     },
   })
 
