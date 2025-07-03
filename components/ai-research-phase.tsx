@@ -1,7 +1,6 @@
 "use client"
 
 import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useMutation } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
@@ -12,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Bot, Loader2, Search } from "lucide-react"
 import type { ResearchResult } from "@/lib/types"
+import { zodFormResolver } from "@/lib/resolvers"
 
 const researchSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
@@ -28,7 +28,7 @@ interface AIResearchPhaseProps {
 export default function AIResearchPhase({ onResearchComplete }: AIResearchPhaseProps) {
   const { toast } = useToast()
   const form = useForm<ResearchFormValues>({
-    resolver: zodResolver(researchSchema),
+    resolver: zodFormResolver(researchSchema), // Using our custom resolver
     defaultValues: { subject: "", grade: "", topics: "" },
   })
 

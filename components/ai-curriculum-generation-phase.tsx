@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useMutation } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
@@ -14,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Sparkles, BookOpen, ArrowLeft } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { ResearchResult } from "@/lib/types"
+import { zodFormResolver } from "@/lib/resolvers"
 
 const curriculumSchema = z.object({
   childName: z.string().min(1, "Child's name is required"),
@@ -38,7 +38,7 @@ export default function AICurriculumGenerationPhase({
   const { toast } = useToast()
   const [generatedCurriculum, setGeneratedCurriculum] = useState<any>(null)
   const form = useForm<CurriculumFormValues>({
-    resolver: zodResolver(curriculumSchema),
+    resolver: zodFormResolver(curriculumSchema), // Using our custom resolver
     defaultValues: { childName: "", duration: "year", learningStyle: "", focusAreas: "" },
   })
 
