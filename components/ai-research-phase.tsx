@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Bot, Loader2, Search } from "lucide-react"
 import type { ResearchResult } from "@/lib/types"
-import { zodFormResolver } from "@/lib/resolvers"
+// import { zodFormResolver } from "@/lib/resolvers" // Temporarily removed
 
 const researchSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
@@ -28,16 +28,22 @@ interface AIResearchPhaseProps {
 export default function AIResearchPhase({ onResearchComplete }: AIResearchPhaseProps) {
   const { toast } = useToast()
   const form = useForm<ResearchFormValues>({
-    resolver: zodFormResolver(researchSchema), // Using our custom resolver
+    // resolver: zodFormResolver(researchSchema), // Temporarily disabled to isolate the error
     defaultValues: { subject: "", grade: "", topics: "" },
   })
 
   const researchMutation = useMutation({
     mutationFn: async (data: ResearchFormValues): Promise<ResearchResult[]> => {
+      // Since validation is off, we'll validate here before sending to the API
+      const validation = researchSchema.safeParse(data)
+      if (!validation.success) {
+        throw new Error("Invalid form data. Please fill out all required fields.")
+      }
+
       const response = await fetch("/api/ai/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(validation.data),
       })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -80,7 +86,7 @@ export default function AIResearchPhase({ onResearchComplete }: AIResearchPhaseP
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Subject</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select subject" />
@@ -103,7 +109,7 @@ export default function AIResearchPhase({ onResearchComplete }: AIResearchPhaseP
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Grade Level</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select grade" />

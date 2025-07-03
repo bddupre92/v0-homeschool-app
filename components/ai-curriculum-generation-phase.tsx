@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Sparkles, BookOpen, ArrowLeft } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { ResearchResult } from "@/lib/types"
-import { zodFormResolver } from "@/lib/resolvers"
 
 const curriculumSchema = z.object({
   childName: z.string().min(1, "Child's name is required"),
@@ -38,14 +37,19 @@ export default function AICurriculumGenerationPhase({
   const { toast } = useToast()
   const [generatedCurriculum, setGeneratedCurriculum] = useState<any>(null)
   const form = useForm<CurriculumFormValues>({
-    resolver: zodFormResolver(curriculumSchema), // Using our custom resolver
+    // resolver: zodFormResolver(curriculumSchema), // Temporarily disabled to isolate the error
     defaultValues: { childName: "", duration: "year", learningStyle: "", focusAreas: "" },
   })
 
   const generateMutation = useMutation({
     mutationFn: async (data: CurriculumFormValues) => {
+      const validation = curriculumSchema.safeParse(data)
+      if (!validation.success) {
+        throw new Error("Invalid form data.")
+      }
+
       const payload = {
-        ...data,
+        ...validation.data,
         researchQuery,
         researchContext: researchResults,
       }
@@ -171,7 +175,7 @@ export default function AICurriculumGenerationPhase({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Curriculum Duration</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue />
@@ -194,7 +198,7 @@ export default function AICurriculumGenerationPhase({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Learning Style (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a style" />
