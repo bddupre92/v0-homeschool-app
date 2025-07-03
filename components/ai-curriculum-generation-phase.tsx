@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
@@ -37,19 +38,14 @@ export default function AICurriculumGenerationPhase({
   const { toast } = useToast()
   const [generatedCurriculum, setGeneratedCurriculum] = useState<any>(null)
   const form = useForm<CurriculumFormValues>({
-    // resolver: zodFormResolver(curriculumSchema), // Temporarily disabled to isolate the error
+    resolver: zodResolver(curriculumSchema), // Restoring official resolver
     defaultValues: { childName: "", duration: "year", learningStyle: "", focusAreas: "" },
   })
 
   const generateMutation = useMutation({
     mutationFn: async (data: CurriculumFormValues) => {
-      const validation = curriculumSchema.safeParse(data)
-      if (!validation.success) {
-        throw new Error("Invalid form data.")
-      }
-
       const payload = {
-        ...validation.data,
+        ...data,
         researchQuery,
         researchContext: researchResults,
       }
@@ -178,7 +174,7 @@ export default function AICurriculumGenerationPhase({
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select duration" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>

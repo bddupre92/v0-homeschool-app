@@ -25,12 +25,14 @@ const mockUser: User = {
   reload: () => Promise.resolve(),
   toJSON: () => ({}),
   providerId: "password",
+  tenantId: null,
 }
 
 // --- Context Definition ---
 interface AuthContextType {
   user: User | null
   loading: boolean
+  // Add other auth functions here if needed, e.g., signOut
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -51,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // If auth service is not available, stop loading and proceed without a user.
+    // If auth service is not available (e.g., init failed), stop loading.
     if (!auth) {
       setLoading(false)
       return
@@ -72,8 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Display a full-page loader while checking auth state
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
+      <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="sr-only">Loading application...</p>
       </div>
     )
   }

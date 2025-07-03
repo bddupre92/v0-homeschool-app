@@ -17,24 +17,21 @@ let auth: Auth
 let db: Firestore
 let storage: Storage
 
-// This pattern ensures that we're not re-initializing the app on every hot-reload
-if (getApps().length) {
-  app = getApp()
-} else {
-  try {
+try {
+  if (getApps().length) {
+    app = getApp()
+  } else {
     app = initializeApp(firebaseConfig)
-  } catch (error) {
-    console.error("Firebase initialization failed:", error)
-    // If initialization fails, we should not proceed to get other services.
-    // You might want to set up a state to show a global error message.
   }
-}
 
-// @ts-ignore
-if (app) {
   auth = getAuth(app)
   db = getFirestore(app)
   storage = getStorage(app)
+} catch (error) {
+  console.error("Firebase initialization error:", error)
+  // In a real app, you might want to set a flag that Firebase is unavailable
+  // and show a global error message to the user.
 }
 
+// @ts-ignore - These will be initialized in the try-catch block
 export { app, auth, db, storage }
