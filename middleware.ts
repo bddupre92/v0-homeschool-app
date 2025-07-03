@@ -21,6 +21,9 @@ export function middleware(request: NextRequest) {
 
   // For client-side auth, we'll let the ProtectedRoute component handle the redirect
   // This prevents the middleware from redirecting authenticated users
+  // DEV MODE: The block below is commented out to bypass auth for development.
+  // To re-enable, uncomment this block.
+  /*
   if (isProtectedPath) {
     // Only redirect if we're absolutely sure there's no session
     // This allows client-side auth to work properly
@@ -30,6 +33,7 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(signInUrl)
     }
   }
+  */
 
   // If the path is for authentication and there's a session, redirect to dashboard
   if (isAuthPath && session) {

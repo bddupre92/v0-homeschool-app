@@ -22,6 +22,11 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
 import { auth, db } from "../lib/firebase"
 
+// --- DEVELOPMENT TOGGLE ---
+// Set this to `false` to enable real Firebase authentication.
+// When `true`, all auth checks are bypassed with a mock user.
+const DEV_MODE_BYPASS_AUTH = true
+
 interface AuthContextProps {
   user: User | null
   userProfile: UserProfile | null
@@ -56,30 +61,69 @@ interface UserProfile {
   lastFailedLogin?: any
 }
 
+// Mock user for development mode
+const mockUser: User = {
+  uid: "dev-user-uid",
+  email: "dev@atozfamily.org",
+  displayName: "Dev User",
+  emailVerified: true,
+  photoURL: null,
+  isAnonymous: false,
+  metadata: {},
+  providerData: [],
+  providerId: "password",
+  tenantId: null,
+  delete: async () => {},
+  getIdToken: async () => "mock-token",
+  getIdTokenResult: async () => ({
+    token: "mock-token",
+    claims: {},
+    authTime: "",
+    issuedAtTime: "",
+    signInProvider: null,
+    signInSecondFactor: null,
+    expirationTime: "",
+  }),
+  reload: async () => {},
+  toJSON: () => ({}),
+}
+
+const mockUserProfile: UserProfile = {
+  uid: "dev-user-uid",
+  displayName: "Dev User",
+  email: "dev@atozfamily.org",
+  photoURL: null,
+  role: "admin", // Give admin role for full access during development
+}
+
 const AuthContext = createContext<AuthContextProps | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null)
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(DEV_MODE_BYPASS_AUTH ? mockUser : null)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(DEV_MODE_BYPASS_AUTH ? mockUserProfile : null)
+  const [loading, setLoading] = useState(DEV_MODE_BYPASS_AUTH ? false : true)
 
   // Add a function to check if user has admin role
   const isAdmin = () => {
+    if (DEV_MODE_BYPASS_AUTH) return true
     return userProfile?.role === "admin"
   }
 
   // Add a function to check if user has moderator role
   const isModerator = () => {
+    if (DEV_MODE_BYPASS_AUTH) return true
     return userProfile?.role === "admin" || userProfile?.role === "moderator"
   }
 
   // Add a function to check if email is verified
   const isEmailVerified = () => {
+    if (DEV_MODE_BYPASS_AUTH) return true
     return user?.emailVerified ?? false
   }
 
   // Add token refresh function
   const refreshToken = async () => {
+    if (DEV_MODE_BYPASS_AUTH) return "mock-token"
     try {
       if (user) {
         return await user.getIdToken(true)
@@ -92,6 +136,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Set up token refresh interval
   useEffect(() => {
+    if (DEV_MODE_BYPASS_AUTH) return
+
     const tokenRefreshInterval = setInterval(
       async () => {
         await refreshToken()
@@ -103,15 +149,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user])
 
   useEffect(() => {
+    if (DEV_MODE_BYPASS_AUTH) {
+      setLoading(false)
+      return
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user)
 
       if (user) {
-        // Set a cookie to indicate the user is authenticated
-        // This helps the middleware detect authentication
         document.cookie = "firebase-auth-token=true; path=/; max-age=3600; SameSite=Strict"
-
-        // Fetch user profile from Firestore
         try {
           const userDocRef = doc(db, "users", user.uid)
           const userDoc = await getDoc(userDocRef)
@@ -119,7 +166,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (userDoc.exists()) {
             setUserProfile(userDoc.data() as UserProfile)
           } else {
-            // Create a new user profile if it doesn't exist
             const newUserProfile: UserProfile = {
               uid: user.uid,
               displayName: user.displayName,
@@ -129,18 +175,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               lastLogin: serverTimestamp(),
               failedLoginAttempts: 0,
             }
-
             await setDoc(userDocRef, newUserProfile)
             setUserProfile(newUserProfile)
           }
-
-          // Update last login time
           await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true })
         } catch (error) {
           console.error("Error fetching user profile:", error)
         }
       } else {
-        // Clear the auth cookie when the user signs out
         document.cookie = "firebase-auth-token=; path=/; max-age=0; SameSite=Strict"
         setUserProfile(null)
       }
@@ -152,66 +194,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [auth, db])
 
   const signIn = async (email: string, password: string, rememberMe = false) => {
-    // Set persistence based on remember me option
     const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence
     await firebaseSetPersistence(auth, persistenceType)
-
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
-
-      // Reset failed login attempts on successful login
-      if (userCredential.user) {
-        const userDocRef = doc(db, "users", userCredential.user.uid)
-        await setDoc(
-          userDocRef,
-          {
-            failedLoginAttempts: 0,
-            lastLogin: serverTimestamp(),
-          },
-          { merge: true },
-        )
-      }
-
-      return userCredential
-    } catch (error) {
-      // Track failed login attempts
-      if (email) {
-        try {
-          // Find user by email (this is a simplified approach)
-          // In production, you might want to use a Cloud Function for this
-          const snapshot = await db.collection("users").where("email", "==", email).limit(1).get()
-
-          if (!snapshot.empty) {
-            const userDoc = snapshot.docs[0]
-            const userData = userDoc.data() as UserProfile
-            const attempts = (userData.failedLoginAttempts || 0) + 1
-
-            await setDoc(
-              doc(db, "users", userDoc.id),
-              {
-                failedLoginAttempts: attempts,
-                lastFailedLogin: serverTimestamp(),
-              },
-              { merge: true },
-            )
-          }
-        } catch (err) {
-          console.error("Error tracking failed login:", err)
-        }
-      }
-
-      throw error
-    }
+    return signInWithEmailAndPassword(auth, email, password)
   }
 
   const signUp = async (email: string, password: string, displayName: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(userCredential.user, { displayName })
-
-    // Send email verification
     await firebaseSendEmailVerification(userCredential.user)
-
-    // Create user profile in Firestore
     const userDocRef = doc(db, "users", userCredential.user.uid)
     await setDoc(userDocRef, {
       uid: userCredential.user.uid,
@@ -220,23 +211,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       photoURL: null,
       createdAt: serverTimestamp(),
       lastLogin: serverTimestamp(),
-      failedLoginAttempts: 0,
     })
-
     return userCredential
   }
 
   const signOut = async () => {
-    // Clear the auth cookie when the user signs out
     document.cookie = "firebase-auth-token=; path=/; max-age=0; SameSite=Strict"
     return firebaseSignOut(auth)
   }
 
   const signInWithGoogle = async (rememberMe = false) => {
-    // Set persistence based on remember me option
     const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence
     await firebaseSetPersistence(auth, persistenceType)
-
     const provider = new GoogleAuthProvider()
     return signInWithPopup(auth, provider)
   }
@@ -259,8 +245,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const updateUserEmail = async (email: string) => {
     if (!user) throw new Error("No user logged in")
     await updateEmail(user, email)
-
-    // Update Firestore
     const userDocRef = doc(db, "users", user.uid)
     await setDoc(userDocRef, { email }, { merge: true })
   }
@@ -272,20 +256,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUserProfile = async (data: Partial<UserProfile>) => {
     if (!user) throw new Error("No user logged in")
-
-    // Update Firebase Auth profile if name or photo is changed
     if (data.displayName || data.photoURL) {
       await updateProfile(user, {
         displayName: data.displayName || user.displayName,
         photoURL: data.photoURL || user.photoURL,
       })
     }
-
-    // Update Firestore profile
     const userDocRef = doc(db, "users", user.uid)
     await setDoc(userDocRef, { ...data, updatedAt: serverTimestamp() }, { merge: true })
-
-    // Update local state
     if (userProfile) {
       setUserProfile({ ...userProfile, ...data })
     }
