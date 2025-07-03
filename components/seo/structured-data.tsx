@@ -11,7 +11,7 @@ export function ResourceStructuredData({ resource }: { resource: any }) {
       name: resource.author || "Unknown",
     },
     dateCreated: resource.createdAt,
-    url: `https://homescholar.vercel.app/resources/${resource.id}`,
+    url: `https://atozfamily.org/resources/${resource.id}`,
   }
 
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
@@ -40,7 +40,7 @@ export function EventStructuredData({ event }: { event: any }) {
       "@type": "Person",
       name: event.organizerName,
     },
-    url: `https://homescholar.vercel.app/community/events/${event.id}`,
+    url: `https://atozfamily.org/community/events/${event.id}`,
   }
 
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />

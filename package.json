@@ -1,13 +1,11 @@
 {
-  "name": "atozfamily-homeschool-app",
+  "name": "homeschool-app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "generate-sitemap": "node scripts/generate-sitemap.js",
     "lint": "next lint",
-    "optimize-images": "node scripts/optimize-images.js",
     "start": "next start"
   },
   "resolutions": {
@@ -24,20 +22,6 @@
     "@emotion/is-prop-valid": "latest",
     "@hookform/resolvers": "latest",
     "@mapbox/mapbox-gl-geocoder": "latest",
-    "@radix-ui/react-accordion": "^1.1.2",
-    "@radix-ui/react-alert-dialog": "^1.0.5",
-    "@radix-ui/react-avatar": "^1.0.4",
-    "@radix-ui/react-checkbox": "^1.0.4",
-    "@radix-ui/react-dialog": "^1.0.5",
-    "@radix-ui/react-dropdown-menu": "^2.0.6",
-    "@radix-ui/react-label": "^2.0.2",
-    "@radix-ui/react-select": "^2.0.0",
-    "@radix-ui/react-separator": "^1.0.3",
-    "@radix-ui/react-slot": "^1.0.2",
-    "@radix-ui/react-switch": "^1.0.3",
-    "@radix-ui/react-tabs": "^1.0.4",
-    "@radix-ui/react-toast": "^1.1.5",
-    "@radix-ui/react-tooltip": "^1.0.7",
     "@remix-run/react": "latest",
     "@sentry/nextjs": "latest",
     "@sveltejs/kit": "latest",
@@ -62,6 +46,7 @@
     "react-day-picker": "8.10.1",
     "react-dom": "^19",
     "react-hook-form": "latest",
+    "react-icons": "latest",
     "react-intersection-observer": "latest",
     "svelte": "latest",
     "tailwind-merge": "^2.5.5",
@@ -75,10 +60,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.16",
-    "eslint": "^8.54.0",
-    "eslint-config-next": "^14.0.0",
     "postcss": "^8.5",
-    "tailwindcss": "^3.3.5",
+    "tailwindcss": "^3.3.0",
     "typescript": "^5"
   }
 }

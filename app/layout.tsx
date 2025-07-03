@@ -25,9 +25,9 @@ const fraunces = Fraunces({
 })
 
 export const metadata = {
-  title: "AtoZ Family - Your Complete Homeschool Resource Hub",
+  title: "AtoZ Family - Your Homeschool Resource Hub",
   description:
-    "Discover, organize, and share homeschool resources with AtoZ Family. Connect with other homeschoolers, track progress, and access curated educational materials all in one place.",
+    "Discover, organize, and share homeschool resources with AtoZ Family. Connect with other homeschoolers and track your progress all in one place.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -44,9 +44,8 @@ export const metadata = {
     type: "website",
     locale: "en_US",
     url: "https://atozfamily.org",
-    title: "AtoZ Family - Your Complete Homeschool Resource Hub",
-    description:
-      "Discover, organize, and share homeschool resources with AtoZ Family. Connect with other homeschoolers and track your progress.",
+    title: "AtoZ Family - Your Homeschool Resource Hub",
+    description: "Discover, organize, and share homeschool resources with AtoZ Family.",
     siteName: "AtoZ Family",
     images: [
       {
@@ -59,7 +58,7 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AtoZ Family - Your Complete Homeschool Resource Hub",
+    title: "AtoZ Family - Your Homeschool Resource Hub",
     description: "Discover, organize, and share homeschool resources with AtoZ Family.",
     images: ["https://atozfamily.org/images/atozfamily-hero.jpg"],
   },
@@ -79,8 +78,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="theme-color" content="#16a34a" />
-        <link rel="canonical" href="https://atozfamily.org" />
+        <meta name="theme-color" content="#ffffff" />
       </head>
       <body className={`${inter.variable} ${fraunces.variable} font-sans`}>
         <CacheProvider>
