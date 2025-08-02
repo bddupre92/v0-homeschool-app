@@ -1,7 +1,7 @@
-import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app"
-import { getAuth, type Auth } from "firebase/auth"
-import { getFirestore, type Firestore } from "firebase/firestore"
-import { getStorage, type Storage } from "firebase/storage"
+import { initializeApp, getApps, getApp } from "firebase/app"
+import { getAuth, connectAuthEmulator } from "firebase/auth"
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"
+import { getStorage, connectStorageEmulator } from "firebase/storage"
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -12,26 +12,38 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
-let app: FirebaseApp
-let auth: Auth
-let db: Firestore
-let storage: Storage
+// Initialize Firebase
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 
-try {
-  if (getApps().length) {
-    app = getApp()
-  } else {
-    app = initializeApp(firebaseConfig)
+// Initialize Firebase services
+export const auth = getAuth(app)
+export const db = getFirestore(app)
+export const storage = getStorage(app)
+
+// Connect to emulators in development
+if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+  // Only connect to emulators if we haven't already
+  if (!auth.config.emulator) {
+    try {
+      connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true })
+    } catch (error) {
+      console.log("Auth emulator already connected")
+    }
   }
 
-  auth = getAuth(app)
-  db = getFirestore(app)
-  storage = getStorage(app)
-} catch (error) {
-  console.error("Firebase initialization error:", error)
-  // In a real app, you might want to set a flag that Firebase is unavailable
-  // and show a global error message to the user.
+  // Connect Firestore emulator
+  try {
+    connectFirestoreEmulator(db, "localhost", 8080)
+  } catch (error) {
+    console.log("Firestore emulator already connected")
+  }
+
+  // Connect Storage emulator
+  try {
+    connectStorageEmulator(storage, "localhost", 9199)
+  } catch (error) {
+    console.log("Storage emulator already connected")
+  }
 }
 
-// @ts-ignore - These will be initialized in the try-catch block
-export { app, auth, db, storage }
+export default app

@@ -28,6 +28,7 @@ type FormValues = z.infer<typeof formSchema>
 export default function SignInForm() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [failedAttempts, setFailedAttempts] = useState(0)
   const { signIn, signInWithGoogle } = useAuth()
   const router = useRouter()
@@ -66,10 +67,12 @@ export default function SignInForm() {
         setError(
           "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
         )
+      } else if (err.code === "auth/invalid-credential") {
+        setError("Invalid credentials. Please check your email and password.")
       } else {
         setError("Failed to sign in. Please check your credentials.")
       }
-      console.error(err)
+      console.error("Sign in error:", err)
     } finally {
       setIsLoading(false)
     }
@@ -77,7 +80,7 @@ export default function SignInForm() {
 
   const handleGoogleSignIn = async () => {
     setError(null)
-    setIsLoading(true)
+    setIsGoogleLoading(true)
 
     try {
       const rememberMe = form.getValues("rememberMe")
@@ -97,15 +100,19 @@ export default function SignInForm() {
         setError("Another sign-in attempt is in progress. Please wait.")
       } else if (err.code === "auth/unauthorized-domain") {
         setError(
-          "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
+          "This domain is not authorized for authentication. Please add atozfamily.org to your Firebase project's authorized domains list.",
         )
+      } else if (err.code === "auth/popup-blocked") {
+        setError("Popup was blocked by your browser. Please allow popups for this site and try again.")
       } else {
-        setError("Failed to sign in with Google.")
+        setError("Failed to sign in with Google. Please try again.")
       }
     } finally {
-      setIsLoading(false)
+      setIsGoogleLoading(false)
     }
   }
+
+  const isAnyLoading = isLoading || isGoogleLoading
 
   return (
     <Card className="w-full max-w-md">
@@ -122,9 +129,9 @@ export default function SignInForm() {
         )}
 
         {failedAttempts >= 3 && (
-          <Alert variant="warning" className="mb-4">
-            <Info className="h-4 w-4" />
-            <AlertDescription>
+          <Alert variant="default" className="mb-4 border-yellow-200 bg-yellow-50">
+            <Info className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800">
               Multiple failed login attempts detected.
               <Link href="/reset-password" className="ml-1 underline">
                 Forgot your password?
@@ -142,7 +149,7 @@ export default function SignInForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="your@email.com" {...field} />
+                    <Input type="email" placeholder="your@email.com" {...field} disabled={isAnyLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -160,12 +167,13 @@ export default function SignInForm() {
                       className="p-0 h-auto text-sm"
                       onClick={() => router.push("/reset-password")}
                       type="button"
+                      disabled={isAnyLoading}
                     >
                       Forgot password?
                     </Button>
                   </div>
                   <FormControl>
-                    <Input type="password" {...field} />
+                    <Input type="password" {...field} disabled={isAnyLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -177,7 +185,7 @@ export default function SignInForm() {
               render={({ field }) => (
                 <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md p-2">
                   <FormControl>
-                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isAnyLoading} />
                   </FormControl>
                   <div className="space-y-1 leading-none">
                     <FormLabel>Remember me</FormLabel>
@@ -185,7 +193,7 @@ export default function SignInForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isAnyLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -197,6 +205,7 @@ export default function SignInForm() {
             </Button>
           </form>
         </Form>
+
         <div className="relative my-4">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-300"></div>
@@ -205,15 +214,31 @@ export default function SignInForm() {
             <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
           </div>
         </div>
-        <Button variant="outline" type="button" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
-          <FcGoogle className="mr-2 h-4 w-4" />
-          Google
+
+        <Button
+          variant="outline"
+          type="button"
+          className="w-full bg-transparent"
+          onClick={handleGoogleSignIn}
+          disabled={isAnyLoading}
+        >
+          {isGoogleLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Signing in with Google...
+            </>
+          ) : (
+            <>
+              <FcGoogle className="mr-2 h-4 w-4" />
+              Google
+            </>
+          )}
         </Button>
       </CardContent>
       <CardFooter className="flex justify-center">
         <p className="text-sm text-muted-foreground">
           Don't have an account?{" "}
-          <Button variant="link" className="p-0 h-auto" onClick={() => router.push("/sign-up")}>
+          <Button variant="link" className="p-0 h-auto" onClick={() => router.push("/sign-up")} disabled={isAnyLoading}>
             Sign up
           </Button>
         </p>

@@ -42,6 +42,7 @@ type FormValues = z.infer<typeof formSchema>
 export default function SignUpForm() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const { signUp, signInWithGoogle } = useAuth()
   const router = useRouter()
 
@@ -80,8 +81,10 @@ export default function SignUpForm() {
         setError("Password is too weak. Please choose a stronger password.")
       } else if (err.code === "auth/unauthorized-domain") {
         setError(
-          "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
+          "This domain is not authorized for authentication. Please add atozfamily.org to your Firebase project's authorized domains list.",
         )
+      } else if (err.code === "auth/invalid-email") {
+        setError("Invalid email address. Please check your email and try again.")
       } else {
         setError("Failed to create an account. Please try again.")
       }
@@ -92,7 +95,7 @@ export default function SignUpForm() {
 
   const handleGoogleSignIn = async () => {
     setError(null)
-    setIsLoading(true)
+    setIsGoogleLoading(true)
 
     try {
       await signInWithGoogle()
@@ -106,15 +109,19 @@ export default function SignUpForm() {
         setError("Another sign-up attempt is in progress. Please wait.")
       } else if (err.code === "auth/unauthorized-domain") {
         setError(
-          "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
+          "This domain is not authorized for authentication. Please add atozfamily.org to your Firebase project's authorized domains list.",
         )
+      } else if (err.code === "auth/popup-blocked") {
+        setError("Popup was blocked by your browser. Please allow popups for this site and try again.")
       } else {
-        setError("Failed to sign up with Google.")
+        setError("Failed to sign up with Google. Please try again.")
       }
     } finally {
-      setIsLoading(false)
+      setIsGoogleLoading(false)
     }
   }
+
+  const isAnyLoading = isLoading || isGoogleLoading
 
   return (
     <Card className="w-full max-w-md">
@@ -138,7 +145,7 @@ export default function SignUpForm() {
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} />
+                    <Input placeholder="John Doe" {...field} disabled={isAnyLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -151,7 +158,7 @@ export default function SignUpForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="your@email.com" {...field} />
+                    <Input type="email" placeholder="your@email.com" {...field} disabled={isAnyLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -164,7 +171,7 @@ export default function SignUpForm() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" {...field} />
+                    <Input type="password" {...field} disabled={isAnyLoading} />
                   </FormControl>
                   <div className="mt-2 space-y-1">
                     <div className="text-sm font-medium">Password requirements:</div>
@@ -204,13 +211,13 @@ export default function SignUpForm() {
                 <FormItem>
                   <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
-                    <Input type="password" {...field} />
+                    <Input type="password" {...field} disabled={isAnyLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isAnyLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -222,6 +229,7 @@ export default function SignUpForm() {
             </Button>
           </form>
         </Form>
+
         <div className="relative my-4">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-300"></div>
@@ -230,15 +238,31 @@ export default function SignUpForm() {
             <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
           </div>
         </div>
-        <Button variant="outline" type="button" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
-          <FcGoogle className="mr-2 h-4 w-4" />
-          Google
+
+        <Button
+          variant="outline"
+          type="button"
+          className="w-full bg-transparent"
+          onClick={handleGoogleSignIn}
+          disabled={isAnyLoading}
+        >
+          {isGoogleLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Signing up with Google...
+            </>
+          ) : (
+            <>
+              <FcGoogle className="mr-2 h-4 w-4" />
+              Google
+            </>
+          )}
         </Button>
       </CardContent>
       <CardFooter className="flex justify-center">
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Button variant="link" className="p-0 h-auto" onClick={() => router.push("/sign-in")}>
+          <Button variant="link" className="p-0 h-auto" onClick={() => router.push("/sign-in")} disabled={isAnyLoading}>
             Sign in
           </Button>
         </p>

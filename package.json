@@ -70,7 +70,7 @@
     "tailwindcss-animate": "^1.0.7",
     "vue": "latest",
     "vue-router": "latest",
-    "zod": "latest"
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.43.0",
