@@ -1,54 +1,37 @@
 "use client"
 
-import { useState, useEffect, createContext, useContext, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import {
-  onAuthStateChanged,
+  type User,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  updateProfile,
   signInWithPopup,
   GoogleAuthProvider,
-  signOut as firebaseSignOut,
-  updateProfile,
-  sendEmailVerification,
   setPersistence,
   browserSessionPersistence,
   browserLocalPersistence,
-  type User,
+  type AuthError,
 } from "firebase/auth"
-import { doc, setDoc, getDoc } from "firebase/firestore"
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
-import { Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 
-// --- Configuration ---
-// Set this to false to use real Firebase auth
+// Development mode bypass - set to false for production
 const DEV_MODE_BYPASS_AUTH = false
 
-const mockUser: User = {
-  uid: "dev-user-uid",
-  email: "dev@atozfamily.org",
-  displayName: "Developer User",
-  emailVerified: true,
-  isAnonymous: false,
-  photoURL: `https://api.dicebear.com/8.x/initials/svg?seed=Developer`,
-  providerData: [],
-  metadata: {} as any,
-  delete: () => Promise.resolve(),
-  getIdToken: () => Promise.resolve("mock-token"),
-  getIdTokenResult: () => Promise.resolve({ token: "mock-token" } as any),
-  reload: () => Promise.resolve(),
-  toJSON: () => ({}),
-  providerId: "password",
-  tenantId: null,
-}
-
-// --- Context Definition ---
 interface AuthContextType {
   user: User | null
   loading: boolean
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<void>
-  signUp: (email: string, password: string, name: string) => Promise<void>
+  signUp: (email: string, password: string, displayName: string) => Promise<void>
   signInWithGoogle: (rememberMe?: boolean) => Promise<void>
-  signOut: () => Promise<void>
+  logout: () => Promise<void>
+  resetPassword: (email: string) => Promise<void>
+  updateUserProfile: (displayName: string, photoURL?: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -57,147 +40,192 @@ const AuthContext = createContext<AuthContextType>({
   signIn: async () => {},
   signUp: async () => {},
   signInWithGoogle: async () => {},
-  signOut: async () => {},
+  logout: async () => {},
+  resetPassword: async () => {},
+  updateUserProfile: async () => {},
 })
 
-// --- Provider Component ---
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider")
+  }
+  return context
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  // Google Auth Provider
+  const googleProvider = new GoogleAuthProvider()
+  googleProvider.addScope("email")
+  googleProvider.addScope("profile")
 
   useEffect(() => {
-    // If dev mode is on, set mock user and finish loading immediately.
     if (DEV_MODE_BYPASS_AUTH) {
+      // Create a mock user for development
+      const mockUser = {
+        uid: "dev-user-123",
+        email: "dev@example.com",
+        displayName: "Dev User",
+        photoURL: null,
+        emailVerified: true,
+      } as User
       setUser(mockUser)
       setLoading(false)
       return
     }
 
-    // If auth service is not available (e.g., init failed), stop loading.
-    if (!auth) {
-      console.error("Firebase auth not initialized")
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Create or update user document in Firestore
+        await createUserDocument(user)
+        setUser(user)
+      } else {
+        setUser(null)
+      }
       setLoading(false)
-      return
-    }
+    })
 
-    // Listen for real authentication state changes
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (firebaseUser) => {
-        setUser(firebaseUser)
-        setLoading(false)
-      },
-      (error) => {
-        console.error("Auth state change error:", error)
-        setLoading(false)
-      },
-    )
-
-    // Cleanup subscription on unmount
     return () => unsubscribe()
   }, [])
 
-  // Create user profile in Firestore
-  const createUserProfile = async (user: User, additionalData?: any) => {
-    if (!user) return
+  const createUserDocument = async (user: User) => {
+    try {
+      const userRef = doc(db, "users", user.uid)
+      const userSnap = await getDoc(userRef)
 
-    const userRef = doc(db, "users", user.uid)
-    const userSnap = await getDoc(userRef)
-
-    if (!userSnap.exists()) {
-      const { displayName, email, photoURL } = user
-      const createdAt = new Date()
-
-      try {
+      if (!userSnap.exists()) {
         await setDoc(userRef, {
-          displayName,
-          email,
-          photoURL,
-          createdAt,
-          ...additionalData,
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          preferences: {
+            grades: [],
+            subjects: [],
+            approaches: [],
+            interests: [],
+          },
+          profile: {
+            bio: "",
+            location: "",
+            website: "",
+          },
         })
-      } catch (error) {
-        console.error("Error creating user profile:", error)
-        throw error
+      } else {
+        // Update existing user document
+        await setDoc(
+          userRef,
+          {
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        )
       }
+    } catch (error) {
+      console.error("Error creating/updating user document:", error)
     }
-
-    return userRef
   }
 
-  // Sign in with email and password
   const signIn = async (email: string, password: string, rememberMe = false) => {
     try {
       // Set persistence based on rememberMe
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
 
       const result = await signInWithEmailAndPassword(auth, email, password)
-      await createUserProfile(result.user)
-    } catch (error: any) {
-      console.error("Sign in error:", error)
-      throw error
+      await createUserDocument(result.user)
+    } catch (error) {
+      const authError = error as AuthError
+      throw new Error(getAuthErrorMessage(authError.code))
     }
   }
 
-  // Sign up with email and password
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (email: string, password: string, displayName: string) => {
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password)
 
       // Update the user's display name
-      await updateProfile(result.user, {
-        displayName: name,
-      })
+      await updateProfile(result.user, { displayName })
 
-      // Send email verification
-      await sendEmailVerification(result.user)
-
-      // Create user profile in Firestore
-      await createUserProfile(result.user, {
-        displayName: name,
-      })
-    } catch (error: any) {
-      console.error("Sign up error:", error)
-      throw error
+      // Create user document in Firestore
+      await createUserDocument(result.user)
+    } catch (error) {
+      const authError = error as AuthError
+      throw new Error(getAuthErrorMessage(authError.code))
     }
   }
 
-  // Sign in with Google
   const signInWithGoogle = async (rememberMe = false) => {
     try {
       // Set persistence based on rememberMe
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
 
-      const provider = new GoogleAuthProvider()
+      const result = await signInWithPopup(auth, googleProvider)
+      await createUserDocument(result.user)
+    } catch (error) {
+      const authError = error as AuthError
 
-      // Add additional scopes if needed
-      provider.addScope("email")
-      provider.addScope("profile")
+      // Handle popup blocked error
+      if (authError.code === "auth/popup-blocked") {
+        throw new Error("Popup was blocked by your browser. Please allow popups for this site and try again.")
+      }
 
-      // Set custom parameters
-      provider.setCustomParameters({
-        prompt: "select_account",
-      })
+      // Handle popup closed error
+      if (authError.code === "auth/popup-closed-by-user") {
+        throw new Error("Sign-in was cancelled. Please try again.")
+      }
 
-      const result = await signInWithPopup(auth, provider)
-
-      // Create user profile in Firestore
-      await createUserProfile(result.user)
-
-      return result
-    } catch (error: any) {
-      console.error("Google sign in error:", error)
-      throw error
+      throw new Error(getAuthErrorMessage(authError.code))
     }
   }
 
-  // Sign out
-  const signOut = async () => {
+  const logout = async () => {
     try {
-      await firebaseSignOut(auth)
-    } catch (error: any) {
-      console.error("Sign out error:", error)
-      throw error
+      await signOut(auth)
+      router.push("/")
+    } catch (error) {
+      console.error("Error signing out:", error)
+      throw new Error("Failed to sign out. Please try again.")
+    }
+  }
+
+  const resetPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email)
+    } catch (error) {
+      const authError = error as AuthError
+      throw new Error(getAuthErrorMessage(authError.code))
+    }
+  }
+
+  const updateUserProfile = async (displayName: string, photoURL?: string) => {
+    if (!user) throw new Error("No user logged in")
+
+    try {
+      await updateProfile(user, { displayName, photoURL })
+
+      // Update Firestore document
+      const userRef = doc(db, "users", user.uid)
+      await setDoc(
+        userRef,
+        {
+          displayName,
+          photoURL,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      )
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      throw new Error("Failed to update profile. Please try again.")
     }
   }
 
@@ -207,27 +235,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     signInWithGoogle,
-    signOut,
-  }
-
-  // Display a full-page loader while checking auth state
-  if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="sr-only">Loading application...</p>
-      </div>
-    )
+    logout,
+    resetPassword,
+    updateUserProfile,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-// --- Hook for consuming context ---
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+function getAuthErrorMessage(errorCode: string): string {
+  switch (errorCode) {
+    case "auth/user-not-found":
+      return "No account found with this email address."
+    case "auth/wrong-password":
+      return "Incorrect password. Please try again."
+    case "auth/email-already-in-use":
+      return "An account with this email already exists."
+    case "auth/weak-password":
+      return "Password should be at least 6 characters long."
+    case "auth/invalid-email":
+      return "Please enter a valid email address."
+    case "auth/user-disabled":
+      return "This account has been disabled. Please contact support."
+    case "auth/too-many-requests":
+      return "Too many failed attempts. Please try again later."
+    case "auth/network-request-failed":
+      return "Network error. Please check your connection and try again."
+    case "auth/popup-blocked":
+      return "Popup was blocked. Please allow popups and try again."
+    case "auth/popup-closed-by-user":
+      return "Sign-in was cancelled."
+    case "auth/account-exists-with-different-credential":
+      return "An account already exists with the same email but different sign-in credentials."
+    default:
+      return "An error occurred during authentication. Please try again."
   }
-  return context
 }

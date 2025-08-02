@@ -60,7 +60,6 @@
     "react-day-picker": "^8.10.0",
     "react-dom": "^18",
     "react-hook-form": "latest",
-    "react-icons": "latest",
     "react-intersection-observer": "latest",
     "react-resizable-panels": "^2.0.16",
     "server-only": "^0.0.1",
