@@ -32,6 +32,11 @@ export function initSessionTracking() {
     // Check session status periodically
     setInterval(() => {
       if (isSessionExpired()) {
+        // Check if auth is available before using it
+        if (!auth) {
+          return
+        }
+
         // Force token refresh or sign out if session expired
         const user = auth.currentUser
         if (user) {
@@ -48,8 +53,22 @@ export function initSessionTracking() {
 // Get current auth token with automatic refresh
 export async function getCurrentToken(): Promise<string | null> {
   return new Promise((resolve) => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      unsubscribe()
+    // Check if auth is available before using it
+    if (!auth) {
+      console.warn("Auth not available, cannot get current token")
+      resolve(null)
+      return
+    }
+
+    let unsubscribe: (() => void) | null = null
+    
+    unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // Immediately unsubscribe to prevent memory leaks
+      if (unsubscribe) {
+        unsubscribe()
+        unsubscribe = null // Clear reference
+      }
+      
       if (user) {
         try {
           const token = await getIdToken(user, true)
@@ -62,14 +81,26 @@ export async function getCurrentToken(): Promise<string | null> {
         resolve(null)
       }
     })
+    
+    // Handle case where onAuthStateChanged might fail
+    if (!unsubscribe) {
+      console.error("Failed to set up auth state listener")
+      resolve(null)
+    }
   })
 }
 
 // Set up auth state persistence
-export function setupAuthPersistence() {
+export function setupAuthPersistence(): (() => void) | null {
   if (typeof window !== "undefined") {
-    // Store auth state in session storage
-    onAuthStateChanged(auth, (user) => {
+    // Check if auth is available before using it
+    if (!auth) {
+      console.warn("Auth not available, cannot set up auth persistence")
+      return null
+    }
+
+    // Store auth state in session storage and return unsubscribe function
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         sessionStorage.setItem(
           "authUser",
@@ -84,5 +115,9 @@ export function setupAuthPersistence() {
         sessionStorage.removeItem("authUser")
       }
     })
+    
+    return unsubscribe
   }
+  
+  return null
 }

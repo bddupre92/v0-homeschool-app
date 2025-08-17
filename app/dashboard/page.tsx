@@ -19,7 +19,13 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-foreground">Welcome back!</h1>
           <p className="text-muted-foreground mt-1">Here's what's happening with your homeschool journey today.</p>
         </div>
-        <Button className="w-fit">
+        <Button 
+          className="w-fit"
+          onClick={() => {
+            console.log('Quick Add clicked')
+            alert('Quick Add menu would open here')
+          }}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Quick Add
         </Button>

@@ -5,14 +5,18 @@ HomeScholar is a comprehensive platform for homeschooling families to discover, 
 ## Features
 
 - **Resource Library**: Browse and search thousands of homeschool resources
-- **Boards**: Create and organize collections of resources
+- **Boards**: Create and organize collections of resources with full CRUD operations
+  - Create boards with titles and descriptions
+  - Real-time form validation and error handling
+  - Server-side data persistence with Firebase
+  - Loading states and user feedback
 - **Planner**: Schedule and track your homeschool activities
 - **Community**: Connect with other homeschoolers and join events
 - **Personalized Recommendations**: Get AI-powered resource suggestions
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
 - **Backend**: Firebase (Authentication, Firestore, Storage)
 - **Deployment**: Vercel
 
@@ -20,7 +24,7 @@ HomeScholar is a comprehensive platform for homeschooling families to discover, 
 
 ### Prerequisites
 
-- Node.js 18.x or higher
+- Node.js 18.x or higher (Node.js 20+ recommended for React 19)
 - npm or yarn
 - Firebase account
 
@@ -45,6 +49,13 @@ HomeScholar is a comprehensive platform for homeschooling families to discover, 
    NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
    \`\`\`
 
+   **Important**: 
+   - Replace the placeholder values with your actual Firebase configuration from the Firebase Console
+   - The application automatically detects demo/placeholder values and will run in development mode
+   - If Firebase environment variables are missing or contain demo values, the app will display warnings and run with limited functionality
+   - Session management and authentication tokens are handled gracefully when Firebase is unavailable
+   - For production deployment, ensure all Firebase values are properly configured
+
 4. For server-side Firebase Admin SDK, create a service account key in the Firebase console and save it as `service-account.json` in the root directory.
 
 5. Run the development server:
@@ -53,6 +64,55 @@ HomeScholar is a comprehensive platform for homeschooling families to discover, 
    \`\`\`
 
 6. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Testing
+
+The project uses Vitest for unit and integration testing.
+
+### Running Tests
+
+```bash
+# Run tests in watch mode
+npm run test
+
+# Run tests once
+npm run test:run
+
+# Run tests with UI
+npm run test:ui
+```
+
+### Test Structure
+
+- **Unit Tests**: Located in `lib/__tests__/` for utilities and services
+  - `firebase.test.ts`: Firebase configuration and initialization
+  - `session.test.ts`: Session management and token handling
+  - `utils.test.ts`: Utility functions and helpers
+  - `boards.test.tsx`: Board creation and management functionality
+- **Component Tests**: Test React components with React Testing Library
+- **Integration Tests**: Test authentication flows and Firebase integration
+- **E2E Tests**: Full user journey testing (planned)
+
+### Writing Tests
+
+Tests follow the Arrange-Act-Assert pattern:
+
+```typescript
+import { describe, it, expect } from 'vitest'
+
+describe('Component', () => {
+  it('should render correctly', () => {
+    // Arrange
+    const props = { title: 'Test' }
+    
+    // Act
+    render(<Component {...props} />)
+    
+    // Assert
+    expect(screen.getByText('Test')).toBeInTheDocument()
+  })
+})
+```
 
 ## Deployment
 

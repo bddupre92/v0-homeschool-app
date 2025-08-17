@@ -4,6 +4,8 @@ import { useState } from "react"
 import Link from "next/link"
 import { Plus, Grid3X3, List, Search } from "lucide-react"
 import ProtectedRoute from "@/components/auth/protected-route"
+import { createBoard } from "@/app/actions/board-actions"
+import { toast } from "@/hooks/use-toast"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -76,6 +78,8 @@ export default function BoardsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
+  const [formData, setFormData] = useState({ title: "", description: "" })
 
   // Filter boards based on search query
   const filteredBoards = sampleBoards.filter(
@@ -161,18 +165,85 @@ export default function BoardsPage() {
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2">
                         <Label htmlFor="title">Title</Label>
-                        <Input id="title" placeholder="Enter board title" />
+                        <Input 
+                          id="title" 
+                          placeholder="Enter board title"
+                          value={formData.title}
+                          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                          required
+                        />
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="description">Description</Label>
-                        <Input id="description" placeholder="Enter board description" />
+                        <Input 
+                          id="description" 
+                          placeholder="Enter board description"
+                          value={formData.description}
+                          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        />
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setIsCreateDialogOpen(false)
+                          setFormData({ title: "", description: "" })
+                        }}
+                        disabled={isCreating}
+                      >
                         Cancel
                       </Button>
-                      <Button onClick={() => setIsCreateDialogOpen(false)}>Create Board</Button>
+                      <Button 
+                        onClick={async () => {
+                          if (!formData.title.trim()) {
+                            toast({
+                              title: "Validation Error",
+                              description: "Please enter a board title",
+                              variant: "destructive",
+                            })
+                            return
+                          }
+                          
+                          setIsCreating(true)
+                          
+                          try {
+                            const formDataObj = new FormData()
+                            formDataObj.append("title", formData.title.trim())
+                            formDataObj.append("description", formData.description.trim())
+                            formDataObj.append("isPrivate", "false")
+                            
+                            const result = await createBoard(formDataObj)
+                            
+                            if (result.success) {
+                              toast({
+                                title: "Success",
+                                description: "Board created successfully!",
+                              })
+                              setIsCreateDialogOpen(false)
+                              setFormData({ title: "", description: "" })
+                            } else {
+                              toast({
+                                title: "Error",
+                                description: result.error || "Failed to create board",
+                                variant: "destructive",
+                              })
+                            }
+                          } catch (error) {
+                            console.error("Error creating board:", error)
+                            toast({
+                              title: "Error",
+                              description: "An unexpected error occurred",
+                              variant: "destructive",
+                            })
+                          } finally {
+                            setIsCreating(false)
+                          }
+                        }}
+                        disabled={isCreating}
+                      >
+                        {isCreating ? "Creating..." : "Create Board"}
+                      </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>

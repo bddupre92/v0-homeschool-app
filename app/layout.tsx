@@ -25,6 +25,13 @@ const fraunces = Fraunces({
   variable: "--font-fraunces",
 })
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+} as const
+
 export const metadata = {
   title: "AtoZ Family - Your Homeschool Resource Hub",
   description:
@@ -34,12 +41,6 @@ export const metadata = {
     capable: true,
     statusBarStyle: "default",
     title: "AtoZ Family",
-  },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
   },
   openGraph: {
     type: "website",

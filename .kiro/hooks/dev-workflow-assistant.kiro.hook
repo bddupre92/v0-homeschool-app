@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "name": "Development Workflow Assistant",
+  "description": "Comprehensive development assistant that keeps tests synchronized with code changes, updates documentation when features are added, helps with internationalization, generates changelogs from git diffs, checks compliance standards, and applies consistent formatting and coding standards automatically.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "app/**/*.tsx",
+      "app/**/*.ts",
+      "components/**/*.tsx",
+      "lib/**/*.ts",
+      "hooks/**/*.ts",
+      "README.md",
+      "package.json",
+      "tsconfig.json",
+      "tailwind.config.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Analyze the changed files and perform the following tasks as applicable:\n\n1. **Test Synchronization**: If source code files were modified, identify any related unit tests that need updating and suggest specific test changes to maintain coverage.\n\n2. **Documentation Updates**: If new features were added or existing functionality changed, update the README.md file with relevant documentation changes.\n\n3. **Internationalization Helper**: If documentation or user-facing text was modified, identify content that should be translated and provide translation suggestions between English and other languages.\n\n4. **Git Assistant**: Based on the file changes, generate an appropriate changelog entry and suggest a clear, descriptive commit message following conventional commit standards.\n\n5. **Compliance Check**: Review the changes against TypeScript, React, and Next.js best practices. Check for proper error handling, accessibility considerations, and security patterns.\n\n6. **Style Consistency**: Ensure the code follows consistent formatting standards, proper TypeScript typing, component structure, and naming conventions. Suggest any necessary style improvements.\n\nProvide actionable recommendations for each applicable area, prioritizing the most critical issues first."
+  }
+}

@@ -12,29 +12,54 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
-let app: FirebaseApp
-let auth: Auth
-let db: Firestore
-let storage: Storage
+let app: FirebaseApp | null = null
+let auth: Auth | null = null
+let db: Firestore | null = null
+let storage: Storage | null = null
 
-// This pattern ensures that we're not re-initializing the app on every hot-reload
-if (getApps().length) {
-  app = getApp()
+// Validate required environment variables
+const requiredEnvVars = [
+  'NEXT_PUBLIC_FIREBASE_API_KEY',
+  'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+  'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+  'NEXT_PUBLIC_FIREBASE_APP_ID'
+]
+
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName])
+const hasDemoValues = requiredEnvVars.some(varName => {
+  const value = process.env[varName]
+  return value && (value.includes('demo') || value.includes('your-') || value === '123456789')
+})
+
+if (missingVars.length > 0) {
+  console.warn(`Missing Firebase environment variables: ${missingVars.join(', ')}`)
+  console.warn("Running in development mode without Firebase")
+} else if (hasDemoValues) {
+  console.warn('Demo Firebase values detected. Please replace with real Firebase configuration.')
+  console.warn('Running in development mode without Firebase')
 } else {
-  try {
-    app = initializeApp(firebaseConfig)
-  } catch (error) {
-    console.error("Firebase initialization failed:", error)
-    // If initialization fails, we should not proceed to get other services.
-    // You might want to set up a state to show a global error message.
+  // This pattern ensures that we're not re-initializing the app on every hot-reload
+  if (getApps().length) {
+    app = getApp()
+  } else {
+    try {
+      app = initializeApp(firebaseConfig)
+      console.log('Firebase initialized successfully')
+    } catch (error) {
+      console.error('Firebase initialization failed:', error)
+      console.warn('Running in development mode without Firebase')
+      app = null
+    }
   }
 }
 
-// @ts-ignore
 if (app) {
   auth = getAuth(app)
   db = getFirestore(app)
   storage = getStorage(app)
 }
+
+// Helper function to check if Firebase is available
+export const isFirebaseAvailable = () => app !== null
 
 export { app, auth, db, storage }

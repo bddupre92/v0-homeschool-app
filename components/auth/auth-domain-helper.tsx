@@ -23,7 +23,10 @@ export default function AuthDomainHelper() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  if (!currentDomain) return null
+  // Don't show in development mode or if domain is localhost
+  if (!currentDomain || currentDomain.includes('localhost') || process.env.NODE_ENV === 'development') {
+    return null
+  }
 
   return (
     <div className="mb-6">

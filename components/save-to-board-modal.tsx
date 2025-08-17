@@ -31,7 +31,8 @@ export default function SaveToBoardModal({
 
   const handleCreateBoard = () => {
     if (newBoardTitle.trim()) {
-      onCreateBoard(newBoardTitle.trim())
+      console.log('Creating new board:', newBoardTitle.trim())
+      onCreateBoard?.(newBoardTitle.trim())
       setNewBoardTitle("")
       setIsCreatingBoard(false)
     }
@@ -58,7 +59,10 @@ export default function SaveToBoardModal({
                   <div
                     key={board.id}
                     className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted cursor-pointer"
-                    onClick={() => onSaveToBoard(board.id)}
+                    onClick={() => {
+                      console.log('Saving to board:', board.id)
+                      onSaveToBoard?.(board.id)
+                    }}
                   >
                     <div
                       className="w-12 h-12 rounded-md bg-cover bg-center"

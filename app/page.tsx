@@ -48,7 +48,15 @@ export default function HomePage() {
                   priority
                 />
                 <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/30 to-transparent">
-                  <Button variant="secondary" size="lg" className="gap-2">
+                  <Button 
+                    variant="secondary" 
+                    size="lg" 
+                    className="gap-2"
+                    onClick={() => {
+                      console.log('Watch Video clicked')
+                      alert('Video player would open here')
+                    }}
+                  >
                     <PlayCircle className="h-6 w-6" />
                     Watch Video
                   </Button>
