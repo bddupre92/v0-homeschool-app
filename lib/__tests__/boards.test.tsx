@@ -1,13 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import React from 'react'
-import { useAuth } from '@/contexts/auth-context'
+import { screen, fireEvent, waitFor, userEvent } from '@/lib/test-utils'
+import { renderWithProviders, mockUser } from '@/lib/test-utils'
 import BoardsPage from '@/app/boards/page'
-
-// Mock the auth context
-vi.mock('@/contexts/auth-context', () => ({
-  useAuth: vi.fn(),
-}))
 
 // Mock the server action
 vi.mock('@/app/actions/board-actions', () => ({
@@ -17,13 +11,6 @@ vi.mock('@/app/actions/board-actions', () => ({
 // Mock the toast hook
 vi.mock('@/hooks/use-toast', () => ({
   toast: vi.fn(),
-}))
-
-// Mock Next.js components
-vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  )
 }))
 
 // Mock the protected route component
@@ -37,29 +24,19 @@ vi.mock('@/components/navigation', () => ({
 }))
 
 describe('BoardsPage', () => {
-  const mockUser = {
-    uid: 'test-user-id',
-    email: 'test@example.com',
-    displayName: 'Test User',
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(useAuth as any).mockReturnValue({
-      user: mockUser,
-      loading: false,
-    })
   })
 
   it('renders the boards page with correct title and description', () => {
-    render(<BoardsPage />)
+    renderWithProviders(<BoardsPage />, { withAuth: true })
     
     expect(screen.getByText('My Boards')).toBeInTheDocument()
     expect(screen.getByText(/Create and organize collections/)).toBeInTheDocument()
   })
 
   it('displays sample boards in grid view by default', () => {
-    render(<BoardsPage />)
+    renderWithProviders(<BoardsPage />, { withAuth: true })
     
     expect(screen.getByText('Science Experiments')).toBeInTheDocument()
     expect(screen.getByText('Math Games')).toBeInTheDocument()
@@ -67,7 +44,7 @@ describe('BoardsPage', () => {
   })
 
   it('allows switching between grid and list view', () => {
-    render(<BoardsPage />)
+    renderWithProviders(<BoardsPage />, { withAuth: true })
     
     const listViewButton = screen.getByRole('button', { name: /list view/i })
     fireEvent.click(listViewButton)
@@ -76,21 +53,23 @@ describe('BoardsPage', () => {
     expect(screen.getByText('Science Experiments')).toBeInTheDocument()
   })
 
-  it('filters boards based on search query', () => {
-    render(<BoardsPage />)
+  it('filters boards based on search query', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<BoardsPage />, { withAuth: true })
     
     const searchInput = screen.getByPlaceholderText('Search boards...')
-    fireEvent.change(searchInput, { target: { value: 'Science' } })
+    await user.type(searchInput, 'Science')
     
     expect(screen.getByText('Science Experiments')).toBeInTheDocument()
     expect(screen.queryByText('Math Games')).not.toBeInTheDocument()
   })
 
-  it('opens create board dialog when New Board button is clicked', () => {
-    render(<BoardsPage />)
+  it('opens create board dialog when New Board button is clicked', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<BoardsPage />, { withAuth: true })
     
     const newBoardButton = screen.getByRole('button', { name: /new board/i })
-    fireEvent.click(newBoardButton)
+    await user.click(newBoardButton)
     
     expect(screen.getByText('Create New Board')).toBeInTheDocument()
     expect(screen.getByLabelText('Title')).toBeInTheDocument()

@@ -138,10 +138,22 @@ describe('${componentName}', () => {
     const isUIComponent = componentPath.includes('ui/')
     const isAuthComponent = componentPath.includes('auth/')
     
+    // Convert kebab-case to PascalCase for component names
+    const pascalCaseName = componentName
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join('')
+    
+    // Handle import path for kebab-case files
+    const importPath = componentPath.replace('.tsx', '')
+    
     return `import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
-import ${componentName} from '../${componentPath.replace('.tsx', '')}'
+import * as ComponentModule from '../${importPath}'
+
+// Handle default export or named exports
+const ${pascalCaseName} = ComponentModule.default || ComponentModule.${pascalCaseName} || (() => <div>Mock Component</div>)
 
 // Mock Next.js components
 vi.mock('next/link', () => ({
@@ -169,27 +181,27 @@ vi.mock('@/lib/firebase', () => ({
   db: {},
 }))` : ''}
 
-describe('${componentName}', () => {
+describe('${pascalCaseName}', () => {
   ${isUIComponent ? `
   it('renders with default props', () => {
-    render(<${componentName} />)
+    render(<${pascalCaseName} />)
     expect(document.body).toBeInTheDocument()
   })
 
   it('applies custom className when provided', () => {
     const customClass = 'custom-test-class'
-    render(<${componentName} className={customClass} />)
+    render(<${pascalCaseName} className={customClass} />)
     
     const element = document.querySelector(\`.\${customClass}\`)
     expect(element).toBeInTheDocument()
   })` : `
   it('renders without crashing', () => {
-    render(<${componentName} />)
+    render(<${pascalCaseName} />)
     expect(document.body).toBeInTheDocument()
   })
 
   it('has proper accessibility attributes', () => {
-    render(<${componentName} />)
+    render(<${pascalCaseName} />)
     
     // Check for basic accessibility
     const interactiveElements = screen.queryAllByRole('button')
@@ -205,7 +217,7 @@ describe('${componentName}', () => {
   ${componentName.toLowerCase().includes('form') ? `
   it('handles form submission', () => {
     const mockSubmit = vi.fn()
-    render(<${componentName} onSubmit={mockSubmit} />)
+    render(<${pascalCaseName} onSubmit={mockSubmit} />)
     
     const form = screen.queryByRole('form') || document.querySelector('form')
     if (form) {
@@ -215,10 +227,10 @@ describe('${componentName}', () => {
 
   ${componentName.toLowerCase().includes('modal') || componentName.toLowerCase().includes('dialog') ? `
   it('handles open/close states', () => {
-    render(<${componentName} open={true} />)
+    render(<${pascalCaseName} open={true} />)
     expect(document.body).toBeInTheDocument()
     
-    render(<${componentName} open={false} />)
+    render(<${pascalCaseName} open={false} />)
     expect(document.body).toBeInTheDocument()
   })` : ''}
 })

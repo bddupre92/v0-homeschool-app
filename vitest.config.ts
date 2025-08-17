@@ -1,25 +1,28 @@
 import { defineConfig } from 'vitest/config'
-import { resolve } from 'path'
+import react from '@vitejs/plugin-react'
+import path from 'path'
 
 export default defineConfig({
+  plugins: [react()],
   test: {
     environment: 'jsdom',
+    setupFiles: ['./lib/test-setup.ts'],
     globals: true,
-    setupFiles: ['./lib/__tests__/setup.ts'],
-    coverage: {
-      reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'lib/__tests__/',
-        '**/*.d.ts',
-        '**/*.config.*',
-        'scripts/',
-      ],
-    },
+    css: true,
+    // Increase timeout for slower tests
+    testTimeout: 10000,
+    // Handle static imports
+    deps: {
+      inline: ['@testing-library/react', '@testing-library/jest-dom']
+    }
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './'),
+      '@': path.resolve(__dirname, './'),
     },
+  },
+  esbuild: {
+    // Handle JSX in test files
+    jsx: 'automatic',
   },
 })

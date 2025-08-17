@@ -9,6 +9,9 @@ const mockGetAuth = vi.hoisted(() => vi.fn())
 const mockGetFirestore = vi.hoisted(() => vi.fn())
 const mockGetStorage = vi.hoisted(() => vi.fn())
 
+// Clear any existing mocks from test-setup.ts for this specific test
+vi.unmock('@/lib/firebase')
+
 vi.mock('firebase/app', () => ({
   initializeApp: mockInitializeApp,
   getApps: mockGetApps,

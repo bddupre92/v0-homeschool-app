@@ -142,17 +142,28 @@ export default defineConfig({
 ```typescript
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
+import React from 'react'
 
-// Mock Next.js components
+// Global React for JSX
+global.React = React
+
+// Comprehensive Next.js mocking
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), back: vi.fn(), refresh: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
+  useParams: () => ({}),
 }))
 
-// Mock Firebase
-vi.mock('./firebase', () => ({
-  auth: {},
-  db: {},
+// Complete Firebase ecosystem mocking
+vi.mock('@/lib/firebase', () => ({
+  auth: { currentUser: null, signInWithEmailAndPassword: vi.fn() },
+  db: { collection: vi.fn(), doc: vi.fn() },
+}))
+
+// Auth context and UI library mocking
+vi.mock('@/contexts/auth-context', () => ({
+  useAuth: () => ({ user: null, loading: false }),
 }))
 ```
 
@@ -226,6 +237,15 @@ npm run test:ui
 npx vitest run app/__tests__/page.test.tsx
 ```
 
+**Clear test setup mocks for specific tests**:
+```typescript
+// In specific test files that need custom mocking
+vi.unmock('@/lib/firebase')
+vi.mock('@/lib/firebase', () => ({
+  // Custom mock implementation
+}))
+```
+
 ## 📚 Best Practices
 
 ### Writing Tests
@@ -234,6 +254,21 @@ npx vitest run app/__tests__/page.test.tsx
 3. **Follow AAA pattern**: Arrange, Act, Assert
 4. **Mock external dependencies**
 5. **Test edge cases and error states**
+6. **Use test utilities for consistent setup**
+
+### Test Utilities (`lib/test-utils.tsx`)
+```typescript
+import { renderWithProviders, mockUser } from '@/lib/test-utils'
+
+// Render with authentication context
+renderWithProviders(<Component />, { withAuth: true })
+
+// Render with custom user
+renderWithProviders(<Component />, { withAuth: true, user: customUser })
+
+// Render with theme provider
+renderWithProviders(<Component />, { withTheme: true })
+```
 
 ### Test Maintenance
 1. **Keep tests simple and focused**

@@ -5,6 +5,9 @@ const mockAuth = vi.hoisted(() => ({ current: null as any }))
 const mockOnAuthStateChanged = vi.hoisted(() => vi.fn())
 const mockGetIdToken = vi.hoisted(() => vi.fn())
 
+// Clear global mocks for specific Firebase testing
+vi.unmock('@/lib/firebase')
+
 vi.mock('../firebase', () => ({
   get auth() { return mockAuth.current }
 }))
