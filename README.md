@@ -152,6 +152,16 @@ describe('Component', () => {
 
 5. Configure Firestore Rules for security.
 
+### Build Environment Handling
+
+The application automatically detects build environments and uses mock Firebase services to prevent initialization issues during deployment:
+
+- **Vercel Preview Builds**: Detected via `NODE_ENV=production` and `VERCEL_ENV≠production`
+- **Next.js Build Phase**: Detected via `NEXT_PHASE=phase-production-build`
+- **Development**: Uses minimal Firebase config or mocks when credentials are unavailable
+
+This ensures reliable builds even when Firebase credentials are not available during the build process.
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

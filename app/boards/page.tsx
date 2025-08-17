@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import Link from "next/link"
 import { Plus, Grid3X3, List, Search } from "lucide-react"
 import ProtectedRoute from "@/components/auth/protected-route"

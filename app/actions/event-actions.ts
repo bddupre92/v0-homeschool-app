@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { adminDb, adminAuth } from "@/lib/firebase-admin"
+import { adminDb, adminAuth } from "@/lib/firebase-admin-safe"
 
 // Get the current user from the session
 async function getCurrentUser() {

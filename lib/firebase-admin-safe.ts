@@ -1,45 +1,32 @@
-// Check if we're in a build environment first
+// Safe Firebase Admin wrapper that handles build environments
+// This module provides a safe way to import Firebase Admin that won't break during builds
+
+// Check if we're in a build environment
 const isBuildEnvironment = 
   process.env.NEXT_PHASE === "phase-production-build" ||
   process.env.NEXT_PHASE === "phase-export" ||
-  typeof window === "undefined" && process.env.NODE_ENV !== "development" && !process.env.VERCEL
+  (process.env.NODE_ENV === "production" && !process.env.VERCEL_ENV && !process.env.VERCEL)
 
-// Only import Firebase Admin if not in build environment
-let initializeApp: any, getApps: any, cert: any, getFirestore: any, getAuth: any, getStorage: any
-
-if (!isBuildEnvironment) {
-  try {
-    const adminApp = require("firebase-admin/app")
-    const adminFirestore = require("firebase-admin/firestore")
-    const adminAuth = require("firebase-admin/auth")
-    const adminStorage = require("firebase-admin/storage")
-    
-    initializeApp = adminApp.initializeApp
-    getApps = adminApp.getApps
-    cert = adminApp.cert
-    getFirestore = adminFirestore.getFirestore
-    getAuth = adminAuth.getAuth
-    getStorage = adminStorage.getStorage
-  } catch (error) {
-    console.log("Firebase Admin modules not available, using mocks")
-  }
-}
-
-// Create mock implementations for build environment
+// Mock implementations for build environment
 const createMockFirestore = () => {
+  const mockDoc = {
+    id: "mock-doc-id",
+    get: async () => ({ 
+      exists: false, 
+      data: () => ({}),
+      id: "mock-doc-id"
+    }),
+    set: async () => {},
+    update: async () => {},
+    delete: async () => {},
+  }
+
   return {
     collection: (name: string) => ({
       get: async () => ({ docs: [] }),
       doc: (id?: string) => ({
+        ...mockDoc,
         id: id || "mock-doc-id",
-        get: async () => ({ 
-          exists: false, 
-          data: () => ({}),
-          id: id || "mock-doc-id"
-        }),
-        set: async () => {},
-        update: async () => {},
-        delete: async () => {},
       }),
       add: async () => ({ id: "mock-doc-id" }),
       where: () => ({
@@ -80,14 +67,19 @@ const createMockStorage = () => {
 // Initialize Firebase Admin or use mocks
 let adminDb: any, adminAuth: any, adminStorage: any
 
-if (isBuildEnvironment || !initializeApp) {
+if (isBuildEnvironment) {
   console.log("Using mock Firebase Admin for build environment")
   adminDb = createMockFirestore()
   adminAuth = createMockAuth()
   adminStorage = createMockStorage()
 } else {
-  // Only initialize Firebase Admin in non-build environments
+  // Dynamic import Firebase Admin only when not in build environment
   try {
+    const { initializeApp, getApps, cert } = require("firebase-admin/app")
+    const { getFirestore } = require("firebase-admin/firestore")
+    const { getAuth } = require("firebase-admin/auth")
+    const { getStorage } = require("firebase-admin/storage")
+
     if (!getApps().length) {
       // If we're in a production environment, use the environment variables
       if (process.env.FIREBASE_ADMIN_PRIVATE_KEY && process.env.FIREBASE_ADMIN_PROJECT_ID && process.env.FIREBASE_ADMIN_CLIENT_EMAIL) {

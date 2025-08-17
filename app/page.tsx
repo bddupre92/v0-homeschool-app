@@ -1,3 +1,4 @@
+import React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowRight, BookOpen, Users, Calendar, Award, PlayCircle } from "lucide-react"
@@ -52,10 +53,8 @@ export default function HomePage() {
                     variant="secondary" 
                     size="lg" 
                     className="gap-2"
-                    onClick={() => {
-                      console.log('Watch Video clicked')
-                      alert('Video player would open here')
-                    }}
+                    disabled
+                    aria-label="Video coming soon"
                   >
                     <PlayCircle className="h-6 w-6" />
                     Watch Video

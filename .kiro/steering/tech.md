@@ -1,11 +1,13 @@
 # Technology Stack
 
 ## Framework & Runtime
+
 - **Next.js 15** with App Router
 - **React 19** with TypeScript
 - **Node.js 18+** (Node.js 20+ recommended for React 19)
 
 ## Styling & UI
+
 - **Tailwind CSS** with custom design system
 - **Radix UI** components for accessibility
 - **Framer Motion** for animations
@@ -13,6 +15,7 @@
 - **Custom color palette**: sage, terracotta, honey themes
 
 ## Backend & Database
+
 - **Firebase** ecosystem:
   - Authentication (Email/Password, Google)
   - Firestore (NoSQL database)
@@ -21,12 +24,14 @@
 - **Server Actions** for form handling and mutations
 
 ## External Services
+
 - **Mapbox** for location services and mapping
 - **AI SDK with Groq** for AI-powered features
 - **Vercel Analytics** for performance monitoring
 - **Sentry** for error tracking
 
 ## Development Tools
+
 - **TypeScript** for type safety
 - **ESLint** (disabled during builds for flexibility)
 - **Tailwind CSS** with custom configuration
@@ -50,6 +55,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
 ```
 
 ## Build Configuration
+
 - Images are unoptimized for deployment flexibility
 - TypeScript and ESLint errors ignored during builds
 - CORS headers configured for development

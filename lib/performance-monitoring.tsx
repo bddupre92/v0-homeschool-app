@@ -28,7 +28,7 @@ const initialMetrics: PerformanceMetrics = {
 
 const PerformanceMonitoringContext = createContext<PerformanceMonitoringContextProps>({
   metrics: initialMetrics,
-  measureUserInteraction: () => () => {},
+  measureUserInteraction: () => () => { },
 })
 
 export function PerformanceMonitoringProvider({ children }: { children: ReactNode }) {
@@ -65,7 +65,8 @@ export function PerformanceMonitoringProvider({ children }: { children: ReactNod
     const fidObserver = new PerformanceObserver((entryList) => {
       const entries = entryList.getEntries()
       if (entries.length > 0) {
-        const fid = entries[0].processingStart - entries[0].startTime
+        const entry = entries[0] as PerformanceEventTiming
+        const fid = entry.processingStart - entry.startTime
         setMetrics((prev) => ({ ...prev, fid }))
         trackEvent("web_vitals_fid", { value: fid })
       }
@@ -75,8 +76,10 @@ export function PerformanceMonitoringProvider({ children }: { children: ReactNod
     const clsObserver = new PerformanceObserver((entryList) => {
       let clsValue = 0
       for (const entry of entryList.getEntries()) {
-        if (!entry.hadRecentInput) {
-          clsValue += (entry as any).value
+        // Type assertion for layout shift entry
+        const layoutShiftEntry = entry as any
+        if (!layoutShiftEntry.hadRecentInput) {
+          clsValue += layoutShiftEntry.value
         }
       }
       setMetrics((prev) => ({ ...prev, cls: clsValue }))

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import React from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import BoardsPage from '@/app/boards/page'
 

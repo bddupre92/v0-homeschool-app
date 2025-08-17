@@ -46,7 +46,9 @@ describe('Session Management', () => {
       mockAuth.current = { currentUser: null } as any
       const mockUnsubscribe = vi.fn()
 
-      mockOnAuthStateChanged.mockImplementation((auth, callback) => {
+      mockOnAuthStateChanged.mockImplementation((authInstance, callback) => {
+        // Use parameters to avoid unused variable warnings
+        expect(authInstance).toBe(mockAuth.current)
         // Call callback immediately to simulate Firebase behavior
         Promise.resolve().then(() => callback(null))
         return mockUnsubscribe
@@ -66,7 +68,9 @@ describe('Session Management', () => {
       mockAuth.current = { currentUser: mockUser } as any
       const mockUnsubscribe = vi.fn()
 
-      mockOnAuthStateChanged.mockImplementation((auth, callback) => {
+      mockOnAuthStateChanged.mockImplementation((authInstance, callback) => {
+        // Use parameters to avoid unused variable warnings
+        expect(authInstance).toBe(mockAuth.current)
         // Simulate authenticated user - callback should be called asynchronously
         Promise.resolve().then(() => callback(mockUser as any))
         return mockUnsubscribe
@@ -88,7 +92,9 @@ describe('Session Management', () => {
       mockAuth.current = { currentUser: mockUser } as any
       const mockUnsubscribe = vi.fn()
 
-      mockOnAuthStateChanged.mockImplementation((auth, callback) => {
+      mockOnAuthStateChanged.mockImplementation((authInstance, callback) => {
+        // Use parameters to avoid unused variable warnings
+        expect(authInstance).toBe(mockAuth.current)
         // Call callback immediately to simulate Firebase behavior
         Promise.resolve().then(() => callback(mockUser as any))
         return mockUnsubscribe
@@ -117,8 +123,10 @@ describe('Session Management', () => {
 
       // Track how many times the callback is called
       let callbackCount = 0
-      mockOnAuthStateChanged.mockImplementation((auth, callback) => {
+      mockOnAuthStateChanged.mockImplementation((authInstance, callback) => {
         callbackCount++
+        // Use parameters to avoid unused variable warnings
+        expect(authInstance).toBe(mockAuth.current)
         // Simulate asynchronous callback
         Promise.resolve().then(() => callback(mockUser as any))
         return mockUnsubscribe
@@ -240,7 +248,12 @@ describe('Session Management', () => {
       mockAuth.current = { currentUser: null } as any
       const mockUnsubscribe = vi.fn()
 
-      mockOnAuthStateChanged.mockReturnValue(mockUnsubscribe)
+      mockOnAuthStateChanged.mockImplementation((authInstance, callback) => {
+        // Use the parameters to avoid unused variable warnings
+        expect(authInstance).toBe(mockAuth.current)
+        expect(typeof callback).toBe('function')
+        return mockUnsubscribe
+      })
 
       const { setupAuthPersistence } = await import('../session')
       const unsubscribe = setupAuthPersistence()

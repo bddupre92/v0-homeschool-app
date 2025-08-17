@@ -26,6 +26,11 @@ export interface Notification {
 
 // Create a new notification
 export async function createNotification(notification: Omit<Notification, "id" | "createdAt" | "read">) {
+  if (!db) {
+    console.warn("Firestore not available, cannot create notification")
+    return { success: false, error: "Database not available" }
+  }
+
   try {
     const docRef = await addDoc(collection(db, "notifications"), {
       ...notification,
@@ -42,6 +47,11 @@ export async function createNotification(notification: Omit<Notification, "id" |
 
 // Get all notifications for a user
 export async function getUserNotifications(userId: string) {
+  if (!db) {
+    console.warn("Firestore not available, cannot get notifications")
+    return { notifications: [], success: false, error: "Database not available" }
+  }
+
   try {
     const q = query(collection(db, "notifications"), where("userId", "==", userId), orderBy("createdAt", "desc"))
 
@@ -64,6 +74,11 @@ export async function getUserNotifications(userId: string) {
 
 // Mark a notification as read
 export async function markNotificationAsRead(notificationId: string) {
+  if (!db) {
+    console.warn("Firestore not available, cannot mark notification as read")
+    return { success: false, error: "Database not available" }
+  }
+
   try {
     const notificationRef = doc(db, "notifications", notificationId)
     await updateDoc(notificationRef, {
@@ -79,6 +94,11 @@ export async function markNotificationAsRead(notificationId: string) {
 
 // Mark all notifications as read for a user
 export async function markAllNotificationsAsRead(userId: string) {
+  if (!db) {
+    console.warn("Firestore not available, cannot mark all notifications as read")
+    return { success: false, error: "Database not available" }
+  }
+
   try {
     const q = query(collection(db, "notifications"), where("userId", "==", userId), where("read", "==", false))
 
@@ -100,6 +120,11 @@ export async function markAllNotificationsAsRead(userId: string) {
 
 // Delete a notification
 export async function deleteNotification(notificationId: string) {
+  if (!db) {
+    console.warn("Firestore not available, cannot delete notification")
+    return { success: false, error: "Database not available" }
+  }
+
   try {
     await deleteDoc(doc(db, "notifications", notificationId))
     return { success: true }
@@ -111,6 +136,11 @@ export async function deleteNotification(notificationId: string) {
 
 // Delete all notifications for a user
 export async function deleteAllNotifications(userId: string) {
+  if (!db) {
+    console.warn("Firestore not available, cannot delete all notifications")
+    return { success: false, error: "Database not available" }
+  }
+
   try {
     const q = query(collection(db, "notifications"), where("userId", "==", userId))
 
