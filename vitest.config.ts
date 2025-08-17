@@ -6,6 +6,16 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./lib/__tests__/setup.ts'],
+    coverage: {
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'lib/__tests__/',
+        '**/*.d.ts',
+        '**/*.config.*',
+        'scripts/',
+      ],
+    },
   },
   resolve: {
     alias: {

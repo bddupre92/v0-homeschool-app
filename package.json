@@ -10,8 +10,11 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
+    "test:generate": "node scripts/generate-tests.js",
+    "test:production": "node scripts/production-test-suite.js",
+    "test:all": "node scripts/test-all.js",
     "production-check": "node scripts/production-check.js",
-    "pre-deploy": "npm run test:run && npm run build && npm run production-check"
+    "pre-deploy": "npm run test:all"
   },
   "overrides": {
     "react": "^19",

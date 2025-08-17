@@ -67,19 +67,24 @@ HomeScholar is a comprehensive platform for homeschooling families to discover, 
 
 ## Testing
 
-The project uses Vitest for unit and integration testing.
+The project uses a comprehensive testing strategy with Vitest for unit/integration testing and custom scripts for production readiness.
 
 ### Running Tests
 
 ```bash
-# Run tests in watch mode
-npm run test
+# Development Testing
+npm run test              # Run tests in watch mode
+npm run test:run          # Run tests once
+npm run test:ui           # Run tests with UI
 
-# Run tests once
-npm run test:run
+# Production Testing
+npm run test:generate     # Generate missing test files
+npm run test:production   # Run comprehensive production test suite
+npm run test:all          # Run complete test pipeline (generate → unit → integration → production → build)
 
-# Run tests with UI
-npm run test:ui
+# Production Readiness
+npm run production-check  # Check production readiness
+npm run pre-deploy        # Complete pre-deployment validation
 ```
 
 ### Test Structure
@@ -87,11 +92,30 @@ npm run test:ui
 - **Unit Tests**: Located in `lib/__tests__/` for utilities and services
   - `firebase.test.ts`: Firebase configuration and initialization
   - `session.test.ts`: Session management and token handling
-  - `utils.test.ts`: Utility functions and helpers
+  - `firebase-admin.test.ts`: Firebase Admin SDK functionality
+  - `auth-context.test.tsx`: Authentication context and flows
   - `boards.test.tsx`: Board creation and management functionality
-- **Component Tests**: Test React components with React Testing Library
+- **Component Tests**: Auto-generated tests for React components with React Testing Library
 - **Integration Tests**: Test authentication flows and Firebase integration
+- **Production Tests**: Comprehensive production readiness validation
+  - Page compilation and rendering tests
+  - API route validation
+  - Build process verification
+  - Security and accessibility checks
 - **E2E Tests**: Full user journey testing (planned)
+
+### Test Generation
+
+The project includes automated test generation for components and pages without existing tests:
+
+```bash
+npm run test:generate
+```
+
+This will create basic test files for:
+- Pages without corresponding test files
+- Components missing test coverage
+- Integration test scaffolding
 
 ### Writing Tests
 
