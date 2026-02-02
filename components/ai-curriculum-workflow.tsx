@@ -7,15 +7,16 @@ import type { ResearchResult } from "@/lib/types"
 
 export default function AICurriculumWorkflow() {
   const [step, setStep] = useState<"research" | "generate">("research")
-  const [researchQuery, setResearchQuery] = useState<{ subject: string; grade: string; topics: string }>({
-    subject: "",
-    grade: "",
-    topics: "",
-  })
+  const [researchQuery, setResearchQuery] = useState<{
+    subject: string
+    grade: string
+    topics: string
+    state?: string
+  }>({ subject: "", grade: "", topics: "", state: "" })
   const [researchResults, setResearchResults] = useState<ResearchResult[]>([])
 
   const handleResearchComplete = (
-    query: { subject: string; grade: string; topics: string },
+    query: { subject: string; grade: string; topics: string; state?: string },
     results: ResearchResult[],
   ) => {
     setResearchQuery(query)
@@ -25,7 +26,7 @@ export default function AICurriculumWorkflow() {
 
   const handleStartOver = () => {
     setStep("research")
-    setResearchQuery({ subject: "", grade: "", topics: "" })
+    setResearchQuery({ subject: "", grade: "", topics: "", state: "" })
     setResearchResults([])
   }
 

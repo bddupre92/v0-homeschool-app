@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { FormEvent, useEffect, useMemo, useState } from "react"
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks } from "date-fns"
 import {
   Calendar,
@@ -55,6 +55,31 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import Navigation from "@/components/navigation"
 import AICurriculumWorkflow from "@/components/ai-curriculum-workflow"
+import { loadFromStorage, saveToStorage } from "@/lib/local-storage"
+
+const PLANNER_STORAGE_KEY = "plannerLessons"
+
+type Lesson = {
+  id: string
+  title: string
+  subject: string
+  date: Date
+  duration: number
+  description: string
+  materials: string[]
+  completed: boolean
+  source?: "sample" | "user"
+}
+
+type LessonFormState = {
+  title: string
+  subject: string
+  duration: string
+  date: string
+  time: string
+  description: string
+  materials: string
+}
 
 // Sample data for the planner
 const subjects = [
@@ -69,7 +94,7 @@ const subjects = [
 ]
 
 // Sample lesson plans
-const sampleLessons = [
+const sampleLessons: Lesson[] = [
   {
     id: "1",
     title: "Fractions Introduction",
@@ -211,10 +236,35 @@ const collaborators = [
 export default function PlannerPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState("week")
-  const [selectedLesson, setSelectedLesson] = useState(null)
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [isAddingLesson, setIsAddingLesson] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [filteredSubjects, setFilteredSubjects] = useState(subjects.map((s) => s.id))
+  const [userLessons, setUserLessons] = useState<Lesson[]>([])
+  const [lessonForm, setLessonForm] = useState<LessonFormState>({
+    title: "",
+    subject: "",
+    duration: "45",
+    date: "",
+    time: "",
+    description: "",
+    materials: "",
+  })
+
+  useEffect(() => {
+    const storedLessons = loadFromStorage(PLANNER_STORAGE_KEY, [])
+    if (storedLessons.length) {
+      setUserLessons(
+        storedLessons.map((lesson) => {
+          const parsedLesson = lesson as Lesson & { date: string }
+          return {
+            ...parsedLesson,
+            date: new Date(parsedLesson.date),
+          }
+        }),
+      )
+    }
+  }, [])
 
   // Week navigation
   const startDate = startOfWeek(currentDate, { weekStartsOn: 0 })
@@ -235,8 +285,14 @@ export default function PlannerPage() {
     )
   }
 
+  const allLessons = useMemo(() => {
+    const sampleWithSource = sampleLessons.map((lesson) => ({ ...lesson, source: "sample" }))
+    const userWithSource = userLessons.map((lesson) => ({ ...lesson, source: "user" }))
+    return [...sampleWithSource, ...userWithSource]
+  }, [userLessons])
+
   // Filter lessons by selected subjects and current week
-  const filteredLessons = sampleLessons.filter(
+  const filteredLessons = allLessons.filter(
     (lesson) =>
       filteredSubjects.includes(lesson.subject) &&
       lesson.date >= startOfWeek(currentDate) &&
@@ -250,6 +306,60 @@ export default function PlannerPage() {
   }))
 
   const getSubjectById = (id) => subjects.find((subject) => subject.id === id)
+
+  const handleLessonFormChange = (field: keyof LessonFormState, value: string) => {
+    setLessonForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const resetLessonForm = () => {
+    setLessonForm({
+      title: "",
+      subject: "",
+      duration: "45",
+      date: "",
+      time: "",
+      description: "",
+      materials: "",
+    })
+  }
+
+  const handleAddLesson = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!lessonForm.title || !lessonForm.subject || !lessonForm.date) {
+      return
+    }
+
+    const dateTime = lessonForm.time ? new Date(`${lessonForm.date}T${lessonForm.time}`) : new Date(lessonForm.date)
+    const newLesson: Lesson = {
+      id: typeof crypto !== "undefined" ? crypto.randomUUID() : `${Date.now()}`,
+      title: lessonForm.title,
+      subject: lessonForm.subject,
+      date: dateTime,
+      duration: Number.parseInt(lessonForm.duration, 10) || 45,
+      description: lessonForm.description,
+      materials: lessonForm.materials
+        ? lessonForm.materials.split("\n").map((item) => item.trim()).filter(Boolean)
+        : [],
+      completed: false,
+    }
+
+    const updatedLessons = [...userLessons, newLesson]
+    setUserLessons(updatedLessons)
+    saveToStorage(PLANNER_STORAGE_KEY, updatedLessons)
+    resetLessonForm()
+    setIsAddingLesson(false)
+  }
+
+  const handleToggleCompletion = (lessonId, value) => {
+    const updatedLessons = userLessons.map((lesson) =>
+      lesson.id === lessonId ? { ...lesson, completed: value } : lesson,
+    )
+    setUserLessons(updatedLessons)
+    saveToStorage(PLANNER_STORAGE_KEY, updatedLessons)
+    if (selectedLesson?.id === lessonId) {
+      setSelectedLesson({ ...selectedLesson, completed: value })
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -470,7 +580,15 @@ export default function PlannerPage() {
                                   </div>
                                 </div>
                               </div>
-                              <Checkbox checked={lesson.completed} />
+                              <Checkbox
+                                checked={lesson.completed}
+                                disabled={lesson.source !== "user"}
+                                onCheckedChange={(value) => {
+                                  if (lesson.source === "user") {
+                                    handleToggleCompletion(lesson.id, Boolean(value))
+                                  }
+                                }}
+                              />
                             </div>
                           )
                         })}
@@ -589,15 +707,24 @@ export default function PlannerPage() {
             <DialogTitle>Add New Lesson</DialogTitle>
             <DialogDescription>Create a new lesson or activity for your homeschool schedule.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <form onSubmit={handleAddLesson} className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="title">Lesson Title</Label>
-              <Input id="title" placeholder="Enter lesson title" />
+              <Input
+                id="title"
+                placeholder="Enter lesson title"
+                value={lessonForm.title}
+                onChange={(event) => handleLessonFormChange("title", event.target.value)}
+                required
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="subject">Subject</Label>
-                <Select>
+                <Select
+                  value={lessonForm.subject}
+                  onValueChange={(value) => handleLessonFormChange("subject", value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
@@ -618,34 +745,71 @@ export default function PlannerPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="duration">Duration (minutes)</Label>
-                <Input id="duration" type="number" placeholder="45" min="5" step="5" />
+                <Input
+                  id="duration"
+                  type="number"
+                  placeholder="45"
+                  min="5"
+                  step="5"
+                  value={lessonForm.duration}
+                  onChange={(event) => handleLessonFormChange("duration", event.target.value)}
+                  required
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="date">Date</Label>
-                <Input id="date" type="date" />
+                <Input
+                  id="date"
+                  type="date"
+                  value={lessonForm.date}
+                  onChange={(event) => handleLessonFormChange("date", event.target.value)}
+                  required
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="time">Time</Label>
-                <Input id="time" type="time" />
+                <Input
+                  id="time"
+                  type="time"
+                  value={lessonForm.time}
+                  onChange={(event) => handleLessonFormChange("time", event.target.value)}
+                />
               </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea id="description" placeholder="Enter lesson description" />
+              <Textarea
+                id="description"
+                placeholder="Enter lesson description"
+                value={lessonForm.description}
+                onChange={(event) => handleLessonFormChange("description", event.target.value)}
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="materials">Materials Needed</Label>
-              <Textarea id="materials" placeholder="List materials needed, one per line" />
+              <Textarea
+                id="materials"
+                placeholder="List materials needed, one per line"
+                value={lessonForm.materials}
+                onChange={(event) => handleLessonFormChange("materials", event.target.value)}
+              />
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddingLesson(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setIsAddingLesson(false)}>Add Lesson</Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAddingLesson(false)
+                  resetLessonForm()
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Add Lesson</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -681,7 +845,16 @@ export default function PlannerPage() {
                 </ul>
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox id="completed" checked={selectedLesson.completed} />
+                <Checkbox
+                  id="completed"
+                  checked={selectedLesson.completed}
+                  disabled={selectedLesson.source !== "user"}
+                  onCheckedChange={(value) => {
+                    if (selectedLesson.source === "user") {
+                      handleToggleCompletion(selectedLesson.id, Boolean(value))
+                    }
+                  }}
+                />
                 <Label htmlFor="completed">Mark as completed</Label>
               </div>
             </div>

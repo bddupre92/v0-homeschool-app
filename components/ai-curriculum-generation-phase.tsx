@@ -25,7 +25,7 @@ const curriculumSchema = z.object({
 type CurriculumFormValues = z.infer<typeof curriculumSchema>
 
 interface AICurriculumGenerationPhaseProps {
-  researchQuery: { subject: string; grade: string; topics: string }
+  researchQuery: { subject: string; grade: string; topics: string; state?: string }
   researchResults: ResearchResult[]
   onStartOver: () => void
 }
@@ -48,6 +48,7 @@ export default function AICurriculumGenerationPhase({
         ...data,
         researchQuery,
         researchContext: researchResults,
+        stateRequirements: researchQuery.state,
       }
       const response = await fetch("/api/ai/generate-curriculum", {
         method: "POST",
@@ -129,8 +130,14 @@ export default function AICurriculumGenerationPhase({
           <p className="text-sm text-muted-foreground mb-3">
             Based on your query for <Badge variant="secondary">{researchQuery.subject}</Badge> for{" "}
             <Badge variant="secondary">Grade {researchQuery.grade}</Badge> focusing on{" "}
-            <Badge variant="secondary">{researchQuery.topics}</Badge>, we found {researchResults.length} relevant
-            resources.
+            <Badge variant="secondary">{researchQuery.topics}</Badge>
+            {researchQuery.state ? (
+              <>
+                {" "}
+                with <Badge variant="secondary">{researchQuery.state}</Badge> requirements
+              </>
+            ) : null}
+            , we found {researchResults.length} relevant resources.
           </p>
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {researchResults.map((res, i) => (

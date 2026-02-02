@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Calendar, MapPin, Users, ChevronRight, Filter } from "lucide-react"
 
@@ -13,9 +13,20 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { loadFromStorage } from "@/lib/local-storage"
+
+type CommunityEvent = {
+  id: string
+  title: string
+  date: string
+  location: string
+  attendees: number
+  type: string
+  tags: string[]
+}
 
 // Sample data
-const eventsData = [
+const eventsData: CommunityEvent[] = [
   {
     id: "1",
     title: "Science Fair Preparation Workshop",
@@ -54,15 +65,24 @@ const eventsData = [
   },
 ]
 
+const EVENTS_STORAGE_KEY = "homeschoolEvents"
+
 export default function CommunityEvents() {
-  const [events, setEvents] = useState(eventsData)
+  const [events, setEvents] = useState<CommunityEvent[]>(eventsData)
   const [filters, setFilters] = useState({
     types: [],
     ages: [],
   })
 
-  const eventTypes = ["Workshop", "Open House", "Field Trip", "Club", "Class", "Social"]
+  const eventTypes = ["Workshop", "Open House", "Field Trip", "Club", "Class", "Social Gathering", "Meeting", "Other"]
   const ageGroups = ["Preschool", "Elementary", "Middle School", "High School", "All Ages"]
+
+  useEffect(() => {
+    const storedEvents = loadFromStorage(EVENTS_STORAGE_KEY, [])
+    if (storedEvents.length) {
+      setEvents([...eventsData, ...storedEvents])
+    }
+  }, [])
 
   const handleFilterChange = (category, value) => {
     setFilters((prev) => {
@@ -88,6 +108,15 @@ export default function CommunityEvents() {
       minute: "2-digit",
     }).format(date)
   }
+
+  const filteredEvents = useMemo(() => {
+    return events.filter((event) => {
+      const matchesType = filters.types.length === 0 || filters.types.includes(event.type)
+      const matchesAge =
+        filters.ages.length === 0 || event.tags?.some((tag) => filters.ages.includes(tag))
+      return matchesType && matchesAge
+    })
+  }, [events, filters.ages, filters.types])
 
   return (
     <Card className="w-full">
@@ -141,7 +170,7 @@ export default function CommunityEvents() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {events.map((event) => (
+          {filteredEvents.map((event) => (
             <Link key={event.id} href={`/community/events/${event.id}`} className="block">
               <div className="flex gap-4 p-3 rounded-lg hover:bg-muted transition-colors">
                 <div className="w-12 h-12 bg-primary/10 rounded-md flex items-center justify-center shrink-0 text-primary">

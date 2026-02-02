@@ -1,4 +1,8 @@
+"use client"
+
+import { FormEvent, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -9,8 +13,53 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Navigation from "@/components/navigation"
 import { Footer } from "@/components/footer"
+import { loadFromStorage, saveToStorage } from "@/lib/local-storage"
+
+const EVENTS_STORAGE_KEY = "homeschoolEvents"
 
 export default function CreateEventPage() {
+  const router = useRouter()
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    date: "",
+    time: "",
+    location: "",
+    address: "",
+    type: "",
+    cost: "",
+    ageGroup: "",
+  })
+
+  const handleChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!formData.title || !formData.date || !formData.type) {
+      return
+    }
+
+    const storedEvents = loadFromStorage(EVENTS_STORAGE_KEY, [])
+    const dateTime = formData.time ? `${formData.date}T${formData.time}` : `${formData.date}T09:00:00`
+
+    const newEvent = {
+      id: typeof crypto !== "undefined" ? crypto.randomUUID() : `${Date.now()}`,
+      title: formData.title,
+      description: formData.description,
+      date: dateTime,
+      location: formData.location || formData.address,
+      attendees: 0,
+      type: formData.type,
+      tags: [formData.ageGroup || "All Ages"].filter(Boolean),
+      cost: formData.cost,
+    }
+
+    saveToStorage(EVENTS_STORAGE_KEY, [...storedEvents, newEvent])
+    router.push("/community")
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
@@ -32,73 +81,112 @@ export default function CreateEventPage() {
               <CardDescription>Share your homeschool event with the community</CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="space-y-6">
+              <form className="space-y-6" onSubmit={handleSubmit}>
                 <div className="space-y-2">
                   <Label htmlFor="title">Event Title</Label>
-                  <Input id="title" placeholder="Enter the name of your event" />
+                  <Input
+                    id="title"
+                    placeholder="Enter the name of your event"
+                    value={formData.title}
+                    onChange={(event) => handleChange("title", event.target.value)}
+                    required
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" placeholder="Describe your event" className="min-h-[120px]" />
+                  <Textarea
+                    id="description"
+                    placeholder="Describe your event"
+                    className="min-h-[120px]"
+                    value={formData.description}
+                    onChange={(event) => handleChange("description", event.target.value)}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="date">Date</Label>
-                    <Input id="date" type="date" />
+                    <Input
+                      id="date"
+                      type="date"
+                      value={formData.date}
+                      onChange={(event) => handleChange("date", event.target.value)}
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="time">Time</Label>
-                    <Input id="time" type="time" />
+                    <Input
+                      id="time"
+                      type="time"
+                      value={formData.time}
+                      onChange={(event) => handleChange("time", event.target.value)}
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
-                  <Input id="location" placeholder="Enter the venue name" />
+                  <Input
+                    id="location"
+                    placeholder="Enter the venue name"
+                    value={formData.location}
+                    onChange={(event) => handleChange("location", event.target.value)}
+                    required
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="address">Address</Label>
-                  <Input id="address" placeholder="Enter the full address" />
+                  <Input
+                    id="address"
+                    placeholder="Enter the full address"
+                    value={formData.address}
+                    onChange={(event) => handleChange("address", event.target.value)}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="type">Event Type</Label>
-                  <Select>
+                  <Select value={formData.type} onValueChange={(value) => handleChange("type", value)}>
                     <SelectTrigger id="type">
                       <SelectValue placeholder="Select event type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="workshop">Workshop</SelectItem>
-                      <SelectItem value="field-trip">Field Trip</SelectItem>
-                      <SelectItem value="social">Social Gathering</SelectItem>
-                      <SelectItem value="class">Class</SelectItem>
-                      <SelectItem value="meeting">Meeting</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="Workshop">Workshop</SelectItem>
+                      <SelectItem value="Field Trip">Field Trip</SelectItem>
+                      <SelectItem value="Social Gathering">Social Gathering</SelectItem>
+                      <SelectItem value="Class">Class</SelectItem>
+                      <SelectItem value="Meeting">Meeting</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="cost">Cost</Label>
-                  <Input id="cost" placeholder="Free or enter amount" />
+                  <Input
+                    id="cost"
+                    placeholder="Free or enter amount"
+                    value={formData.cost}
+                    onChange={(event) => handleChange("cost", event.target.value)}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="age-group">Age Group</Label>
-                  <Select>
+                  <Select value={formData.ageGroup} onValueChange={(value) => handleChange("ageGroup", value)}>
                     <SelectTrigger id="age-group">
                       <SelectValue placeholder="Select age group" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Ages</SelectItem>
-                      <SelectItem value="preschool">Preschool</SelectItem>
-                      <SelectItem value="elementary">Elementary</SelectItem>
-                      <SelectItem value="middle">Middle School</SelectItem>
-                      <SelectItem value="high">High School</SelectItem>
-                      <SelectItem value="parents">Parents Only</SelectItem>
+                      <SelectItem value="All Ages">All Ages</SelectItem>
+                      <SelectItem value="Preschool">Preschool</SelectItem>
+                      <SelectItem value="Elementary">Elementary</SelectItem>
+                      <SelectItem value="Middle School">Middle School</SelectItem>
+                      <SelectItem value="High School">High School</SelectItem>
+                      <SelectItem value="Parents Only">Parents Only</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Users, MapPin, ChevronRight, Filter } from "lucide-react"
 
@@ -14,9 +14,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { loadFromStorage } from "@/lib/local-storage"
+
+type CommunityGroup = {
+  id: string
+  name: string
+  description: string
+  location: string
+  members: number
+  tags: string[]
+  image: string
+}
 
 // Sample data
-const groupsData = [
+const groupsData: CommunityGroup[] = [
   {
     id: "1",
     name: "Springfield Homeschool Co-op",
@@ -55,8 +66,10 @@ const groupsData = [
   },
 ]
 
+const GROUPS_STORAGE_KEY = "homeschoolGroups"
+
 export default function CommunityGroups() {
-  const [groups, setGroups] = useState(groupsData)
+  const [groups, setGroups] = useState<CommunityGroup[]>(groupsData)
   const [filters, setFilters] = useState({
     types: [],
     ages: [],
@@ -66,6 +79,13 @@ export default function CommunityGroups() {
   const groupTypes = ["Co-op", "Special Interest", "Support", "Class", "Social", "Field Trip"]
   const ageGroups = ["Preschool", "Elementary", "Middle School", "High School", "Teens", "All Ages"]
   const frequencies = ["Weekly", "Bi-weekly", "Monthly", "Quarterly"]
+
+  useEffect(() => {
+    const storedGroups = loadFromStorage(GROUPS_STORAGE_KEY, [])
+    if (storedGroups.length) {
+      setGroups([...groupsData, ...storedGroups])
+    }
+  }, [])
 
   const handleFilterChange = (category, value) => {
     setFilters((prev) => {
@@ -80,6 +100,18 @@ export default function CommunityGroups() {
       }
     })
   }
+
+  const filteredGroups = useMemo(() => {
+    return groups.filter((group) => {
+      const matchesType =
+        filters.types.length === 0 || group.tags?.some((tag) => filters.types.includes(tag))
+      const matchesAge =
+        filters.ages.length === 0 || group.tags?.some((tag) => filters.ages.includes(tag))
+      const matchesFrequency =
+        filters.frequency.length === 0 || group.tags?.some((tag) => filters.frequency.includes(tag))
+      return matchesType && matchesAge && matchesFrequency
+    })
+  }, [groups, filters.ages, filters.frequency, filters.types])
 
   return (
     <Card className="w-full">
@@ -145,7 +177,7 @@ export default function CommunityGroups() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {groups.map((group) => (
+          {filteredGroups.map((group) => (
             <Link key={group.id} href={`/community/groups/${group.id}`} className="block">
               <div className="flex gap-4 p-3 rounded-lg hover:bg-muted transition-colors">
                 <Avatar className="h-12 w-12">

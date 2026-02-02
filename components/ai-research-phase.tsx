@@ -17,6 +17,7 @@ const researchSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
   grade: z.string().min(1, "Grade level is required"),
   topics: z.string().min(3, "Please specify topics of interest."),
+  state: z.string().optional(),
 })
 
 type ResearchFormValues = z.infer<typeof researchSchema>
@@ -29,7 +30,7 @@ export default function AIResearchPhase({ onResearchComplete }: AIResearchPhaseP
   const { toast } = useToast()
   const form = useForm<ResearchFormValues>({
     resolver: zodFormResolver(researchSchema), // Using our custom resolver
-    defaultValues: { subject: "", grade: "", topics: "" },
+    defaultValues: { subject: "", grade: "", topics: "", state: "" },
   })
 
   const researchMutation = useMutation({
@@ -130,6 +131,19 @@ export default function AIResearchPhase({ onResearchComplete }: AIResearchPhaseP
                   <FormLabel>Key Topics or Interests</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., fractions, photosynthesis, American Revolution" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="state"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>State Requirements (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Texas, California, Florida" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

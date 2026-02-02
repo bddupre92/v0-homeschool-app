@@ -6,7 +6,7 @@ import { searchWeb } from "@/lib/tools/search"
 export const maxDuration = 30
 
 export async function POST(req: Request) {
-  const { subject, grade, topics } = await req.json()
+  const { subject, grade, topics, state } = await req.json()
 
   const result = await streamText({
     model: groq("llama3-70b-8192"),
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     Prioritize sources from reputable institutions like universities, museums, and well-known educational companies (e.g., Khan Academy, PBS Kids, National Geographic).
     For each resource you find, provide a concise summary of why it's relevant.
     Return a list of at least 5 and at most 10 resources.`,
-    prompt: `Find curriculum resources for the subject: ${subject}, for grade: ${grade}. The key topics of interest are: ${topics}.`,
+    prompt: `Find curriculum resources for the subject: ${subject}, for grade: ${grade}. The key topics of interest are: ${topics}.${state ? ` Align results with ${state} homeschool requirements.` : ""}`,
     tools: {
       searchWeb: {
         description: "Search the web for educational resources based on a query.",
