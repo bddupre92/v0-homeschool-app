@@ -1,8 +1,6 @@
 "use client"
 
-import { useState } from "react"
-
-import { createContext, useContext, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { trackEvent } from "./analytics"
 
 interface PerformanceMetrics {
@@ -65,8 +63,8 @@ export function PerformanceMonitoringProvider({ children }: { children: ReactNod
     const fidObserver = new PerformanceObserver((entryList) => {
       const entries = entryList.getEntries()
       if (entries.length > 0) {
-        const entry = entries[0] as PerformanceEventTiming
-        const fid = entry.processingStart - entry.startTime
+        const entry = entries[0] as any
+        const fid = entry.processingStart ? entry.processingStart - entry.startTime : 0
         setMetrics((prev) => ({ ...prev, fid }))
         trackEvent("web_vitals_fid", { value: fid })
       }
