@@ -5,7 +5,6 @@ import { redirect } from "next/navigation"
 import { adminDb } from "@/lib/firebase-admin-safe"
 import { requireAuth, getOptionalUser } from "@/lib/auth-middleware"
 import { AuthenticationError } from "@/lib/errors"
-import type { QueryDocumentSnapshot } from "firebase-admin/firestore"
 
 // Get the current user from the auth middleware
 async function getCurrentUser() {
@@ -37,7 +36,7 @@ export async function getEvents(filters?: { upcoming?: boolean; type?: string })
 
     const eventsSnapshot = await query.get()
 
-    const events = eventsSnapshot.docs.map((doc: QueryDocumentSnapshot) => {
+    const events = eventsSnapshot.docs.map((doc: any) => {
       const data = doc.data()
       return {
         id: doc.id,

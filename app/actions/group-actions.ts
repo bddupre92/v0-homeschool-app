@@ -4,8 +4,13 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { adminDb } from "@/lib/firebase-admin-safe"
 import { requireAuth } from "@/lib/auth-middleware"
-import { AuthenticationError, NotFoundError, AuthorizationError } from "@/lib/errors"
-import type { QueryDocumentSnapshot } from "firebase-admin/firestore"
+import {
+  AuthenticationError,
+  NotFoundError,
+  AuthorizationError,
+  ConflictError,
+  formatErrorResponse,
+} from "@/lib/errors"
 
 // Get the current user
 async function getCurrentUser() {
@@ -37,7 +42,7 @@ export async function getGroups(filters?: { type?: string; isPrivate?: boolean }
 
     const groupsSnapshot = await query.get()
 
-    const groups = groupsSnapshot.docs.map((doc: QueryDocumentSnapshot) => {
+    const groups = groupsSnapshot.docs.map((doc: any) => {
       const data = doc.data()
       return {
         id: doc.id,
