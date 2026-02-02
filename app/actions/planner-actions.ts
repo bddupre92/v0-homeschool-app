@@ -5,7 +5,6 @@ import { redirect } from "next/navigation"
 import { adminDb } from "@/lib/firebase-admin-safe"
 import { requireAuth } from "@/lib/auth-middleware"
 import { AuthenticationError, NotFoundError, AuthorizationError, formatErrorResponse } from "@/lib/errors"
-import type { QueryDocumentSnapshot } from "firebase-admin/firestore"
 
 // Get the current user from the auth middleware
 async function getCurrentUser() {
@@ -35,7 +34,7 @@ export async function getLessons() {
       .orderBy("date", "asc")
       .get()
 
-    const lessons = lessonsSnapshot.docs.map((doc: QueryDocumentSnapshot) => {
+    const lessons = lessonsSnapshot.docs.map((doc: any) => {
       const data = doc.data()
       return {
         id: doc.id,
