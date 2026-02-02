@@ -13,6 +13,61 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Bot, Sparkles, Clock, Target, BookOpen, ChevronRight, Loader2 } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { useStateRequirements } from "@/hooks/use-state-requirements"
+
+const US_STATES = [
+  { code: "AL", name: "Alabama" },
+  { code: "AK", name: "Alaska" },
+  { code: "AZ", name: "Arizona" },
+  { code: "AR", name: "Arkansas" },
+  { code: "CA", name: "California" },
+  { code: "CO", name: "Colorado" },
+  { code: "CT", name: "Connecticut" },
+  { code: "DE", name: "Delaware" },
+  { code: "FL", name: "Florida" },
+  { code: "GA", name: "Georgia" },
+  { code: "HI", name: "Hawaii" },
+  { code: "ID", name: "Idaho" },
+  { code: "IL", name: "Illinois" },
+  { code: "IN", name: "Indiana" },
+  { code: "IA", name: "Iowa" },
+  { code: "KS", name: "Kansas" },
+  { code: "KY", name: "Kentucky" },
+  { code: "LA", name: "Louisiana" },
+  { code: "ME", name: "Maine" },
+  { code: "MD", name: "Maryland" },
+  { code: "MA", name: "Massachusetts" },
+  { code: "MI", name: "Michigan" },
+  { code: "MN", name: "Minnesota" },
+  { code: "MS", name: "Mississippi" },
+  { code: "MO", name: "Missouri" },
+  { code: "MT", name: "Montana" },
+  { code: "NE", name: "Nebraska" },
+  { code: "NV", name: "Nevada" },
+  { code: "NH", name: "New Hampshire" },
+  { code: "NJ", name: "New Jersey" },
+  { code: "NM", name: "New Mexico" },
+  { code: "NY", name: "New York" },
+  { code: "NC", name: "North Carolina" },
+  { code: "ND", name: "North Dakota" },
+  { code: "OH", name: "Ohio" },
+  { code: "OK", name: "Oklahoma" },
+  { code: "OR", name: "Oregon" },
+  { code: "PA", name: "Pennsylvania" },
+  { code: "RI", name: "Rhode Island" },
+  { code: "SC", name: "South Carolina" },
+  { code: "SD", name: "South Dakota" },
+  { code: "TN", name: "Tennessee" },
+  { code: "TX", name: "Texas" },
+  { code: "UT", name: "Utah" },
+  { code: "VT", name: "Vermont" },
+  { code: "VA", name: "Virginia" },
+  { code: "WA", name: "Washington" },
+  { code: "WV", name: "West Virginia" },
+  { code: "WI", name: "Wisconsin" },
+  { code: "WY", name: "Wyoming" },
+]
 
 const aiCurriculumSchema = z.object({
   childName: z.string().min(1, "Child name is required"),
@@ -20,16 +75,18 @@ const aiCurriculumSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
   learningStyle: z.string().optional(),
   interests: z.string().optional(),
-  stateStandards: z.string().optional(),
-  duration: z.enum(["semester", "year", "quarter"]),
+  stateCode: z.string().optional(),
+  duration: z.enum(["quarter", "semester", "year"]),
   focusAreas: z.string().optional(),
 })
 
 export default function AICurriculumBuilder() {
   const { toast } = useToast()
+  const { user } = useAuth()
   const [isBuilderOpen, setIsBuilderOpen] = useState(false)
   const [generatedCurriculum, setGeneratedCurriculum] = useState<any>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [selectedStateCode, setSelectedStateCode] = useState<string>("")
 
   const form = useForm<z.infer<typeof aiCurriculumSchema>>({
     resolver: zodResolver(aiCurriculumSchema),
@@ -39,48 +96,91 @@ export default function AICurriculumBuilder() {
       subject: "",
       learningStyle: "",
       interests: "",
-      stateStandards: "",
+      stateCode: "",
       duration: "year",
       focusAreas: "",
     },
   })
 
   const onSubmit = async (data: z.infer<typeof aiCurriculumSchema>) => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to generate a curriculum.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsGenerating(true)
 
     try {
-      // Simulate AI generation for now
-      await new Promise((resolve) => setTimeout(resolve, 3000))
+      const response = await fetch("/api/ai/generate-curriculum", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          childName: data.childName,
+          grade: data.grade,
+          subject: data.subject,
+          learningStyle: data.learningStyle,
+          interests: data.interests,
+          stateCode: data.stateCode,
+          duration: data.duration,
+          focusAreas: data.focusAreas,
+          researchQuery: {
+            subject: data.subject,
+            grade: data.grade,
+            topics: data.focusAreas || "general topics",
+          },
+          researchContext: [],
+        }),
+      })
 
-      const mockCurriculum = {
-        curriculum: {
-          title: `${data.subject} Curriculum for ${data.childName} - Grade ${data.grade}`,
-          description: `A comprehensive ${data.duration} curriculum tailored to ${data.childName}'s learning style and interests.`,
-          objectives: [
-            `Master core ${data.subject.toLowerCase()} concepts appropriate for grade ${data.grade}`,
-            `Develop critical thinking and problem-solving skills`,
-            `Apply learning through hands-on activities and real-world examples`,
-            `Build confidence and enthusiasm for learning`,
-          ],
-        },
-        generatedContent: {
-          lessons: Array.from(
-            { length: data.duration === "year" ? 36 : data.duration === "semester" ? 18 : 9 },
-            (_, i) => ({
-              id: i + 1,
-              title: `Lesson ${i + 1}`,
-              description: `Week ${i + 1} content`,
-            }),
-          ),
-        },
+      if (!response.ok) {
+        throw new Error("Failed to generate curriculum")
       }
 
-      setGeneratedCurriculum(mockCurriculum)
+      // Handle streaming response
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let fullResponse = ""
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          fullResponse += decoder.decode(value)
+        }
+      }
+
+      // Parse the streamed JSON response
+      let curriculum = JSON.parse(fullResponse)
+
+      // Ensure we have the expected structure
+      if (!curriculum.curriculum) {
+        curriculum = {
+          curriculum: curriculum.title
+            ? curriculum
+            : {
+                title: `${data.subject} Curriculum for ${data.childName}`,
+                description: curriculum.description || "Generated curriculum",
+                objectives: curriculum.objectives || [],
+              },
+          generatedContent: {
+            lessons: curriculum.lessons || [],
+          },
+        }
+      }
+
+      setGeneratedCurriculum(curriculum)
       toast({
         title: "Success",
         description: "AI curriculum generated successfully!",
       })
     } catch (error) {
+      console.error("Error generating curriculum:", error)
       toast({
         title: "Error",
         description: "Failed to generate curriculum. Please try again.",
@@ -283,23 +383,26 @@ export default function AICurriculumBuilder() {
 
                 <FormField
                   control={form.control}
-                  name="stateStandards"
+                  name="stateCode"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>State Standards (Optional)</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormLabel>State Homeschool Standards (Optional)</FormLabel>
+                      <Select onValueChange={(value) => {
+                        field.onChange(value)
+                        setSelectedStateCode(value)
+                      }} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select state standards" />
+                            <SelectValue placeholder="Select state for standards" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Common Core">Common Core</SelectItem>
-                          <SelectItem value="Texas TEKS">Texas TEKS</SelectItem>
-                          <SelectItem value="California Standards">California Standards</SelectItem>
-                          <SelectItem value="Florida Standards">Florida Standards</SelectItem>
-                          <SelectItem value="New York Standards">New York Standards</SelectItem>
-                          <SelectItem value="Other">Other State Standards</SelectItem>
+                          <SelectItem value="">None</SelectItem>
+                          {US_STATES.map((state) => (
+                            <SelectItem key={state.code} value={state.code}>
+                              {state.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
