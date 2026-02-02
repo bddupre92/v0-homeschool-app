@@ -3,7 +3,7 @@
 import { useState } from "react"
 
 import { createContext, useContext, useEffect, type ReactNode } from "react"
-import { trackEvent } from "./analytics-service"
+import { trackEvent } from "./analytics"
 
 interface PerformanceMetrics {
   fcp: number | null // First Contentful Paint
