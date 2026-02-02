@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Calendar, MapPin, Users, ChevronRight, Filter } from "lucide-react"
+import { Calendar, MapPin, Users, ChevronRight, Filter, Loader2 } from "lucide-react"
+import { getEvents } from "@/app/actions/event-actions"
+import { useToast } from "@/hooks/use-toast"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -55,11 +57,41 @@ const eventsData = [
 ]
 
 export default function CommunityEvents() {
+  const { toast } = useToast()
   const [events, setEvents] = useState(eventsData)
+  const [isLoading, setIsLoading] = useState(true)
   const [filters, setFilters] = useState({
     types: [],
     ages: [],
   })
+
+  // Load events from Firestore
+  useEffect(() => {
+    const loadEvents = async () => {
+      try {
+        setIsLoading(true)
+        const result = await getEvents({ upcoming: true })
+        
+        if (result.success && result.events) {
+          setEvents(result.events.length > 0 ? result.events : eventsData)
+        } else {
+          setEvents(eventsData)
+        }
+      } catch (error) {
+        console.error("[v0] Error loading events:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load events. Using sample data.",
+          variant: "destructive",
+        })
+        setEvents(eventsData)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    loadEvents()
+  }, [])
 
   const eventTypes = ["Workshop", "Open House", "Field Trip", "Club", "Class", "Social"]
   const ageGroups = ["Preschool", "Elementary", "Middle School", "High School", "All Ages"]
@@ -140,8 +172,16 @@ export default function CommunityEvents() {
         <CardDescription>Connect with other homeschoolers at these upcoming events</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {events.map((event) => (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading events...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {events.map((event) => (
             <Link key={event.id} href={`/community/events/${event.id}`} className="block">
               <div className="flex gap-4 p-3 rounded-lg hover:bg-muted transition-colors">
                 <div className="w-12 h-12 bg-primary/10 rounded-md flex items-center justify-center shrink-0 text-primary">
@@ -189,7 +229,8 @@ export default function CommunityEvents() {
               <ChevronRight className="h-4 w-4" />
             </Link>
           </Button>
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

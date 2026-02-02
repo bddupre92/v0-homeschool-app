@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Users, MapPin, ChevronRight, Filter } from "lucide-react"
+import { Users, MapPin, ChevronRight, Filter, Loader2 } from "lucide-react"
+import { getGroups } from "@/app/actions/group-actions"
+import { useToast } from "@/hooks/use-toast"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -56,12 +58,42 @@ const groupsData = [
 ]
 
 export default function CommunityGroups() {
+  const { toast } = useToast()
   const [groups, setGroups] = useState(groupsData)
+  const [isLoading, setIsLoading] = useState(true)
   const [filters, setFilters] = useState({
     types: [],
     ages: [],
     frequency: [],
   })
+
+  // Load groups from Firestore
+  useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        setIsLoading(true)
+        const result = await getGroups()
+        
+        if (result.success && result.groups) {
+          setGroups(result.groups.length > 0 ? result.groups : groupsData)
+        } else {
+          setGroups(groupsData)
+        }
+      } catch (error) {
+        console.error("[v0] Error loading groups:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load groups. Using sample data.",
+          variant: "destructive",
+        })
+        setGroups(groupsData)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    loadGroups()
+  }, [])
 
   const groupTypes = ["Co-op", "Special Interest", "Support", "Class", "Social", "Field Trip"]
   const ageGroups = ["Preschool", "Elementary", "Middle School", "High School", "Teens", "All Ages"]
@@ -144,8 +176,16 @@ export default function CommunityGroups() {
         <CardDescription>Connect with local homeschool groups and co-ops</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {groups.map((group) => (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading groups...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {groups.map((group) => (
             <Link key={group.id} href={`/community/groups/${group.id}`} className="block">
               <div className="flex gap-4 p-3 rounded-lg hover:bg-muted transition-colors">
                 <Avatar className="h-12 w-12">
@@ -187,7 +227,8 @@ export default function CommunityGroups() {
               <ChevronRight className="h-4 w-4" />
             </Link>
           </Button>
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
