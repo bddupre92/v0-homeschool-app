@@ -142,54 +142,5 @@ CREATE INDEX IF NOT EXISTS idx_event_attendees_event_id ON event_attendees(event
 CREATE INDEX IF NOT EXISTS idx_event_attendees_user_id ON event_attendees(user_id);
 CREATE INDEX IF NOT EXISTS idx_state_requirements_abbreviation ON state_requirements(state_abbreviation);
 
--- Enable Row Level Security
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE curricula ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lessons ENABLE ROW LEVEL SECURITY;
-ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
-ALTER TABLE group_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE event_attendees ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies: Users can only see their own user record
-CREATE POLICY "Users can view own profile" ON users
-  FOR SELECT USING (auth.uid()::text = firebase_uid);
-
-CREATE POLICY "Users can update own profile" ON users
-  FOR UPDATE USING (auth.uid()::text = firebase_uid);
-
--- RLS Policies: Curricula - Users can see their own and public shared curricula
-CREATE POLICY "Users can view own curricula" ON curricula
-  FOR SELECT USING (user_id = (SELECT id FROM users WHERE firebase_uid = auth.uid()::text));
-
-CREATE POLICY "Users can create curricula" ON curricula
-  FOR INSERT WITH CHECK (user_id = (SELECT id FROM users WHERE firebase_uid = auth.uid()::text));
-
-CREATE POLICY "Users can update own curricula" ON curricula
-  FOR UPDATE USING (user_id = (SELECT id FROM users WHERE firebase_uid = auth.uid()::text));
-
--- RLS Policies: Lessons - Follow curriculum visibility
-CREATE POLICY "Users can view lessons from own curricula" ON lessons
-  FOR SELECT USING (
-    curriculum_id IN (
-      SELECT id FROM curricula WHERE user_id = (SELECT id FROM users WHERE firebase_uid = auth.uid()::text)
-    )
-  );
-
--- RLS Policies: Groups - Users can see all public groups and their own groups
-CREATE POLICY "Anyone can view public groups" ON groups
-  FOR SELECT USING (is_private = false OR created_by_id = (SELECT id FROM users WHERE firebase_uid = auth.uid()::text));
-
-CREATE POLICY "Users can create groups" ON groups
-  FOR INSERT WITH CHECK (created_by_id = (SELECT id FROM users WHERE firebase_uid = auth.uid()::text));
-
--- RLS Policies: Events - Public visibility for all, members get full access
-CREATE POLICY "Anyone can view events" ON events
-  FOR SELECT USING (true);
-
-CREATE POLICY "Users can create events" ON events
-  FOR INSERT WITH CHECK (created_by_id = (SELECT id FROM users WHERE firebase_uid = auth.uid()::text));
-
--- State Requirements are public read-only
-CREATE POLICY "Anyone can view state requirements" ON state_requirements
-  FOR SELECT USING (true);
+-- Note: Row Level Security will be enforced at the application layer using Firebase authentication
+-- This approach is simpler for Firebase integration and allows server-side validation of user context
