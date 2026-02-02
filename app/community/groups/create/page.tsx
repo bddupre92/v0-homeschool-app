@@ -41,11 +41,17 @@ export default function CreateGroupPage() {
 
     const storedGroups = loadFromStorage(GROUPS_STORAGE_KEY, [])
     const scheduleLower = formData.meetingSchedule.toLowerCase()
-    const frequencyTag = scheduleLower.includes("week")
-      ? "Weekly"
-      : scheduleLower.includes("month")
-        ? "Monthly"
-        : ""
+    const frequencyTag = scheduleLower.includes("quarter")
+      ? "Quarterly"
+      : scheduleLower.includes("bi-week") ||
+          scheduleLower.includes("bi week") ||
+          scheduleLower.includes("every other week")
+        ? "Bi-weekly"
+        : scheduleLower.includes("week")
+          ? "Weekly"
+          : scheduleLower.includes("month")
+            ? "Monthly"
+            : ""
 
     const newGroup = {
       id: typeof crypto !== "undefined" ? crypto.randomUUID() : `${Date.now()}`,
