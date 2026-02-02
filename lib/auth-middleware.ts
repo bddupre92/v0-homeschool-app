@@ -1,7 +1,6 @@
 import { cookies, headers } from "next/headers"
 import { AuthenticationError, AuthorizationError } from "./errors"
-import { getAuth } from "firebase-admin/auth"
-import { initializeAdminApp } from "./firebase-admin-safe"
+import { adminAuth } from "./firebase-admin-safe"
 
 export interface AuthContext {
   userId: string
@@ -48,11 +47,10 @@ export async function getCurrentUser(): Promise<AuthContext> {
  */
 async function verifyIdToken(token: string): Promise<AuthContext> {
   try {
-    const app = initializeAdminApp()
-    if (!app) {
+    if (!adminAuth || typeof adminAuth.verifyIdToken !== "function") {
       // In dev mode without Firebase, return dev user
       if (process.env.NODE_ENV === "development") {
-        console.warn("[v0] Firebase Admin not available, using dev auth")
+        console.warn("Firebase Admin not available, using dev auth")
         return {
           userId: "dev-user-id",
           email: "dev@example.com",
@@ -62,8 +60,7 @@ async function verifyIdToken(token: string): Promise<AuthContext> {
       throw new AuthenticationError("Authentication service unavailable")
     }
 
-    const auth = getAuth(app)
-    const decodedToken = await auth.verifyIdToken(token)
+    const decodedToken = await adminAuth.verifyIdToken(token)
 
     return {
       userId: decodedToken.uid,
@@ -81,11 +78,10 @@ async function verifyIdToken(token: string): Promise<AuthContext> {
  */
 async function verifySessionCookie(sessionCookie: string): Promise<AuthContext> {
   try {
-    const app = initializeAdminApp()
-    if (!app) {
+    if (!adminAuth || typeof adminAuth.verifySessionCookie !== "function") {
       // In dev mode without Firebase, return dev user
       if (process.env.NODE_ENV === "development") {
-        console.warn("[v0] Firebase Admin not available, using dev auth")
+        console.warn("Firebase Admin not available, using dev auth")
         return {
           userId: "dev-user-id",
           email: "dev@example.com",
@@ -95,8 +91,7 @@ async function verifySessionCookie(sessionCookie: string): Promise<AuthContext> 
       throw new AuthenticationError("Authentication service unavailable")
     }
 
-    const auth = getAuth(app)
-    const decodedCookie = await auth.verifySessionCookie(sessionCookie, true)
+    const decodedCookie = await adminAuth.verifySessionCookie(sessionCookie, true)
 
     return {
       userId: decodedCookie.uid,
