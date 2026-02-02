@@ -1,5 +1,5 @@
-import { auth } from "./firebase"
 import { onAuthStateChanged, getIdToken } from "firebase/auth"
+import { auth } from "./firebase"
 
 // Session timeout in milliseconds (default: 1 hour)
 const SESSION_TIMEOUT = 60 * 60 * 1000
