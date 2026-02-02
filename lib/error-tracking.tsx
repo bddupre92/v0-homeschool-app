@@ -15,27 +15,40 @@ const ErrorTrackingContext = createContext<ErrorTrackingContextProps>({
 
 export function ErrorTrackingProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
-    if (process.env.NODE_ENV === "production") {
-      Sentry.init({
-        dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || "",
-        tracesSampleRate: 0.5,
-        replaysSessionSampleRate: 0.1,
-        replaysOnErrorSampleRate: 1.0,
-      })
+    try {
+      if (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_SENTRY_DSN) {
+        Sentry.init({
+          dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+          tracesSampleRate: 0.5,
+          replaysSessionSampleRate: 0.1,
+          replaysOnErrorSampleRate: 1.0,
+          integrations: [new Sentry.Replay()],
+        })
+      }
+    } catch (error) {
+      console.warn("Failed to initialize Sentry:", error)
     }
   }, [])
 
   const captureException = (error: Error, context?: Record<string, any>) => {
     console.error("Error:", error)
-    if (process.env.NODE_ENV === "production") {
-      Sentry.captureException(error, { extra: context })
+    try {
+      if (process.env.NODE_ENV === "production" && Sentry) {
+        Sentry.captureException(error, { extra: context })
+      }
+    } catch (err) {
+      console.error("Failed to capture exception:", err)
     }
   }
 
   const captureMessage = (message: string, context?: Record<string, any>) => {
     console.log("Message:", message)
-    if (process.env.NODE_ENV === "production") {
-      Sentry.captureMessage(message, { extra: context })
+    try {
+      if (process.env.NODE_ENV === "production" && Sentry) {
+        Sentry.captureMessage(message, "info", { extra: context })
+      }
+    } catch (err) {
+      console.error("Failed to capture message:", err)
     }
   }
 

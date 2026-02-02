@@ -1,24 +1,57 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { adminDb, adminAuth } from "@/lib/firebase-admin-safe"
+import { adminDb } from "@/lib/firebase-admin-safe"
+import { requireAuth, getOptionalUser } from "@/lib/auth-middleware"
+import { AuthenticationError } from "@/lib/errors"
+import type { QueryDocumentSnapshot } from "firebase-admin/firestore"
 
-// Get the current user from the session
+// Get the current user from the auth middleware
 async function getCurrentUser() {
-  const sessionCookie = cookies().get("session")?.value
-
-  if (!sessionCookie) {
-    return null
-  }
-
   try {
-    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true)
-    return decodedClaims.uid
+    const auth = await requireAuth()
+    return auth.userId
   } catch (error) {
-    console.error("Error verifying session:", error)
-    return null
+    if (error instanceof AuthenticationError) {
+      return null
+    }
+    throw error
+  }
+}
+
+// Get all events (public, sorted by date)
+export async function getEvents(filters?: { upcoming?: boolean; type?: string }) {
+  try {
+    let query = adminDb.collection("events").orderBy("date", "asc")
+
+    // Filter for upcoming events only
+    if (filters?.upcoming) {
+      query = query.where("date", ">=", new Date()) as any
+    }
+
+    // Filter by event type
+    if (filters?.type) {
+      query = query.where("tags", "array-contains", filters.type) as any
+    }
+
+    const eventsSnapshot = await query.get()
+
+    const events = eventsSnapshot.docs.map((doc: QueryDocumentSnapshot) => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        ...data,
+        date: data.date?.toDate?.()?.toISOString() || data.date,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+      }
+    })
+
+    return { success: true, events }
+  } catch (error) {
+    console.error("[v0] Error getting events:", error)
+    return { success: false, error: "Failed to load events", events: [] }
   }
 }
 

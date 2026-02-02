@@ -1,24 +1,55 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { adminDb, adminAuth } from "@/lib/firebase-admin-safe"
+import { adminDb } from "@/lib/firebase-admin-safe"
+import { requireAuth } from "@/lib/auth-middleware"
+import { AuthenticationError, NotFoundError, AuthorizationError, formatErrorResponse } from "@/lib/errors"
+import type { QueryDocumentSnapshot } from "firebase-admin/firestore"
 
-// Get the current user from the session
+// Get the current user from the auth middleware
 async function getCurrentUser() {
-  const sessionCookie = cookies().get("session")?.value
-
-  if (!sessionCookie) {
-    return null
-  }
-
   try {
-    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true)
-    return decodedClaims.uid
+    const auth = await requireAuth()
+    return auth.userId
   } catch (error) {
-    console.error("Error verifying session:", error)
-    return null
+    if (error instanceof AuthenticationError) {
+      return null
+    }
+    throw error
+  }
+}
+
+// Get lessons for the current user
+export async function getLessons() {
+  try {
+    const userId = await getCurrentUser()
+
+    if (!userId) {
+      redirect("/sign-in")
+    }
+
+    const lessonsSnapshot = await adminDb
+      .collection("lessons")
+      .where("userId", "==", userId)
+      .orderBy("date", "asc")
+      .get()
+
+    const lessons = lessonsSnapshot.docs.map((doc: QueryDocumentSnapshot) => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        ...data,
+        date: data.date?.toDate?.()?.toISOString() || data.date,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+      }
+    })
+
+    return { success: true, lessons }
+  } catch (error) {
+    console.error("[v0] Error getting lessons:", error)
+    return { success: false, error: "Failed to load lessons", lessons: [] }
   }
 }
 

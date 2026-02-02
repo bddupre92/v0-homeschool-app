@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks } from "date-fns"
+import { useToast } from "@/hooks/use-toast"
+import { getLessons } from "@/app/actions/planner-actions"
 import {
   Calendar,
   ChevronLeft,
@@ -209,12 +211,50 @@ const collaborators = [
 ]
 
 export default function PlannerPage() {
+  const { toast } = useToast()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState("week")
   const [selectedLesson, setSelectedLesson] = useState(null)
   const [isAddingLesson, setIsAddingLesson] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [filteredSubjects, setFilteredSubjects] = useState(subjects.map((s) => s.id))
+  const [lessons, setLessons] = useState(sampleLessons)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Load lessons from Firestore
+  useEffect(() => {
+    const loadLessons = async () => {
+      try {
+        setIsLoading(true)
+        const result = await getLessons()
+        
+        if (result.success && result.lessons) {
+          // Convert date strings back to Date objects
+          const parsedLessons = result.lessons.map((lesson: any) => ({
+            ...lesson,
+            date: new Date(lesson.date),
+            createdAt: lesson.createdAt ? new Date(lesson.createdAt) : new Date(),
+            updatedAt: lesson.updatedAt ? new Date(lesson.updatedAt) : new Date(),
+          }))
+          setLessons(parsedLessons.length > 0 ? parsedLessons : sampleLessons)
+        } else {
+          setLessons(sampleLessons)
+        }
+      } catch (error) {
+        console.error("Error loading lessons:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load lessons. Using sample data.",
+          variant: "destructive",
+        })
+        setLessons(sampleLessons)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    loadLessons()
+  }, [])
 
   // Week navigation
   const startDate = startOfWeek(currentDate, { weekStartsOn: 0 })
@@ -236,7 +276,7 @@ export default function PlannerPage() {
   }
 
   // Filter lessons by selected subjects and current week
-  const filteredLessons = sampleLessons.filter(
+  const filteredLessons = lessons.filter(
     (lesson) =>
       filteredSubjects.includes(lesson.subject) &&
       lesson.date >= startOfWeek(currentDate) &&
@@ -256,14 +296,22 @@ export default function PlannerPage() {
       <Navigation />
 
       <main className="flex-1 container py-8 px-4 md:px-6">
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">Homeschool Planner</h1>
-              <p className="text-muted-foreground">
-                Plan, schedule, and track your homeschool curriculum and activities
-              </p>
+        {isLoading ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <p className="text-sm text-muted-foreground">Loading your planner...</p>
             </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold">Homeschool Planner</h1>
+                <p className="text-muted-foreground">
+                  Plan, schedule, and track your homeschool curriculum and activities
+                </p>
+              </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <Button onClick={() => setIsAddingLesson(true)} className="gap-1">
@@ -699,6 +747,8 @@ export default function PlannerPage() {
           </DialogContent>
         )}
       </Dialog>
+        </div>
+      )}
     </div>
   )
 }

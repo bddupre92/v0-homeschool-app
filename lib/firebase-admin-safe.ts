@@ -1,7 +1,8 @@
 // Safe Firebase Admin wrapper that handles build environments
 // This module provides a safe way to import Firebase Admin that won't break during builds
 
-// Check if we're in a build environment
+// Check if we're in a build environment or browser
+const isServer = typeof window === 'undefined'
 const isBuildEnvironment = 
   process.env.NEXT_PHASE === "phase-production-build" ||
   process.env.NEXT_PHASE === "phase-export" ||
@@ -67,7 +68,13 @@ const createMockStorage = () => {
 // Initialize Firebase Admin or use mocks
 let adminDb: any, adminAuth: any, adminStorage: any
 
-if (isBuildEnvironment) {
+if (!isServer) {
+  // Browser environment - always use mocks
+  console.log("Browser environment detected - using mock Firebase Admin")
+  adminDb = createMockFirestore()
+  adminAuth = createMockAuth()
+  adminStorage = createMockStorage()
+} else if (isBuildEnvironment) {
   console.log("Using mock Firebase Admin for build environment")
   adminDb = createMockFirestore()
   adminAuth = createMockAuth()
