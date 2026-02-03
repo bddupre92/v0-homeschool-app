@@ -1,4 +1,13 @@
-import { sql } from '@vercel/postgres'
+import { createPool, sql } from '@vercel/postgres'
+
+let poolInstance: ReturnType<typeof createPool> | null = null
+
+export const getPool = () => {
+  if (!poolInstance) {
+    poolInstance = createPool()
+  }
+  return poolInstance
+}
 
 // Export the sql function for use in API routes and server actions
 export { sql }
