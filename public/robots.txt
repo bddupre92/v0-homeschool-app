@@ -1,0 +1,10 @@
+# https://atozfamily.org/robots.txt
+User-agent: *
+Allow: /
+
+# Disallow admin routes
+Disallow: /admin/
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://atozfamily.org/sitemap.xml

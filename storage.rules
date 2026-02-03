@@ -1,0 +1,64 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Common functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isDocumentType() {
+      return request.resource.contentType.matches('application/pdf') ||
+             request.resource.contentType.matches('application/msword') ||
+             request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.*');
+    }
+    
+    function isValidFileSize() {
+      return request.resource.size < 10 * 1024 * 1024; // 10MB max
+    }
+    
+    // User profile images
+    match /users/{userId}/profile/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && isOwner(userId) && isImageType() && isValidFileSize();
+    }
+    
+    // Resource files
+    match /resources/{resourceId}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && isValidFileSize() && 
+                    (isImageType() || isDocumentType());
+    }
+    
+    // Board cover images
+    match /boards/{boardId}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && isImageType() && isValidFileSize();
+    }
+    
+    // Event images
+    match /events/{eventId}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && isImageType() && isValidFileSize();
+    }
+    
+    // Location images
+    match /locations/{locationId}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && isImageType() && isValidFileSize();
+    }
+    
+    // Post images
+    match /posts/{postId}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && isImageType() && isValidFileSize();
+    }
+  }
+}

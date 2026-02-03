@@ -1,0 +1,518 @@
+"use client"
+
+import { useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { Bot, Sparkles, Clock, Target, BookOpen, ChevronRight, Loader2 } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { useStateRequirements } from "@/hooks/use-state-requirements"
+
+const US_STATES = [
+  { code: "AL", name: "Alabama" },
+  { code: "AK", name: "Alaska" },
+  { code: "AZ", name: "Arizona" },
+  { code: "AR", name: "Arkansas" },
+  { code: "CA", name: "California" },
+  { code: "CO", name: "Colorado" },
+  { code: "CT", name: "Connecticut" },
+  { code: "DE", name: "Delaware" },
+  { code: "FL", name: "Florida" },
+  { code: "GA", name: "Georgia" },
+  { code: "HI", name: "Hawaii" },
+  { code: "ID", name: "Idaho" },
+  { code: "IL", name: "Illinois" },
+  { code: "IN", name: "Indiana" },
+  { code: "IA", name: "Iowa" },
+  { code: "KS", name: "Kansas" },
+  { code: "KY", name: "Kentucky" },
+  { code: "LA", name: "Louisiana" },
+  { code: "ME", name: "Maine" },
+  { code: "MD", name: "Maryland" },
+  { code: "MA", name: "Massachusetts" },
+  { code: "MI", name: "Michigan" },
+  { code: "MN", name: "Minnesota" },
+  { code: "MS", name: "Mississippi" },
+  { code: "MO", name: "Missouri" },
+  { code: "MT", name: "Montana" },
+  { code: "NE", name: "Nebraska" },
+  { code: "NV", name: "Nevada" },
+  { code: "NH", name: "New Hampshire" },
+  { code: "NJ", name: "New Jersey" },
+  { code: "NM", name: "New Mexico" },
+  { code: "NY", name: "New York" },
+  { code: "NC", name: "North Carolina" },
+  { code: "ND", name: "North Dakota" },
+  { code: "OH", name: "Ohio" },
+  { code: "OK", name: "Oklahoma" },
+  { code: "OR", name: "Oregon" },
+  { code: "PA", name: "Pennsylvania" },
+  { code: "RI", name: "Rhode Island" },
+  { code: "SC", name: "South Carolina" },
+  { code: "SD", name: "South Dakota" },
+  { code: "TN", name: "Tennessee" },
+  { code: "TX", name: "Texas" },
+  { code: "UT", name: "Utah" },
+  { code: "VT", name: "Vermont" },
+  { code: "VA", name: "Virginia" },
+  { code: "WA", name: "Washington" },
+  { code: "WV", name: "West Virginia" },
+  { code: "WI", name: "Wisconsin" },
+  { code: "WY", name: "Wyoming" },
+]
+
+const aiCurriculumSchema = z.object({
+  childName: z.string().min(1, "Child name is required"),
+  grade: z.string().min(1, "Grade level is required"),
+  subject: z.string().min(1, "Subject is required"),
+  learningStyle: z.string().optional(),
+  interests: z.string().optional(),
+  stateCode: z.string().optional(),
+  duration: z.enum(["quarter", "semester", "year"]),
+  focusAreas: z.string().optional(),
+})
+
+export default function AICurriculumBuilder() {
+  const { toast } = useToast()
+  const { user } = useAuth()
+  const [isBuilderOpen, setIsBuilderOpen] = useState(false)
+  const [generatedCurriculum, setGeneratedCurriculum] = useState<any>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [selectedStateCode, setSelectedStateCode] = useState<string>("")
+
+  const form = useForm<z.infer<typeof aiCurriculumSchema>>({
+    resolver: zodResolver(aiCurriculumSchema),
+    defaultValues: {
+      childName: "",
+      grade: "",
+      subject: "",
+      learningStyle: "",
+      interests: "",
+      stateCode: "",
+      duration: "year",
+      focusAreas: "",
+    },
+  })
+
+  const onSubmit = async (data: z.infer<typeof aiCurriculumSchema>) => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to generate a curriculum.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsGenerating(true)
+
+    try {
+      const response = await fetch("/api/ai/generate-curriculum", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          childName: data.childName,
+          grade: data.grade,
+          subject: data.subject,
+          learningStyle: data.learningStyle,
+          interests: data.interests,
+          stateCode: data.stateCode,
+          duration: data.duration,
+          focusAreas: data.focusAreas,
+          researchQuery: {
+            subject: data.subject,
+            grade: data.grade,
+            topics: data.focusAreas || "general topics",
+          },
+          researchContext: [],
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to generate curriculum")
+      }
+
+      // Handle streaming response
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let fullResponse = ""
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          fullResponse += decoder.decode(value)
+        }
+      }
+
+      // Parse the streamed JSON response
+      let curriculum = JSON.parse(fullResponse)
+
+      // Ensure we have the expected structure
+      if (!curriculum.curriculum) {
+        curriculum = {
+          curriculum: curriculum.title
+            ? curriculum
+            : {
+                title: `${data.subject} Curriculum for ${data.childName}`,
+                description: curriculum.description || "Generated curriculum",
+                objectives: curriculum.objectives || [],
+              },
+          generatedContent: {
+            lessons: curriculum.lessons || [],
+          },
+        }
+      }
+
+      setGeneratedCurriculum(curriculum)
+      toast({
+        title: "Success",
+        description: "AI curriculum generated successfully!",
+      })
+    } catch (error) {
+      console.error("Error generating curriculum:", error)
+      toast({
+        title: "Error",
+        description: "Failed to generate curriculum. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  return (
+    <div>
+      <Dialog open={isBuilderOpen} onOpenChange={setIsBuilderOpen}>
+        <DialogTrigger asChild>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow bg-gradient-to-br from-primary/10 to-secondary/10 border-primary/20">
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-primary/20 rounded-lg">
+                  <Bot className="h-8 w-8 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">AI Curriculum Builder</h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Generate a complete, standards-aligned curriculum tailored to your child's learning style and
+                    interests.
+                  </p>
+                  <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                    <div className="flex items-center">
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      AI-Powered
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="h-3 w-3 mr-1" />
+                      2-3 minutes
+                    </div>
+                    <div className="flex items-center">
+                      <Target className="h-3 w-3 mr-1" />
+                      Standards-Aligned
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        </DialogTrigger>
+
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Bot className="h-5 w-5 text-primary" />
+              <span>AI Curriculum Builder</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          {!generatedCurriculum ? (
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="childName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Child's Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Emma" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="grade"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Grade Level</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select grade" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="K">Kindergarten</SelectItem>
+                            <SelectItem value="1st">1st Grade</SelectItem>
+                            <SelectItem value="2nd">2nd Grade</SelectItem>
+                            <SelectItem value="3rd">3rd Grade</SelectItem>
+                            <SelectItem value="4th">4th Grade</SelectItem>
+                            <SelectItem value="5th">5th Grade</SelectItem>
+                            <SelectItem value="6th">6th Grade</SelectItem>
+                            <SelectItem value="7th">7th Grade</SelectItem>
+                            <SelectItem value="8th">8th Grade</SelectItem>
+                            <SelectItem value="9th">9th Grade</SelectItem>
+                            <SelectItem value="10th">10th Grade</SelectItem>
+                            <SelectItem value="11th">11th Grade</SelectItem>
+                            <SelectItem value="12th">12th Grade</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="subject"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Subject</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select subject" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Mathematics">Mathematics</SelectItem>
+                            <SelectItem value="Science">Science</SelectItem>
+                            <SelectItem value="English Language Arts">English Language Arts</SelectItem>
+                            <SelectItem value="History">History</SelectItem>
+                            <SelectItem value="Geography">Geography</SelectItem>
+                            <SelectItem value="Art">Art</SelectItem>
+                            <SelectItem value="Music">Music</SelectItem>
+                            <SelectItem value="Physical Education">Physical Education</SelectItem>
+                            <SelectItem value="Foreign Language">Foreign Language</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="duration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Curriculum Duration</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select duration" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="quarter">Quarter (9 weeks)</SelectItem>
+                            <SelectItem value="semester">Semester (18 weeks)</SelectItem>
+                            <SelectItem value="year">Full Year (36 weeks)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="learningStyle"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Learning Style (Optional)</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select learning style" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Visual">Visual Learner</SelectItem>
+                          <SelectItem value="Auditory">Auditory Learner</SelectItem>
+                          <SelectItem value="Kinesthetic">Hands-on/Kinesthetic</SelectItem>
+                          <SelectItem value="Reading">Reading/Writing</SelectItem>
+                          <SelectItem value="Mixed">Mixed Approach</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="interests"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Child's Interests (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="dinosaurs, space, art, sports (comma-separated)" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="stateCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State Homeschool Standards (Optional)</FormLabel>
+                      <Select onValueChange={(value) => {
+                        field.onChange(value)
+                        setSelectedStateCode(value)
+                      }} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select state for standards" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">None</SelectItem>
+                          {US_STATES.map((state) => (
+                            <SelectItem key={state.code} value={state.code}>
+                              {state.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="focusAreas"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Focus Areas (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="problem solving, critical thinking, creativity (comma-separated)"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setIsBuilderOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isGenerating} className="bg-primary hover:bg-primary/90">
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Bot className="h-4 w-4 mr-2" />
+                        Generate Curriculum
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          ) : (
+            <div className="space-y-6">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Sparkles className="h-5 w-5 text-green-600" />
+                  <h3 className="font-semibold text-green-900">Curriculum Generated Successfully!</h3>
+                </div>
+                <p className="text-sm text-green-700">
+                  Your personalized curriculum has been created and saved to your account.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-2">{generatedCurriculum.curriculum.title}</h3>
+                <p className="text-muted-foreground mb-4">{generatedCurriculum.curriculum.description}</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Learning Objectives</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      {generatedCurriculum.curriculum.objectives.slice(0, 3).map((obj: string, idx: number) => (
+                        <li key={idx} className="flex items-start">
+                          <Target className="h-3 w-3 mr-2 mt-1 text-primary" />
+                          {obj}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium mb-2">What's Included</h4>
+                    <div className="space-y-2">
+                      <Badge variant="outline" className="mr-2">
+                        {generatedCurriculum.generatedContent.lessons.length} Lessons
+                      </Badge>
+                      <Badge variant="outline" className="mr-2">
+                        Standards-Aligned
+                      </Badge>
+                      <Badge variant="outline" className="mr-2">
+                        Assessment Methods
+                      </Badge>
+                      <Badge variant="outline">Resource Lists</Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex space-x-2">
+                <Button
+                  onClick={() => {
+                    setGeneratedCurriculum(null)
+                    form.reset()
+                  }}
+                  variant="outline"
+                >
+                  Generate Another
+                </Button>
+                <Button onClick={() => setIsBuilderOpen(false)} className="bg-primary hover:bg-primary/90">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  View in Curriculum
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
