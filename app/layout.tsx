@@ -14,11 +14,6 @@ import { ErrorTrackingProvider } from "@/lib/error-tracking"
 import { PerformanceMonitoringProvider } from "@/lib/performance-monitoring"
 import { SessionInitializer } from "@/components/session-initializer"
 import QueryProvider from "@/components/query-provider"
-import dynamic from "next/dynamic"
-
-const SafeErrorBoundary = dynamic(() => import("@/components/error-boundary"), {
-  ssr: false,
-})
 
 const inter = Inter({
   subsets: ["latin"],
