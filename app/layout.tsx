@@ -84,26 +84,26 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} ${fraunces.variable} font-sans`}>
         <CacheProvider>
-          <AnalyticsProvider>
-            <ErrorTrackingProvider>
-              <PerformanceMonitoringProvider>
-                <AuthProvider>
-                  <QueryProvider>
-                    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-                      <Suspense>
+          <Suspense fallback={null}>
+            <AnalyticsProvider>
+              <ErrorTrackingProvider>
+                <PerformanceMonitoringProvider>
+                  <AuthProvider>
+                    <QueryProvider>
+                      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
                         {children}
                         <AIAssistant />
-                      </Suspense>
-                      <ServiceWorkerRegister />
-                      <Footer />
-                      <CookieConsent />
-                      <SessionInitializer />
-                    </ThemeProvider>
-                  </QueryProvider>
-                </AuthProvider>
-              </PerformanceMonitoringProvider>
-            </ErrorTrackingProvider>
-          </AnalyticsProvider>
+                        <ServiceWorkerRegister />
+                        <Footer />
+                        <CookieConsent />
+                        <SessionInitializer />
+                      </ThemeProvider>
+                    </QueryProvider>
+                  </AuthProvider>
+                </PerformanceMonitoringProvider>
+              </ErrorTrackingProvider>
+            </AnalyticsProvider>
+          </Suspense>
         </CacheProvider>
       </body>
     </html>
