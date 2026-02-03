@@ -5,6 +5,8 @@ import { getOptionalUser } from "@/lib/auth-middleware"
 
 import { Sidebar } from "@/components/admin/sidebar"
 
+export const dynamic = "force-dynamic"
+
 export default async function AdminLayout({
   children,
 }: {
