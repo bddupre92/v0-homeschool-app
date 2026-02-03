@@ -46,7 +46,7 @@ export function middleware(request: NextRequest) {
   // Content Security Policy
   response.headers.set(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.vercel-insights.com https://*.firebaseio.com https://*.googleapis.com; connect-src 'self' https://*.vercel-insights.com https://*.firebaseio.com https://*.googleapis.com https://api.mapbox.com; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://api.mapbox.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com; font-src 'self' data:; frame-src https://*.firebaseapp.com;",
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.vercel-insights.com https://*.firebaseio.com https://*.googleapis.com https://maps.googleapis.com https://maps.gstatic.com; connect-src 'self' https://*.vercel-insights.com https://*.firebaseio.com https://*.googleapis.com https://maps.googleapis.com https://maps.gstatic.com https://api.mapbox.com; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://maps.googleapis.com https://maps.gstatic.com https://api.mapbox.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com https://maps.googleapis.com; font-src 'self' data:; frame-src https://*.firebaseapp.com;",
   )
 
   // Other security headers

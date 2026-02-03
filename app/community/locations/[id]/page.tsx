@@ -20,11 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { EnhancedLocationMap } from "@/components/enhanced-location-map"
+import { GoogleLocationMap } from "@/components/google-location-map"
 import Navigation from "@/components/navigation"
-
-// Add the import for our new hook at the top of the file
-import { useMapboxToken } from "@/hooks/use-mapbox"
 
 // This would come from your database in a real app
 const getLocationById = (id: string) => {
@@ -161,9 +158,6 @@ export default function LocationDetailPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("info")
   const [newReview, setNewReview] = useState("")
-
-  // Inside the LocationDetailPage component, add this near the top:
-  const { loading: mapLoading, error: mapError } = useMapboxToken()
 
   useEffect(() => {
     if (params.id) {
@@ -432,40 +426,23 @@ export default function LocationDetailPage() {
                 <CardTitle>Location</CardTitle>
               </CardHeader>
               <CardContent>
-                {mapError ? (
-                  <div className="text-center py-4">
-                    <p className="text-red-500 mb-2">Failed to load map: {mapError.message}</p>
-                    <Button onClick={() => window.location.reload()} size="sm">
-                      Retry
-                    </Button>
-                  </div>
-                ) : mapLoading ? (
-                  <div className="text-center py-4">
-                    <p className="mb-2">Loading map...</p>
-                  </div>
-                ) : (
-                  <EnhancedLocationMap
-                    locations={[
-                      {
-                        id: location.id,
-                        name: location.name,
-                        rating: location.rating,
-                        visits: location.visits,
-                        coordinates: location.coordinates,
-                        address: location.address,
-                        category: location.category,
-                        description: location.description,
-                      },
-                    ]}
-                    selectedLocationId={location.id}
-                    height="250px"
-                    showControls={true}
-                    showSearch={false}
-                    showFilters={false}
-                    showDirections={true}
-                    showClustering={false}
-                  />
-                )}
+                <GoogleLocationMap
+                  locations={[
+                    {
+                      id: location.id,
+                      name: location.name,
+                      rating: location.rating,
+                      visits: location.visits,
+                      coordinates: location.coordinates,
+                      address: location.address,
+                      category: location.category,
+                      description: location.description,
+                    },
+                  ]}
+                  selectedLocationId={location.id}
+                  height="250px"
+                  showZoomControls={false}
+                />
                 <div className="mt-4 space-y-2">
                   <div className="flex items-start">
                     <MapPin className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
