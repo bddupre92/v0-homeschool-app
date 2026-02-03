@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Suspense } from "react"
 import { ArrowLeft } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -7,7 +8,9 @@ import Navigation from "@/components/navigation"
 export default function NotFound() {
   return (
     <div className="min-h-screen flex flex-col">
-      <Navigation />
+      <Suspense fallback={null}>
+        <Navigation />
+      </Suspense>
       <main className="flex-1 container py-8 px-4 md:px-6 flex items-center justify-center">
         <div className="text-center max-w-md">
           <h1 className="text-6xl font-bold mb-4">404</h1>
