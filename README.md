@@ -170,6 +170,11 @@ describe('Component', () => {
    - `resources`
    - `lessons`
    - `events`
+   - `eventAttendees`
+   - `groups`
+   - `groupMembers`
+   - `curricula`
+   - `stateRequirements`
    - `ratings`
 
 4. Set up Firebase Storage for file uploads.
