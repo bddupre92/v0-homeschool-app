@@ -221,6 +221,8 @@ export default function PlannerPage() {
   const [filteredSubjects, setFilteredSubjects] = useState(subjects.map((s) => s.id))
   const [isCalendarConnected, setIsCalendarConnected] = useState(false)
   const [calendarSyncStatus, setCalendarSyncStatus] = useState("Not connected")
+  const [calendarSyncMessage, setCalendarSyncMessage] = useState<string | null>(null)
+  const [calendarSyncing, setCalendarSyncing] = useState(false)
   const [lessonImage, setLessonImage] = useState<File | null>(null)
 
   // Week navigation
@@ -306,14 +308,64 @@ export default function PlannerPage() {
   }
 
   const handleConnectCalendar = () => {
-    setIsCalendarConnected(true)
-    setCalendarSyncStatus("Connected (two-way sync enabled)")
+    setCalendarSyncMessage(null)
+    fetch("/api/google-calendar/connect")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.url) {
+          window.location.href = data.url
+        } else {
+          setCalendarSyncMessage("Unable to start Google Calendar connection.")
+        }
+      })
+      .catch(() => setCalendarSyncMessage("Unable to start Google Calendar connection."))
   }
 
   const handleDisconnectCalendar = () => {
     setIsCalendarConnected(false)
     setCalendarSyncStatus("Not connected")
+    setCalendarSyncMessage("Disconnected. You can reconnect any time.")
   }
+
+  const handleSyncCalendar = async (direction: "pull" | "push") => {
+    setCalendarSyncing(true)
+    setCalendarSyncMessage(null)
+    try {
+      const response = await fetch("/api/google-calendar/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direction }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setCalendarSyncMessage(data?.error ?? "Calendar sync failed.")
+        return
+      }
+      setCalendarSyncMessage(`Sync complete (${direction}): ${data.synced ?? 0} events.`)
+    } catch (error) {
+      setCalendarSyncMessage("Calendar sync failed.")
+    } finally {
+      setCalendarSyncing(false)
+    }
+  }
+
+  useEffect(() => {
+    fetch("/api/google-calendar/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.connected) {
+          setIsCalendarConnected(true)
+          setCalendarSyncStatus("Connected (two-way sync enabled)")
+        } else {
+          setIsCalendarConnected(false)
+          setCalendarSyncStatus("Not connected")
+        }
+      })
+      .catch(() => {
+        setIsCalendarConnected(false)
+        setCalendarSyncStatus("Not connected")
+      })
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -652,6 +704,7 @@ export default function PlannerPage() {
                     <div className="text-sm">
                       Status: <span className="font-medium">{calendarSyncStatus}</span>
                     </div>
+                    {calendarSyncMessage && <div className="text-xs text-muted-foreground">{calendarSyncMessage}</div>}
                     <div className="text-xs text-muted-foreground">
                       Planner updates will sync to Google Calendar, and calendar changes will appear in your planner
                       once connected.
@@ -659,9 +712,27 @@ export default function PlannerPage() {
                   </CardContent>
                   <CardFooter className="flex gap-2">
                     {isCalendarConnected ? (
-                      <Button variant="outline" className="w-full" onClick={handleDisconnectCalendar}>
-                        Disconnect Calendar
-                      </Button>
+                      <div className="flex flex-col sm:flex-row gap-2 w-full">
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => handleSyncCalendar("pull")}
+                          disabled={calendarSyncing}
+                        >
+                          Sync from Google
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => handleSyncCalendar("push")}
+                          disabled={calendarSyncing}
+                        >
+                          Sync to Google
+                        </Button>
+                        <Button variant="ghost" className="w-full" onClick={handleDisconnectCalendar}>
+                          Disconnect
+                        </Button>
+                      </div>
                     ) : (
                       <Button className="w-full" onClick={handleConnectCalendar}>
                         Connect Google Calendar
