@@ -10,7 +10,7 @@ import { formatDistanceToNow } from "date-fns"
 export function BackupsClient() {
   const [backups, setBackups] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Fetch backups when component mounts (only in browser)
@@ -20,7 +20,7 @@ export function BackupsClient() {
         const data = await response.json()
         setBackups(data)
       } catch (err) {
-        setError(err.message)
+        setError(err instanceof Error ? err.message : "Failed to fetch backups")
       } finally {
         setLoading(false)
       }
