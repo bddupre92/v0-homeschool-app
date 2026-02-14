@@ -9,7 +9,7 @@ const CACHE_DURATION = 60 * 60 * 1000
 export async function getMapboxToken() {
   try {
     // Check if we have a cached token in cookies
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const cachedToken = cookieStore.get("mapbox_token")
 
     if (cachedToken) {
