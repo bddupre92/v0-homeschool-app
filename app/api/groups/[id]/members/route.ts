@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
+import { requireAuth } from "@/lib/auth-service"
 
 // GET all members of a group
 export async function GET(
@@ -41,20 +42,17 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = await requireAuth()
+
     const body = await request.json()
     const { userId, role } = body
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      )
-    }
+    const memberUserId = userId || user.userId
 
     // Check if user is already a member
     const existing = await collection("groupMembers")
       .where("groupId", "==", params.id)
-      .where("userId", "==", userId)
+      .where("userId", "==", memberUserId)
       .get()
 
     if (!existing.empty) {
@@ -83,14 +81,17 @@ export async function POST(
     const timestamp = nowIso()
     const memberRef = await collection("groupMembers").add({
       groupId: params.id,
-      userId,
+      userId: memberUserId,
       role: role || "member",
       joinedAt: timestamp,
     })
     const created = await memberRef.get()
 
     return NextResponse.json(docToData(created), { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to add group member:', error)
     return NextResponse.json(
       { error: 'Failed to add group member' },

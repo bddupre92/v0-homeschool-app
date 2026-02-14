@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { collection, docToData } from "@/lib/firestore-helpers"
+import { requireAuth } from "@/lib/auth-service"
 
 // DELETE remove a member from a group
 export async function DELETE(
@@ -7,6 +8,20 @@ export async function DELETE(
   { params }: { params: { id: string; userId: string } }
 ) {
   try {
+    const user = await requireAuth()
+
+    // Allow self-removal or group owner removal
+    const groupDoc = await collection("groups").doc(params.id).get()
+    const isOwner = groupDoc.exists && groupDoc.data()?.createdById === user.userId
+    const isSelf = params.userId === user.userId
+
+    if (!isOwner && !isSelf) {
+      return NextResponse.json(
+        { error: 'You do not have permission to remove this member' },
+        { status: 403 }
+      )
+    }
+
     const snapshot = await collection("groupMembers")
       .where("groupId", "==", params.id)
       .where("userId", "==", params.userId)
@@ -21,7 +36,10 @@ export async function DELETE(
 
     await Promise.all(snapshot.docs.map((doc) => doc.ref.delete()))
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to remove group member:', error)
     return NextResponse.json(
       { error: 'Failed to remove group member' },
@@ -36,6 +54,17 @@ export async function PUT(
   { params }: { params: { id: string; userId: string } }
 ) {
   try {
+    const user = await requireAuth()
+
+    // Only group owner can change roles
+    const groupDoc = await collection("groups").doc(params.id).get()
+    if (!groupDoc.exists || groupDoc.data()?.createdById !== user.userId) {
+      return NextResponse.json(
+        { error: 'Only the group owner can change member roles' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const { role } = body
 
@@ -62,7 +91,10 @@ export async function PUT(
     await docRef.set({ role }, { merge: true })
     const updated = await docRef.get()
     return NextResponse.json(docToData(updated))
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to update member role:', error)
     return NextResponse.json(
       { error: 'Failed to update member role' },

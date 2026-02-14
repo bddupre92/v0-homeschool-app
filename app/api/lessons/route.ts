@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
+import { requireAuth } from "@/lib/auth-service"
 
 // GET all lessons for a curriculum
 export async function GET(request: NextRequest) {
   try {
+    await requireAuth()
+
     const { searchParams } = new URL(request.url)
     const curriculumId = searchParams.get('curriculumId')
 
@@ -21,7 +24,10 @@ export async function GET(request: NextRequest) {
       .get()
 
     return NextResponse.json(snapshot.docs.map(docToData))
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to fetch lessons:', error)
     return NextResponse.json(
       { error: 'Failed to fetch lessons' },
@@ -33,6 +39,8 @@ export async function GET(request: NextRequest) {
 // POST create a new lesson
 export async function POST(request: NextRequest) {
   try {
+    await requireAuth()
+
     const body = await request.json()
     const { curriculumId, title, description, subject, weekNumber, dayOfWeek, durationMinutes, resources } = body
 
@@ -59,7 +67,10 @@ export async function POST(request: NextRequest) {
 
     const created = await docRef.get()
     return NextResponse.json(docToData(created), { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to create lesson:', error)
     return NextResponse.json(
       { error: 'Failed to create lesson' },

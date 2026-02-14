@@ -1,19 +1,34 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 // Simple in-memory store for rate limiting
-// In production, you'd use Redis or another distributed store
+// In production, use Redis or another distributed store
 const rateLimit = new Map<string, { count: number; resetTime: number }>()
+const MAX_ENTRIES = 10000
 
 interface RateLimitOptions {
   limit?: number
   windowMs?: number
 }
 
+function cleanupExpiredEntries() {
+  if (rateLimit.size <= MAX_ENTRIES) return
+
+  const now = Date.now()
+  for (const [key, value] of rateLimit.entries()) {
+    if (value.resetTime < now) {
+      rateLimit.delete(key)
+    }
+  }
+}
+
 export function rateLimiter(req: NextRequest, options: RateLimitOptions = {}) {
   const { limit = 10, windowMs = 60 * 1000 } = options
 
+  // Prevent unbounded memory growth
+  cleanupExpiredEntries()
+
   // Get IP address from request
-  const ip = req.ip || "anonymous"
+  const ip = req.ip || req.headers.get("x-forwarded-for") || "anonymous"
 
   // Get current timestamp
   const now = Date.now()

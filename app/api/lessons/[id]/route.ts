@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
+import { requireAuth } from "@/lib/auth-service"
 
 // GET a specific lesson
 export async function GET(
@@ -7,6 +8,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireAuth()
+
     const doc = await collection("lessons").doc(params.id).get()
 
     if (!doc.exists) {
@@ -17,7 +20,10 @@ export async function GET(
     }
 
     return NextResponse.json(docToData(doc))
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to fetch lesson:', error)
     return NextResponse.json(
       { error: 'Failed to fetch lesson' },
@@ -32,6 +38,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireAuth()
+
     const body = await request.json()
     const { title, description, subject, weekNumber, dayOfWeek, durationMinutes, resources } = body
 
@@ -59,7 +67,10 @@ export async function PUT(
     await docRef.set(payload, { merge: true })
     const updated = await docRef.get()
     return NextResponse.json(docToData(updated))
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to update lesson:', error)
     return NextResponse.json(
       { error: 'Failed to update lesson' },
@@ -74,6 +85,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireAuth()
+
     const docRef = collection("lessons").doc(params.id)
     const doc = await docRef.get()
 
@@ -86,7 +99,10 @@ export async function DELETE(
 
     await docRef.delete()
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to delete lesson:', error)
     return NextResponse.json(
       { error: 'Failed to delete lesson' },

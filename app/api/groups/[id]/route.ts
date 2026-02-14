@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
+import { requireAuth } from "@/lib/auth-service"
 
 // GET a specific group
 export async function GET(
@@ -32,6 +33,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = await requireAuth()
+
     const body = await request.json()
     const { name, description, location, groupType, stateAbbreviation, maxMembers, isPrivate, imageUrl } = body
 
@@ -42,6 +45,15 @@ export async function PUT(
       return NextResponse.json(
         { error: 'Group not found' },
         { status: 404 }
+      )
+    }
+
+    // Verify ownership
+    const groupData = doc.data()
+    if (groupData?.createdById !== user.userId) {
+      return NextResponse.json(
+        { error: 'You do not have permission to update this group' },
+        { status: 403 }
       )
     }
 
@@ -60,7 +72,10 @@ export async function PUT(
     await docRef.set(payload, { merge: true })
     const updated = await docRef.get()
     return NextResponse.json(docToData(updated))
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to update group:', error)
     return NextResponse.json(
       { error: 'Failed to update group' },
@@ -75,6 +90,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = await requireAuth()
+
     const docRef = collection("groups").doc(params.id)
     const doc = await docRef.get()
 
@@ -85,9 +102,21 @@ export async function DELETE(
       )
     }
 
+    // Verify ownership
+    const groupData = doc.data()
+    if (groupData?.createdById !== user.userId) {
+      return NextResponse.json(
+        { error: 'You do not have permission to delete this group' },
+        { status: 403 }
+      )
+    }
+
     await docRef.delete()
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to delete group:', error)
     return NextResponse.json(
       { error: 'Failed to delete group' },

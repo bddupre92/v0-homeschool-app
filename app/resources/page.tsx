@@ -235,13 +235,10 @@ export default function ResourcesPage() {
               </p>
             </div>
 
-            <Button 
+            <Button
               className="gap-1 sm:self-start"
-              onClick={() => {
-                // Navigate to resource submission form or open modal
-                console.log('Opening resource submission form')
-                alert('Resource submission form would open here')
-              }}
+              disabled
+              title="Coming soon"
             >
               <Plus className="h-4 w-4" />
               Submit Resource

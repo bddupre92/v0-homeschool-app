@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
+import { requireAuth } from "@/lib/auth-service"
 
 // GET all public groups or groups by state
 export async function GET(request: NextRequest) {
@@ -47,9 +48,10 @@ export async function GET(request: NextRequest) {
 // POST create a new group
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+
     const body = await request.json()
     const {
-      createdById,
       name,
       description,
       location,
@@ -60,16 +62,16 @@ export async function POST(request: NextRequest) {
       imageUrl,
     } = body
 
-    if (!createdById || !name) {
+    if (!name) {
       return NextResponse.json(
-        { error: 'createdById and name are required' },
+        { error: 'name is required' },
         { status: 400 }
       )
     }
 
     const timestamp = nowIso()
     const groupRef = await collection("groups").add({
-      createdById,
+      createdById: user.userId,
       name,
       description: description || "",
       location: location || "",
@@ -84,14 +86,17 @@ export async function POST(request: NextRequest) {
 
     await collection("groupMembers").add({
       groupId: groupRef.id,
-      userId: createdById,
+      userId: user.userId,
       role: "admin",
       joinedAt: timestamp,
     })
 
     const created = await groupRef.get()
     return NextResponse.json(docToData(created), { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to create group:', error)
     return NextResponse.json(
       { error: 'Failed to create group' },

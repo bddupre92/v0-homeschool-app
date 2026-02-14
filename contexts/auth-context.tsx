@@ -23,7 +23,7 @@ import { Loader2 } from "lucide-react"
 
 // --- Configuration ---
 // Set this to true to bypass Firebase auth and use a mock user for development.
-const DEV_MODE_BYPASS_AUTH = true
+const DEV_MODE_BYPASS_AUTH = false
 
 const mockUser: User = {
   uid: "dev-user-uid",

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
+import { requireAuth } from "@/lib/auth-service"
 
-// GET all state requirements or a specific state
+// GET all state requirements or a specific state (public reference data)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const stateAbbr = searchParams.get('state')
 
     if (stateAbbr) {
-      // Get specific state requirements
       const doc = await collection("stateRequirements").doc(stateAbbr).get()
 
       if (!doc.exists) {
@@ -20,7 +20,6 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json(docToData(doc))
     } else {
-      // Get all states
       const snapshot = await collection("stateRequirements")
         .orderBy("stateName", "asc")
         .get()
@@ -35,9 +34,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST create or update state requirements
+// POST create or update state requirements (requires authentication)
 export async function POST(request: NextRequest) {
   try {
+    await requireAuth()
+
     const body = await request.json()
     const {
       stateAbbreviation,
@@ -83,7 +84,10 @@ export async function POST(request: NextRequest) {
     const saved = await docRef.get()
 
     return NextResponse.json(docToData(saved), { status: existing.exists ? 200 : 201 })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to create/update state requirements:', error)
     return NextResponse.json(
       { error: 'Failed to create/update state requirements' },

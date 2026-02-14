@@ -1,12 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
+  eslint: {
+    ignoreDuringBuilds: false,
   },
-  images: {
-    unoptimized: true,
-  },
-  // Allow cross-origin requests for network access during development
   async headers() {
     return [
       {
@@ -14,7 +10,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: '*',
+            value: process.env.NEXT_PUBLIC_APP_URL || 'https://atozfamily.org',
           },
         ],
       },
