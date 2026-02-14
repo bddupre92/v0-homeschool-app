@@ -7,7 +7,7 @@ import { adminDb, adminAuth } from "@/lib/firebase-admin-safe"
 
 // Get the current user from the session
 async function getCurrentUser() {
-  const sessionCookie = cookies().get("session")?.value
+  const sessionCookie = (await cookies()).get("session")?.value
 
   if (!sessionCookie) {
     return null

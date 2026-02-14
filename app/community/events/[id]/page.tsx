@@ -26,8 +26,9 @@ const eventsData = [
   },
 ]
 
-export default function EventPage({ params }) {
-  const event = eventsData.find((e) => e.id === params.id)
+export default async function EventPage({ params }) {
+  const { id } = await params
+  const event = eventsData.find((e) => e.id === id)
 
   if (!event) {
     notFound()

@@ -39,8 +39,9 @@ const groupsData = [
   },
 ]
 
-export default function GroupPage({ params }) {
-  const group = groupsData.find((g) => g.id === params.id)
+export default async function GroupPage({ params }) {
+  const { id } = await params
+  const group = groupsData.find((g) => g.id === id)
 
   if (!group) {
     notFound()
