@@ -1,5 +1,5 @@
-import { sql } from '@vercel/postgres'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
+import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
 
 // GET all state requirements or a specific state
 export async function GET(request: NextRequest) {
@@ -9,24 +9,22 @@ export async function GET(request: NextRequest) {
 
     if (stateAbbr) {
       // Get specific state requirements
-      const result = await sql`
-        SELECT * FROM state_requirements WHERE state_abbreviation = ${stateAbbr}
-      `
+      const doc = await collection("stateRequirements").doc(stateAbbr).get()
 
-      if (result.rows.length === 0) {
+      if (!doc.exists) {
         return NextResponse.json(
           { error: 'State requirements not found' },
           { status: 404 }
         )
       }
 
-      return NextResponse.json(result.rows[0])
+      return NextResponse.json(docToData(doc))
     } else {
       // Get all states
-      const result = await sql`
-        SELECT id, state_abbreviation, state_name FROM state_requirements ORDER BY state_name
-      `
-      return NextResponse.json(result.rows)
+      const snapshot = await collection("stateRequirements")
+        .orderBy("stateName", "asc")
+        .get()
+      return NextResponse.json(snapshot.docs.map(docToData))
     }
   } catch (error) {
     console.error('Failed to fetch state requirements:', error)
@@ -62,40 +60,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if state already exists
-    const existing = await sql`
-      SELECT * FROM state_requirements WHERE state_abbreviation = ${stateAbbreviation}
-    `
-
-    if (existing.rows.length > 0) {
-      // Update existing
-      const result = await sql`
-        UPDATE state_requirements
-        SET 
-          state_name = ${stateName},
-          subjects_required = ${JSON.stringify(subjectsRequired || [])},
-          hours_per_year = ${hoursPerYear || null},
-          attendance_rules = ${attendanceRules || null},
-          assessment_requirements = ${assessmentRequirements || null},
-          record_keeping_requirements = ${recordKeepingRequirements || null},
-          special_needs_provisions = ${specialNeedsProvisions || null},
-          early_childhood_rules = ${earlyChildhoodRules || null},
-          high_school_rules = ${highSchoolRules || null},
-          additional_info = ${JSON.stringify(additionalInfo || {})},
-          updated_at = CURRENT_TIMESTAMP
-        WHERE state_abbreviation = ${stateAbbreviation}
-        RETURNING *
-      `
-      return NextResponse.json(result.rows[0])
-    } else {
-      // Create new
-      const result = await sql`
-        INSERT INTO state_requirements (state_abbreviation, state_name, subjects_required, hours_per_year, attendance_rules, assessment_requirements, record_keeping_requirements, special_needs_provisions, early_childhood_rules, high_school_rules, additional_info)
-        VALUES (${stateAbbreviation}, ${stateName}, ${JSON.stringify(subjectsRequired || [])}, ${hoursPerYear || null}, ${attendanceRules || null}, ${assessmentRequirements || null}, ${recordKeepingRequirements || null}, ${specialNeedsProvisions || null}, ${earlyChildhoodRules || null}, ${highSchoolRules || null}, ${JSON.stringify(additionalInfo || {})})
-        RETURNING *
-      `
-      return NextResponse.json(result.rows[0], { status: 201 })
+    const docRef = collection("stateRequirements").doc(stateAbbreviation)
+    const existing = await docRef.get()
+    const timestamp = nowIso()
+    const payload = {
+      stateAbbreviation,
+      stateName,
+      subjectsRequired: subjectsRequired || [],
+      hoursPerYear: hoursPerYear ?? null,
+      attendanceRules: attendanceRules || "",
+      assessmentRequirements: assessmentRequirements || "",
+      recordKeepingRequirements: recordKeepingRequirements || "",
+      specialNeedsProvisions: specialNeedsProvisions || "",
+      earlyChildhoodRules: earlyChildhoodRules || "",
+      highSchoolRules: highSchoolRules || "",
+      additionalInfo: additionalInfo || {},
+      updatedAt: timestamp,
+      ...(existing.exists ? {} : { createdAt: timestamp }),
     }
+
+    await docRef.set(payload, { merge: true })
+    const saved = await docRef.get()
+
+    return NextResponse.json(docToData(saved), { status: existing.exists ? 200 : 201 })
   } catch (error) {
     console.error('Failed to create/update state requirements:', error)
     return NextResponse.json(

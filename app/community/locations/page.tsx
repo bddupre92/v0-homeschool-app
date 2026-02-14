@@ -8,17 +8,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { EnhancedLocationMap, type Location } from "@/components/enhanced-location-map"
+import { GoogleLocationMap, type Location } from "@/components/google-location-map"
 import Navigation from "@/components/navigation"
-import { useMapboxToken } from "@/hooks/use-mapbox"
 
 export default function LocationsPage() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState("grid")
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
-
-  const { loading: mapLoading, error: mapError } = useMapboxToken()
 
   // This would come from your database in a real app
   const locations: Location[] = [
@@ -134,15 +131,15 @@ export default function LocationsPage() {
       <Navigation />
 
       <main className="flex-1 container py-8 px-4 md:px-6">
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">Field Trip Locations</h1>
-              <p className="text-muted-foreground">Discover popular homeschool field trip destinations</p>
-            </div>
+        <Tabs value={viewMode} onValueChange={setViewMode}>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold">Field Trip Locations</h1>
+                <p className="text-muted-foreground">Discover popular homeschool field trip destinations</p>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <Tabs value={viewMode} onValueChange={setViewMode}>
+              <div className="flex items-center gap-2">
                 <TabsList>
                   <TabsTrigger value="grid" className="flex items-center gap-1">
                     <Grid className="h-4 w-4" />
@@ -153,149 +150,123 @@ export default function LocationsPage() {
                     Map
                   </TabsTrigger>
                 </TabsList>
-              </Tabs>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search locations..."
-                className="pl-8"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              </div>
             </div>
 
-            <Button variant="outline" className="gap-1">
-              <Filter className="h-4 w-4" />
-              Filter
-            </Button>
-          </div>
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search locations..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
 
-          <TabsContent value="grid" className="mt-0">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredLocations.map((location) => (
-                <Card
-                  key={location.id}
-                  className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => router.push(`/community/locations/${location.id}`)}
-                >
-                  <div className="h-48 relative">
-                    <img
-                      src="/placeholder.svg?height=200&width=400"
-                      alt={location.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <Badge
-                      className="absolute top-2 right-2"
-                      style={{ backgroundColor: getCategoryColor(location.category) }}
-                    >
-                      {location.category.charAt(0).toUpperCase() + location.category.slice(1)}
-                    </Badge>
-                  </div>
-                  <CardHeader>
-                    <CardTitle>{location.name}</CardTitle>
-                    <CardDescription className="flex items-center">
-                      <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                      <span>{location.rating}</span>
-                      <span className="mx-1">·</span>
-                      <span>{location.visits} visits</span>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-start mb-2">
-                      <MapPin className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
-                      <span className="text-sm">{location.address}</span>
+              <Button variant="outline" className="gap-1">
+                <Filter className="h-4 w-4" />
+                Filter
+              </Button>
+            </div>
+            <TabsContent value="grid" className="mt-0">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {filteredLocations.map((location) => (
+                  <Card
+                    key={location.id}
+                    className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => router.push(`/community/locations/${location.id}`)}
+                  >
+                    <div className="h-48 relative">
+                      <img
+                        src="/placeholder.svg?height=200&width=400"
+                        alt={location.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <Badge
+                        className="absolute top-2 right-2"
+                        style={{ backgroundColor: getCategoryColor(location.category) }}
+                      >
+                        {location.category.charAt(0).toUpperCase() + location.category.slice(1)}
+                      </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{location.description}</p>
-                  </CardContent>
-                  <CardFooter>
-                    <Button variant="outline" className="w-full">
-                      View Details
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
+                    <CardHeader>
+                      <CardTitle>{location.name}</CardTitle>
+                      <CardDescription className="flex items-center">
+                        <Star className="h-4 w-4 text-yellow-500 mr-1" />
+                        <span>{location.rating}</span>
+                        <span className="mx-1">·</span>
+                        <span>{location.visits} visits</span>
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-start mb-2">
+                        <MapPin className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
+                        <span className="text-sm">{location.address}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{location.description}</p>
+                    </CardContent>
+                    <CardFooter>
+                      <Button variant="outline" className="w-full">
+                        View Details
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
 
-          <TabsContent value="map" className="mt-0">
-            {mapError ? (
+            <TabsContent value="map" className="mt-0">
               <Card>
                 <CardContent className="p-4">
-                  <div className="text-center py-8">
-                    <p className="text-red-500 mb-2">Failed to load map: {mapError.message}</p>
-                    <Button onClick={() => window.location.reload()}>Retry</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : mapLoading ? (
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-center py-8">
-                    <p className="mb-2">Loading map...</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-4">
-                  <EnhancedLocationMap
+                  <GoogleLocationMap
                     locations={filteredLocations}
                     selectedLocationId={selectedLocation || undefined}
                     onSelectLocation={(id) => {
                       setSelectedLocation(id)
                     }}
                     height="600px"
-                    showControls={true}
-                    showSearch={true}
-                    showFilters={true}
-                    showDirections={true}
-                    showClustering={true}
                   />
                 </CardContent>
               </Card>
-            )}
-          </TabsContent>
-
-          <div className="grid gap-4 mt-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredLocations.map((location) => (
-              <div
-                key={location.id}
-                className={`flex items-center p-3 rounded-md cursor-pointer ${
-                  selectedLocation === location.id ? "bg-muted" : "hover:bg-muted/50"
-                }`}
-                onClick={() => {
-                  setSelectedLocation(location.id)
-                  if (viewMode === "map") {
-                    // Center the map on this location
-                  }
-                }}
-              >
-                <div className="flex-1">
-                  <div className="font-medium">{location.name}</div>
-                  <div className="text-sm text-muted-foreground flex items-center">
-                    <Star className="h-3 w-3 inline mr-1 text-yellow-500" />
-                    {location.rating} · {location.category}
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    router.push(`/community/locations/${location.id}`)
+            </TabsContent>
+            <div className="grid gap-4 mt-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredLocations.map((location) => (
+                <div
+                  key={location.id}
+                  className={`flex items-center p-3 rounded-md cursor-pointer ${
+                    selectedLocation === location.id ? "bg-muted" : "hover:bg-muted/50"
+                  }`}
+                  onClick={() => {
+                    setSelectedLocation(location.id)
+                    if (viewMode === "map") {
+                      // Center the map on this location
+                    }
                   }}
                 >
-                  Details
-                </Button>
-              </div>
-            ))}
+                  <div className="flex-1">
+                    <div className="font-medium">{location.name}</div>
+                    <div className="text-sm text-muted-foreground flex items-center">
+                      <Star className="h-3 w-3 inline mr-1 text-yellow-500" />
+                      {location.rating} · {location.category}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      router.push(`/community/locations/${location.id}`)
+                    }}
+                  >
+                    Details
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </Tabs>
       </main>
     </div>
   )

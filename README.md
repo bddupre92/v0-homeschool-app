@@ -151,6 +151,10 @@ describe('Component', () => {
    - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
    - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
    - `NEXT_PUBLIC_FIREBASE_APP_ID`
+   - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+   - `GOOGLE_CALENDAR_CLIENT_ID`
+   - `GOOGLE_CALENDAR_CLIENT_SECRET`
+   - `GOOGLE_GENAI_API_KEY`
    - `FIREBASE_ADMIN_PROJECT_ID`
    - `FIREBASE_ADMIN_CLIENT_EMAIL`
    - `FIREBASE_ADMIN_PRIVATE_KEY`
@@ -170,11 +174,37 @@ describe('Component', () => {
    - `resources`
    - `lessons`
    - `events`
+   - `eventAttendees`
+   - `groups`
+   - `groupMembers`
+   - `curricula`
+   - `stateRequirements`
    - `ratings`
 
 4. Set up Firebase Storage for file uploads.
 
 5. Configure Firestore Rules for security.
+
+6. Enable Firebase AI Logic (Gemini) in the Firebase Console.
+   - Ensure the Firebase project has access to Gemini models.
+   - The app uses the Firebase web SDK to access Gemini via AI Logic.
+
+7. (Optional) Configure Firebase Genkit for server-side AI workflows.
+   - Set a `GOOGLE_GENAI_API_KEY` environment variable for the Genkit Google AI plugin.
+   - Deploy Genkit flows alongside the app as needed.
+
+## Google Maps Setup (Community Locations)
+
+1. Create a Google Cloud project and enable the Maps JavaScript API.
+2. Create an API key and add it to your environment as `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
+3. Restart the dev server so the Community → Locations map can load.
+
+## Google Calendar Sync (Planner)
+
+1. Create OAuth credentials in Google Cloud and add authorized redirect URI:
+   `https://<your-domain>/api/google-calendar/callback`
+2. Add `GOOGLE_CALENDAR_CLIENT_ID` and `GOOGLE_CALENDAR_CLIENT_SECRET` to your environment.
+3. Connect the planner from the UI to enable two-way sync.
 
 ### Build Environment Handling
 

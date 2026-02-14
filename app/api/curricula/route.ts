@@ -1,5 +1,5 @@
-import { sql } from '@vercel/postgres'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
+import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
 
 // GET all curricula for a user
 export async function GET(request: NextRequest) {
@@ -14,13 +14,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const result = await sql`
-      SELECT * FROM curricula 
-      WHERE user_id = ${userId}
-      ORDER BY created_at DESC
-    `
+    const snapshot = await collection("curricula")
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .get()
 
-    return NextResponse.json(result.rows)
+    return NextResponse.json(snapshot.docs.map(docToData))
   } catch (error) {
     console.error('Failed to fetch curricula:', error)
     return NextResponse.json(
@@ -43,13 +42,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await sql`
-      INSERT INTO curricula (user_id, title, description, grade_level, state_abbreviation)
-      VALUES (${userId}, ${title}, ${description || null}, ${gradeLevel || null}, ${stateAbbreviation || null})
-      RETURNING *
-    `
+    const timestamp = nowIso()
+    const docRef = await collection("curricula").add({
+      userId,
+      title,
+      description: description || "",
+      gradeLevel: gradeLevel || "",
+      stateAbbreviation: stateAbbreviation || "",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+    const created = await docRef.get()
 
-    return NextResponse.json(result.rows[0], { status: 201 })
+    return NextResponse.json(docToData(created), { status: 201 })
   } catch (error) {
     console.error('Failed to create curriculum:', error)
     return NextResponse.json(

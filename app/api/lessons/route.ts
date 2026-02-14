@@ -1,5 +1,5 @@
-import { sql } from '@vercel/postgres'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
+import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
 
 // GET all lessons for a curriculum
 export async function GET(request: NextRequest) {
@@ -14,13 +14,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const result = await sql`
-      SELECT * FROM lessons 
-      WHERE curriculum_id = ${curriculumId}
-      ORDER BY week_number, day_of_week
-    `
+    const snapshot = await collection("lessons")
+      .where("curriculumId", "==", curriculumId)
+      .orderBy("weekNumber", "asc")
+      .orderBy("dayOfWeek", "asc")
+      .get()
 
-    return NextResponse.json(result.rows)
+    return NextResponse.json(snapshot.docs.map(docToData))
   } catch (error) {
     console.error('Failed to fetch lessons:', error)
     return NextResponse.json(
@@ -43,13 +43,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await sql`
-      INSERT INTO lessons (curriculum_id, title, description, subject, week_number, day_of_week, duration_minutes, resources)
-      VALUES (${curriculumId}, ${title}, ${description || null}, ${subject || null}, ${weekNumber || null}, ${dayOfWeek || null}, ${durationMinutes || null}, ${JSON.stringify(resources || [])})
-      RETURNING *
-    `
+    const timestamp = nowIso()
+    const docRef = await collection("lessons").add({
+      curriculumId,
+      title,
+      description: description || "",
+      subject: subject || "",
+      weekNumber: weekNumber ?? null,
+      dayOfWeek: dayOfWeek || "",
+      durationMinutes: durationMinutes ?? null,
+      resources: resources || [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
 
-    return NextResponse.json(result.rows[0], { status: 201 })
+    const created = await docRef.get()
+    return NextResponse.json(docToData(created), { status: 201 })
   } catch (error) {
     console.error('Failed to create lesson:', error)
     return NextResponse.json(

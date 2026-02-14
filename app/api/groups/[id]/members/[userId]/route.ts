@@ -1,5 +1,5 @@
-import { sql } from '@vercel/postgres'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
+import { collection, docToData } from "@/lib/firestore-helpers"
 
 // DELETE remove a member from a group
 export async function DELETE(
@@ -7,19 +7,19 @@ export async function DELETE(
   { params }: { params: { id: string; userId: string } }
 ) {
   try {
-    const result = await sql`
-      DELETE FROM group_members 
-      WHERE group_id = ${params.id} AND user_id = ${params.userId}
-      RETURNING *
-    `
+    const snapshot = await collection("groupMembers")
+      .where("groupId", "==", params.id)
+      .where("userId", "==", params.userId)
+      .get()
 
-    if (result.rows.length === 0) {
+    if (snapshot.empty) {
       return NextResponse.json(
         { error: 'Member not found in this group' },
         { status: 404 }
       )
     }
 
+    await Promise.all(snapshot.docs.map((doc) => doc.ref.delete()))
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Failed to remove group member:', error)
@@ -46,21 +46,22 @@ export async function PUT(
       )
     }
 
-    const result = await sql`
-      UPDATE group_members
-      SET role = ${role}
-      WHERE group_id = ${params.id} AND user_id = ${params.userId}
-      RETURNING *
-    `
+    const snapshot = await collection("groupMembers")
+      .where("groupId", "==", params.id)
+      .where("userId", "==", params.userId)
+      .get()
 
-    if (result.rows.length === 0) {
+    if (snapshot.empty) {
       return NextResponse.json(
         { error: 'Member not found in this group' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(result.rows[0])
+    const docRef = snapshot.docs[0].ref
+    await docRef.set({ role }, { merge: true })
+    const updated = await docRef.get()
+    return NextResponse.json(docToData(updated))
   } catch (error) {
     console.error('Failed to update member role:', error)
     return NextResponse.json(

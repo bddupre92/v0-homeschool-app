@@ -1,40 +1,36 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth-service"
-import { getPool } from "@/lib/db"
-
-const pool = getPool()
+import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const type = searchParams.get("type")
     const location = searchParams.get("location")
-    const limit = searchParams.get("limit") || "50"
+    const limit = Number(searchParams.get("limit") || "50")
+    const now = new Date().toISOString()
 
-    let query = "SELECT * FROM events WHERE date >= NOW() ORDER BY date ASC LIMIT $1"
-    const params: any[] = [parseInt(limit)]
+    let query = collection("events")
+      .where("date", ">=", now)
+      .orderBy("date", "asc")
 
     if (type) {
-      query = query.replace(
-        "WHERE",
-        `WHERE LOWER(type) = LOWER($${params.length + 1}) AND`
-      )
-      params.push(type)
+      query = query.where("type", "==", type)
     }
+
+    const snapshot = await query.limit(limit).get()
+    let events = snapshot.docs.map(docToData)
 
     if (location) {
-      query = query.replace(
-        "WHERE",
-        `WHERE LOWER(location) ILIKE LOWER($${params.length + 1}) AND`
+      const locationLower = location.toLowerCase()
+      events = events.filter((event) =>
+        (event.location as string | undefined)?.toLowerCase().includes(locationLower)
       )
-      params.push(`%${location}%`)
     }
 
-    const result = await pool.query(query, params)
-
     return NextResponse.json({
-      events: result.rows,
-      count: result.rows.length,
+      events,
+      count: events.length,
     })
   } catch (error) {
     console.error("Error fetching events:", error)
@@ -77,53 +73,33 @@ export async function POST(request: NextRequest) {
     // Combine date and time
     const eventDateTime = time ? `${date}T${time}` : `${date}T00:00:00`
 
-    // First, get or create the user in the database
-    const userQuery = `
-      INSERT INTO users (firebase_uid, email, display_name)
-      VALUES ($1, $2, $3)
-      ON CONFLICT (firebase_uid) DO UPDATE SET updated_at = NOW()
-      RETURNING id
-    `
+    await collection("users").doc(user.userId).set(
+      {
+        email: user.email || "",
+        displayName: "User",
+        updatedAt: nowIso(),
+      },
+      { merge: true }
+    )
 
-    const userResult = await pool.query(userQuery, [
-      user.uid,
-      user.email,
-      user.displayName || "User",
-    ])
-    const userId = userResult.rows[0].id
-
-    // Create the event
-    const query = `
-      INSERT INTO events (
-        title,
-        description,
-        date,
-        location,
-        address,
-        type,
-        created_by_id,
-        max_attendees,
-        age_groups,
-        tags
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING *
-    `
-
-    const result = await pool.query(query, [
+    const timestamp = nowIso()
+    const docRef = await collection("events").add({
       title,
-      description || "",
-      eventDateTime,
+      description: description || "",
+      date: eventDateTime,
       location,
-      address || "",
+      address: address || "",
       type,
-      userId,
-      maxAttendees || null,
-      ageGroups ? JSON.stringify(ageGroups) : JSON.stringify([]),
-      tags ? JSON.stringify(tags) : JSON.stringify([]),
-    ])
+      createdById: user.userId,
+      maxAttendees: maxAttendees ?? null,
+      ageGroups: ageGroups || [],
+      tags: tags || [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
 
-    return NextResponse.json(result.rows[0], { status: 201 })
+    const created = await docRef.get()
+    return NextResponse.json(docToData(created), { status: 201 })
   } catch (error) {
     console.error("Error creating event:", error)
     return NextResponse.json(

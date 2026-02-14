@@ -1,5 +1,5 @@
-import { sql } from '@vercel/postgres'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
+import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
 
 // GET a specific lesson
 export async function GET(
@@ -7,18 +7,16 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const result = await sql`
-      SELECT * FROM lessons WHERE id = ${params.id}
-    `
+    const doc = await collection("lessons").doc(params.id).get()
 
-    if (result.rows.length === 0) {
+    if (!doc.exists) {
       return NextResponse.json(
         { error: 'Lesson not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(result.rows[0])
+    return NextResponse.json(docToData(doc))
   } catch (error) {
     console.error('Failed to fetch lesson:', error)
     return NextResponse.json(
@@ -37,29 +35,30 @@ export async function PUT(
     const body = await request.json()
     const { title, description, subject, weekNumber, dayOfWeek, durationMinutes, resources } = body
 
-    const result = await sql`
-      UPDATE lessons
-      SET 
-        title = COALESCE(${title || null}, title),
-        description = COALESCE(${description || null}, description),
-        subject = COALESCE(${subject || null}, subject),
-        week_number = COALESCE(${weekNumber || null}, week_number),
-        day_of_week = COALESCE(${dayOfWeek || null}, day_of_week),
-        duration_minutes = COALESCE(${durationMinutes || null}, duration_minutes),
-        resources = COALESCE(${JSON.stringify(resources) || null}, resources),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${params.id}
-      RETURNING *
-    `
+    const docRef = collection("lessons").doc(params.id)
+    const doc = await docRef.get()
 
-    if (result.rows.length === 0) {
+    if (!doc.exists) {
       return NextResponse.json(
         { error: 'Lesson not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(result.rows[0])
+    const payload = {
+      ...(title !== undefined ? { title } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(subject !== undefined ? { subject } : {}),
+      ...(weekNumber !== undefined ? { weekNumber } : {}),
+      ...(dayOfWeek !== undefined ? { dayOfWeek } : {}),
+      ...(durationMinutes !== undefined ? { durationMinutes } : {}),
+      ...(resources !== undefined ? { resources } : {}),
+      updatedAt: nowIso(),
+    }
+
+    await docRef.set(payload, { merge: true })
+    const updated = await docRef.get()
+    return NextResponse.json(docToData(updated))
   } catch (error) {
     console.error('Failed to update lesson:', error)
     return NextResponse.json(
@@ -75,18 +74,17 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const result = await sql`
-      DELETE FROM lessons WHERE id = ${params.id}
-      RETURNING *
-    `
+    const docRef = collection("lessons").doc(params.id)
+    const doc = await docRef.get()
 
-    if (result.rows.length === 0) {
+    if (!doc.exists) {
       return NextResponse.json(
         { error: 'Lesson not found' },
         { status: 404 }
       )
     }
 
+    await docRef.delete()
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Failed to delete lesson:', error)
