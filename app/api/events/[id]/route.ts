@@ -4,10 +4,11 @@ import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const eventDoc = await collection("events").doc(params.id).get()
+    const { id } = await params
+    const eventDoc = await collection("events").doc(id).get()
 
     if (!eventDoc.exists) {
       return NextResponse.json(
@@ -19,7 +20,7 @@ export async function GET(
     const event = docToData(eventDoc)
     const creatorDoc = await collection("users").doc(event.createdById as string).get()
     const attendeesSnapshot = await collection("eventAttendees")
-      .where("eventId", "==", params.id)
+      .where("eventId", "==", id)
       .get()
 
     return NextResponse.json({
@@ -39,9 +40,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -50,7 +52,7 @@ export async function PUT(
     const body = await request.json()
     const { title, description, date, time, location, address, type, maxAttendees, ageGroups, tags } = body
 
-    const docRef = collection("events").doc(params.id)
+    const docRef = collection("events").doc(id)
     const doc = await docRef.get()
 
     if (!doc.exists) {
@@ -90,15 +92,16 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const docRef = collection("events").doc(params.id)
+    const docRef = collection("events").doc(id)
     const doc = await docRef.get()
 
     if (!doc.exists) {

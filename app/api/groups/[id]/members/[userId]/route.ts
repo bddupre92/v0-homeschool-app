@@ -5,15 +5,16 @@ import { requireAuth } from "@/lib/auth-service"
 // DELETE remove a member from a group
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; userId: string } }
+  { params }: { params: Promise<{ id: string; userId: string }> }
 ) {
   try {
+    const { id, userId } = await params
     const user = await requireAuth()
 
     // Allow self-removal or group owner removal
-    const groupDoc = await collection("groups").doc(params.id).get()
+    const groupDoc = await collection("groups").doc(id).get()
     const isOwner = groupDoc.exists && groupDoc.data()?.createdById === user.userId
-    const isSelf = params.userId === user.userId
+    const isSelf = userId === user.userId
 
     if (!isOwner && !isSelf) {
       return NextResponse.json(
@@ -23,8 +24,8 @@ export async function DELETE(
     }
 
     const snapshot = await collection("groupMembers")
-      .where("groupId", "==", params.id)
-      .where("userId", "==", params.userId)
+      .where("groupId", "==", id)
+      .where("userId", "==", userId)
       .get()
 
     if (snapshot.empty) {
@@ -51,13 +52,14 @@ export async function DELETE(
 // PUT update member role
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; userId: string } }
+  { params }: { params: Promise<{ id: string; userId: string }> }
 ) {
   try {
+    const { id, userId } = await params
     const user = await requireAuth()
 
     // Only group owner can change roles
-    const groupDoc = await collection("groups").doc(params.id).get()
+    const groupDoc = await collection("groups").doc(id).get()
     if (!groupDoc.exists || groupDoc.data()?.createdById !== user.userId) {
       return NextResponse.json(
         { error: 'Only the group owner can change member roles' },
@@ -76,8 +78,8 @@ export async function PUT(
     }
 
     const snapshot = await collection("groupMembers")
-      .where("groupId", "==", params.id)
-      .where("userId", "==", params.userId)
+      .where("groupId", "==", id)
+      .where("userId", "==", userId)
       .get()
 
     if (snapshot.empty) {

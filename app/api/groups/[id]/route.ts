@@ -5,10 +5,11 @@ import { requireAuth } from "@/lib/auth-service"
 // GET a specific group
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const doc = await collection("groups").doc(params.id).get()
+    const { id } = await params
+    const doc = await collection("groups").doc(id).get()
 
     if (!doc.exists) {
       return NextResponse.json(
@@ -30,15 +31,16 @@ export async function GET(
 // PUT update a group
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const user = await requireAuth()
 
     const body = await request.json()
     const { name, description, location, groupType, stateAbbreviation, maxMembers, isPrivate, imageUrl } = body
 
-    const docRef = collection("groups").doc(params.id)
+    const docRef = collection("groups").doc(id)
     const doc = await docRef.get()
 
     if (!doc.exists) {
@@ -87,12 +89,13 @@ export async function PUT(
 // DELETE a group
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const user = await requireAuth()
 
-    const docRef = collection("groups").doc(params.id)
+    const docRef = collection("groups").doc(id)
     const doc = await docRef.get()
 
     if (!doc.exists) {

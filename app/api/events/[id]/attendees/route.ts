@@ -4,11 +4,12 @@ import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const attendeesSnapshot = await collection("eventAttendees")
-      .where("eventId", "==", params.id)
+      .where("eventId", "==", id)
       .orderBy("createdAt", "asc")
       .get()
 
@@ -39,9 +40,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -58,7 +60,7 @@ export async function POST(
 
     // Check if already attending
     const existingResult = await collection("eventAttendees")
-      .where("eventId", "==", params.id)
+      .where("eventId", "==", id)
       .where("userId", "==", user.userId)
       .get()
 
@@ -70,7 +72,7 @@ export async function POST(
     }
 
     // Check event capacity
-    const eventDoc = await collection("events").doc(params.id).get()
+    const eventDoc = await collection("events").doc(id).get()
 
     if (!eventDoc.exists) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
@@ -79,7 +81,7 @@ export async function POST(
     const maxAttendees = eventDoc.data()?.maxAttendees as number | null | undefined
     if (maxAttendees) {
       const attendeesSnapshot = await collection("eventAttendees")
-        .where("eventId", "==", params.id)
+        .where("eventId", "==", id)
         .get()
       if (attendeesSnapshot.size >= maxAttendees) {
         return NextResponse.json(
@@ -91,7 +93,7 @@ export async function POST(
 
     const timestamp = nowIso()
     const attendeeRef = await collection("eventAttendees").add({
-      eventId: params.id,
+      eventId: id,
       userId: user.userId,
       createdAt: timestamp,
     })

@@ -4,30 +4,31 @@ import { collection } from "@/lib/firestore-helpers"
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; userId: string } }
+  { params }: { params: Promise<{ id: string; userId: string }> }
 ) {
   try {
+    const { id, userId } = await params
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const eventDoc = await collection("events").doc(params.id).get()
+    const eventDoc = await collection("events").doc(id).get()
 
     if (!eventDoc.exists) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
     }
 
     const isEventCreator = eventDoc.data()?.createdById === user.userId
-    const isRemovingSelf = user.userId === params.userId
+    const isRemovingSelf = user.userId === userId
 
     if (!isRemovingSelf && !isEventCreator) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const snapshot = await collection("eventAttendees")
-      .where("eventId", "==", params.id)
-      .where("userId", "==", params.userId)
+      .where("eventId", "==", id)
+      .where("userId", "==", userId)
       .get()
 
     if (snapshot.empty) {

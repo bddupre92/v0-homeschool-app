@@ -5,11 +5,12 @@ import { requireAuth } from "@/lib/auth-service"
 // GET all members of a group
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const membersSnapshot = await collection("groupMembers")
-      .where("groupId", "==", params.id)
+      .where("groupId", "==", id)
       .orderBy("joinedAt", "asc")
       .get()
 
@@ -39,9 +40,10 @@ export async function GET(
 // POST add a member to a group
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const user = await requireAuth()
 
     const body = await request.json()
@@ -51,7 +53,7 @@ export async function POST(
 
     // Check if user is already a member
     const existing = await collection("groupMembers")
-      .where("groupId", "==", params.id)
+      .where("groupId", "==", id)
       .where("userId", "==", memberUserId)
       .get()
 
@@ -63,12 +65,12 @@ export async function POST(
     }
 
     // Check if group has reached max members
-    const groupDoc = await collection("groups").doc(params.id).get()
+    const groupDoc = await collection("groups").doc(id).get()
     const maxMembers = groupDoc.exists ? (groupDoc.data()?.maxMembers as number | null) : null
 
     if (maxMembers) {
       const membersSnapshot = await collection("groupMembers")
-        .where("groupId", "==", params.id)
+        .where("groupId", "==", id)
         .get()
       if (membersSnapshot.size >= maxMembers) {
         return NextResponse.json(
@@ -80,7 +82,7 @@ export async function POST(
 
     const timestamp = nowIso()
     const memberRef = await collection("groupMembers").add({
-      groupId: params.id,
+      groupId: id,
       userId: memberUserId,
       role: role || "member",
       joinedAt: timestamp,

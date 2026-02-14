@@ -5,12 +5,13 @@ import { requireAuth } from "@/lib/auth-service"
 // GET a specific lesson
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     await requireAuth()
 
-    const doc = await collection("lessons").doc(params.id).get()
+    const doc = await collection("lessons").doc(id).get()
 
     if (!doc.exists) {
       return NextResponse.json(
@@ -35,15 +36,16 @@ export async function GET(
 // PUT update a lesson
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     await requireAuth()
 
     const body = await request.json()
     const { title, description, subject, weekNumber, dayOfWeek, durationMinutes, resources } = body
 
-    const docRef = collection("lessons").doc(params.id)
+    const docRef = collection("lessons").doc(id)
     const doc = await docRef.get()
 
     if (!doc.exists) {
@@ -82,12 +84,13 @@ export async function PUT(
 // DELETE a lesson
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     await requireAuth()
 
-    const docRef = collection("lessons").doc(params.id)
+    const docRef = collection("lessons").doc(id)
     const doc = await docRef.get()
 
     if (!doc.exists) {
