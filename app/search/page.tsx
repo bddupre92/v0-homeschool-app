@@ -77,14 +77,14 @@ const resourceTypes = ["Printable", "Video", "Interactive", "Lesson Plan", "Acti
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedFilters, setSelectedFilters] = useState({
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
     grades: [],
     subjects: [],
     approaches: [],
     resourceTypes: [],
   })
 
-  const handleFilterChange = (category, value) => {
+  const handleFilterChange = (category: string, value: string) => {
     setSelectedFilters((prev) => {
       const currentValues = prev[category]
       return {

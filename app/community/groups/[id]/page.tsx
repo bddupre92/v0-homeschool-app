@@ -39,14 +39,15 @@ const groupsData = [
   },
 ]
 
-export default function GroupPage({ params }) {
-  const group = groupsData.find((g) => g.id === params.id)
+export default async function GroupPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const group = groupsData.find((g) => g.id === id)
 
   if (!group) {
     notFound()
   }
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return new Intl.DateTimeFormat("en-US", {
       month: "short",

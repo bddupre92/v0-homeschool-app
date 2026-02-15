@@ -85,9 +85,9 @@ const userPreferences = {
 
 export default function PersonalizedRecommendations() {
   const [isEditingPreferences, setIsEditingPreferences] = useState(false)
-  const [tempPreferences, setTempPreferences] = useState(userPreferences)
+  const [tempPreferences, setTempPreferences] = useState<Record<string, string[]>>(userPreferences)
 
-  const handleCheckboxChange = (category, value) => {
+  const handleCheckboxChange = (category: string, value: string) => {
     setTempPreferences((prev) => {
       const currentValues = prev[category]
       return {

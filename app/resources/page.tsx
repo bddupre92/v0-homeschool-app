@@ -149,7 +149,7 @@ const resourceTypes = ["Printable", "Activity", "Worksheet", "Unit Study", "Guid
 export default function ResourcesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedFilters, setSelectedFilters] = useState({
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
     grades: [],
     subjects: [],
     types: [],
@@ -157,7 +157,7 @@ export default function ResourcesPage() {
   const [sortBy, setSortBy] = useState("featured")
   const [activeTab, setActiveTab] = useState("all")
 
-  const handleFilterChange = (category, value) => {
+  const handleFilterChange = (category: string, value: string) => {
     setSelectedFilters((prev) => {
       const currentValues = [...prev[category]]
       const index = currentValues.indexOf(value)
@@ -235,13 +235,10 @@ export default function ResourcesPage() {
               </p>
             </div>
 
-            <Button 
+            <Button
               className="gap-1 sm:self-start"
-              onClick={() => {
-                // Navigate to resource submission form or open modal
-                console.log('Opening resource submission form')
-                alert('Resource submission form would open here')
-              }}
+              disabled
+              title="Coming soon"
             >
               <Plus className="h-4 w-4" />
               Submit Resource

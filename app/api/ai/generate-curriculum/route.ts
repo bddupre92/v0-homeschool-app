@@ -1,12 +1,24 @@
+import { NextResponse } from "next/server"
 import { streamText } from "ai"
 import { groq } from "@ai-sdk/groq"
+import { requireAuth } from "@/lib/auth-service"
+import { rateLimiter, createRateLimitResponse } from "@/lib/rate-limit"
+import { type NextRequest } from "next/server"
 
 export const maxDuration = 60
 
-export async function POST(req: Request) {
-  const { researchQuery, researchContext, childName, duration, learningStyle, focusAreas } = await req.json()
+export async function POST(req: NextRequest) {
+  const { limited } = rateLimiter(req, { limit: 5, windowMs: 60 * 1000 })
+  if (limited) {
+    return createRateLimitResponse()
+  }
 
-  const systemPrompt = `You are a master homeschool curriculum designer.
+  try {
+    await requireAuth()
+
+    const { researchQuery, researchContext, childName, duration, learningStyle, focusAreas } = await req.json()
+
+    const systemPrompt = `You are a master homeschool curriculum designer.
   You will be given a research context containing a list of online resources, along with a child's details and desired curriculum structure.
   Your task is to create a comprehensive, engaging, and personalized curriculum.
 
@@ -28,7 +40,7 @@ export async function POST(req: Request) {
   }
   `
 
-  const prompt = `
+    const prompt = `
   **Research Query:**
   - Subject: ${researchQuery.subject}
   - Grade: ${researchQuery.grade}
@@ -46,12 +58,19 @@ export async function POST(req: Request) {
   Generate the curriculum now.
   `
 
-  const result = await streamText({
-    model: groq("llama3-70b-8192"),
-    system: systemPrompt,
-    prompt: prompt,
-    response_format: { type: "json" },
-  })
+    const result = await streamText({
+      model: groq("llama3-70b-8192"),
+      system: systemPrompt,
+      prompt: prompt,
+      response_format: { type: "json" },
+    })
 
-  return result.toAIStreamResponse()
+    return result.toAIStreamResponse()
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    console.error("Failed to generate curriculum:", error)
+    return NextResponse.json({ error: "Failed to generate curriculum" }, { status: 500 })
+  }
 }

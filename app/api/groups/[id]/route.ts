@@ -1,24 +1,24 @@
-import { sql } from '@vercel/postgres'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
+import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
+import { requireAuth } from "@/lib/auth-service"
 
 // GET a specific group
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const result = await sql`
-      SELECT * FROM groups WHERE id = ${params.id}
-    `
+    const { id } = await params
+    const doc = await collection("groups").doc(id).get()
 
-    if (result.rows.length === 0) {
+    if (!doc.exists) {
       return NextResponse.json(
         { error: 'Group not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(result.rows[0])
+    return NextResponse.json(docToData(doc))
   } catch (error) {
     console.error('Failed to fetch group:', error)
     return NextResponse.json(
@@ -31,37 +31,53 @@ export async function GET(
 // PUT update a group
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+    const user = await requireAuth()
+
     const body = await request.json()
     const { name, description, location, groupType, stateAbbreviation, maxMembers, isPrivate, imageUrl } = body
 
-    const result = await sql`
-      UPDATE groups
-      SET 
-        name = COALESCE(${name || null}, name),
-        description = COALESCE(${description || null}, description),
-        location = COALESCE(${location || null}, location),
-        group_type = COALESCE(${groupType || null}, group_type),
-        state_abbreviation = COALESCE(${stateAbbreviation || null}, state_abbreviation),
-        max_members = COALESCE(${maxMembers || null}, max_members),
-        is_private = COALESCE(${isPrivate !== undefined ? isPrivate : null}, is_private),
-        image_url = COALESCE(${imageUrl || null}, image_url),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${params.id}
-      RETURNING *
-    `
+    const docRef = collection("groups").doc(id)
+    const doc = await docRef.get()
 
-    if (result.rows.length === 0) {
+    if (!doc.exists) {
       return NextResponse.json(
         { error: 'Group not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(result.rows[0])
-  } catch (error) {
+    // Verify ownership
+    const groupData = doc.data()
+    if (groupData?.createdById !== user.userId) {
+      return NextResponse.json(
+        { error: 'You do not have permission to update this group' },
+        { status: 403 }
+      )
+    }
+
+    const payload = {
+      ...(name !== undefined ? { name } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(location !== undefined ? { location } : {}),
+      ...(groupType !== undefined ? { groupType } : {}),
+      ...(stateAbbreviation !== undefined ? { stateAbbreviation } : {}),
+      ...(maxMembers !== undefined ? { maxMembers } : {}),
+      ...(isPrivate !== undefined ? { isPrivate } : {}),
+      ...(imageUrl !== undefined ? { imageUrl } : {}),
+      updatedAt: nowIso(),
+    }
+
+    await docRef.set(payload, { merge: true })
+    const updated = await docRef.get()
+    return NextResponse.json(docToData(updated))
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to update group:', error)
     return NextResponse.json(
       { error: 'Failed to update group' },
@@ -73,23 +89,37 @@ export async function PUT(
 // DELETE a group
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const result = await sql`
-      DELETE FROM groups WHERE id = ${params.id}
-      RETURNING *
-    `
+    const { id } = await params
+    const user = await requireAuth()
 
-    if (result.rows.length === 0) {
+    const docRef = collection("groups").doc(id)
+    const doc = await docRef.get()
+
+    if (!doc.exists) {
       return NextResponse.json(
         { error: 'Group not found' },
         { status: 404 }
       )
     }
 
+    // Verify ownership
+    const groupData = doc.data()
+    if (groupData?.createdById !== user.userId) {
+      return NextResponse.json(
+        { error: 'You do not have permission to delete this group' },
+        { status: 403 }
+      )
+    }
+
+    await docRef.delete()
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to delete group:', error)
     return NextResponse.json(
       { error: 'Failed to delete group' },

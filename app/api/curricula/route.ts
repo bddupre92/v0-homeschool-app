@@ -1,27 +1,22 @@
-import { sql } from '@vercel/postgres'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
+import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
+import { requireAuth } from "@/lib/auth-service"
 
-// GET all curricula for a user
+// GET all curricula for the authenticated user
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const user = await requireAuth()
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      )
+    const snapshot = await collection("curricula")
+      .where("userId", "==", user.userId)
+      .orderBy("createdAt", "desc")
+      .get()
+
+    return NextResponse.json(snapshot.docs.map(docToData))
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
-    const result = await sql`
-      SELECT * FROM curricula 
-      WHERE user_id = ${userId}
-      ORDER BY created_at DESC
-    `
-
-    return NextResponse.json(result.rows)
-  } catch (error) {
     console.error('Failed to fetch curricula:', error)
     return NextResponse.json(
       { error: 'Failed to fetch curricula' },
@@ -33,24 +28,35 @@ export async function GET(request: NextRequest) {
 // POST create a new curriculum
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { userId, title, description, gradeLevel, stateAbbreviation } = body
+    const user = await requireAuth()
 
-    if (!userId || !title) {
+    const body = await request.json()
+    const { title, description, gradeLevel, stateAbbreviation } = body
+
+    if (!title) {
       return NextResponse.json(
-        { error: 'userId and title are required' },
+        { error: 'title is required' },
         { status: 400 }
       )
     }
 
-    const result = await sql`
-      INSERT INTO curricula (user_id, title, description, grade_level, state_abbreviation)
-      VALUES (${userId}, ${title}, ${description || null}, ${gradeLevel || null}, ${stateAbbreviation || null})
-      RETURNING *
-    `
+    const timestamp = nowIso()
+    const docRef = await collection("curricula").add({
+      userId: user.userId,
+      title,
+      description: description || "",
+      gradeLevel: gradeLevel || "",
+      stateAbbreviation: stateAbbreviation || "",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+    const created = await docRef.get()
 
-    return NextResponse.json(result.rows[0], { status: 201 })
-  } catch (error) {
+    return NextResponse.json(docToData(created), { status: 201 })
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to create curriculum:', error)
     return NextResponse.json(
       { error: 'Failed to create curriculum' },

@@ -1,27 +1,43 @@
 import { NextResponse } from "next/server"
+import { requireAuth } from "@/lib/auth-service"
 
-// This route handler will only be executed at runtime, not during build
 export async function GET() {
-  // In production, this would fetch from Firebase
-  // For now, return mock data
-  const mockBackups = [
-    {
-      name: "backups/backup-2025-04-25.json",
-      size: "1024000",
-      created: new Date().toISOString(),
-    },
-    {
-      name: "backups/backup-2025-04-24.json",
-      size: "985000",
-      created: new Date(Date.now() - 86400000).toISOString(),
-    },
-  ]
+  try {
+    await requireAuth()
 
-  return NextResponse.json(mockBackups)
+    // TODO: Implement real backup listing from Firebase Storage
+    const mockBackups = [
+      {
+        name: "backups/backup-2025-04-25.json",
+        size: "1024000",
+        created: new Date().toISOString(),
+      },
+      {
+        name: "backups/backup-2025-04-24.json",
+        size: "985000",
+        created: new Date(Date.now() - 86400000).toISOString(),
+      },
+    ]
+
+    return NextResponse.json(mockBackups)
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    return NextResponse.json({ error: "Failed to list backups" }, { status: 500 })
+  }
 }
 
 export async function POST() {
-  // In production, this would create a backup in Firebase
-  // For now, just return a success response
-  return NextResponse.json({ success: true })
+  try {
+    await requireAuth()
+
+    // TODO: Implement real backup creation in Firebase Storage
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    return NextResponse.json({ error: "Failed to create backup" }, { status: 500 })
+  }
 }

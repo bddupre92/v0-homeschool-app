@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import DashboardQuickAdd from "@/components/dashboard-quick-add"
 import { Badge } from "@/components/ui/badge"
 import PersonalizedRecommendations from "@/components/personalized-recommendations"
 import CommunityEvents from "@/components/community-events"
@@ -19,16 +19,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-foreground">Welcome back!</h1>
           <p className="text-muted-foreground mt-1">Here's what's happening with your homeschool journey today.</p>
         </div>
-        <Button 
-          className="w-fit"
-          onClick={() => {
-            console.log('Quick Add clicked')
-            alert('Quick Add menu would open here')
-          }}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Quick Add
-        </Button>
+        <DashboardQuickAdd />
       </div>
 
       {/* Stats Overview */}

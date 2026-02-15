@@ -1,21 +1,33 @@
-import { sql } from '@vercel/postgres'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
+import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
+import { requireAuth } from "@/lib/auth-service"
 
 // GET all members of a group
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const result = await sql`
-      SELECT gm.*, u.display_name, u.email, u.photo_url
-      FROM group_members gm
-      INNER JOIN users u ON gm.user_id = u.id
-      WHERE gm.group_id = ${params.id}
-      ORDER BY gm.role DESC, gm.joined_at ASC
-    `
+    const { id } = await params
+    const membersSnapshot = await collection("groupMembers")
+      .where("groupId", "==", id)
+      .orderBy("joinedAt", "asc")
+      .get()
 
-    return NextResponse.json(result.rows)
+    const members = await Promise.all(
+      membersSnapshot.docs.map(async (doc) => {
+        const data = docToData(doc)
+        const userDoc = await collection("users").doc(data.userId as string).get()
+        return {
+          ...data,
+          display_name: userDoc.exists ? userDoc.data()?.displayName ?? "" : "",
+          email: userDoc.exists ? userDoc.data()?.email ?? "" : "",
+          photo_url: userDoc.exists ? userDoc.data()?.photoUrl ?? "" : "",
+        }
+      })
+    )
+
+    return NextResponse.json(members)
   } catch (error) {
     console.error('Failed to fetch group members:', error)
     return NextResponse.json(
@@ -28,25 +40,24 @@ export async function GET(
 // POST add a member to a group
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+    const user = await requireAuth()
+
     const body = await request.json()
     const { userId, role } = body
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      )
-    }
+    const memberUserId = userId || user.userId
 
     // Check if user is already a member
-    const existing = await sql`
-      SELECT * FROM group_members WHERE group_id = ${params.id} AND user_id = ${userId}
-    `
+    const existing = await collection("groupMembers")
+      .where("groupId", "==", id)
+      .where("userId", "==", memberUserId)
+      .get()
 
-    if (existing.rows.length > 0) {
+    if (!existing.empty) {
       return NextResponse.json(
         { error: 'User is already a member of this group' },
         { status: 409 }
@@ -54,11 +65,14 @@ export async function POST(
     }
 
     // Check if group has reached max members
-    const group = await sql`SELECT max_members FROM groups WHERE id = ${params.id}`
+    const groupDoc = await collection("groups").doc(id).get()
+    const maxMembers = groupDoc.exists ? (groupDoc.data()?.maxMembers as number | null) : null
 
-    if (group.rows.length > 0 && group.rows[0].max_members) {
-      const members = await sql`SELECT COUNT(*) as count FROM group_members WHERE group_id = ${params.id}`
-      if (members.rows[0].count >= group.rows[0].max_members) {
+    if (maxMembers) {
+      const membersSnapshot = await collection("groupMembers")
+        .where("groupId", "==", id)
+        .get()
+      if (membersSnapshot.size >= maxMembers) {
         return NextResponse.json(
           { error: 'Group has reached maximum members' },
           { status: 400 }
@@ -66,14 +80,20 @@ export async function POST(
       }
     }
 
-    const result = await sql`
-      INSERT INTO group_members (group_id, user_id, role)
-      VALUES (${params.id}, ${userId}, ${role || 'member'})
-      RETURNING *
-    `
+    const timestamp = nowIso()
+    const memberRef = await collection("groupMembers").add({
+      groupId: id,
+      userId: memberUserId,
+      role: role || "member",
+      joinedAt: timestamp,
+    })
+    const created = await memberRef.get()
 
-    return NextResponse.json(result.rows[0], { status: 201 })
-  } catch (error) {
+    return NextResponse.json(docToData(created), { status: 201 })
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     console.error('Failed to add group member:', error)
     return NextResponse.json(
       { error: 'Failed to add group member' },

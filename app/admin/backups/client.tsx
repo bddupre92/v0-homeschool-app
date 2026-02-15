@@ -8,9 +8,9 @@ import { formatDistanceToNow } from "date-fns"
 
 // This component will only be loaded in the browser, not during build
 export function BackupsClient() {
-  const [backups, setBackups] = useState([])
+  const [backups, setBackups] = useState<Array<{ name: string; size: string; created: string }>>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Fetch backups when component mounts (only in browser)
@@ -20,7 +20,7 @@ export function BackupsClient() {
         const data = await response.json()
         setBackups(data)
       } catch (err) {
-        setError(err.message)
+        setError(err instanceof Error ? err.message : "Failed to fetch backups")
       } finally {
         setLoading(false)
       }
@@ -29,7 +29,7 @@ export function BackupsClient() {
     fetchBackups()
   }, [])
 
-  function formatFileSize(bytes) {
+  function formatFileSize(bytes: number) {
     if (bytes < 1024) return bytes + " B"
     const kb = bytes / 1024
     if (kb < 1024) return kb.toFixed(1) + " KB"
@@ -87,7 +87,7 @@ export function BackupsClient() {
     </Card>
   )
 
-  async function downloadBackup(name) {
+  async function downloadBackup(name: string) {
     // Implementation would go here
     console.log(`Downloading backup: ${name}`)
   }

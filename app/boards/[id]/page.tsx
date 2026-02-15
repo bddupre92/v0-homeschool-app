@@ -176,7 +176,7 @@ export default function BoardDetailPage() {
     )
   }
 
-  const handleCreateBoard = async (formData) => {
+  const handleCreateBoard = async (formData: FormData) => {
     try {
       // Process form data
       // ...

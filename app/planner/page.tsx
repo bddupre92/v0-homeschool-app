@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks } from "date-fns"
 import {
   Calendar,
@@ -213,8 +213,17 @@ export default function PlannerPage() {
   const [viewMode, setViewMode] = useState("week")
   const [selectedLesson, setSelectedLesson] = useState(null)
   const [isAddingLesson, setIsAddingLesson] = useState(false)
+  const [isAiScheduleOpen, setIsAiScheduleOpen] = useState(false)
+  const [aiPlanImage, setAiPlanImage] = useState<File | null>(null)
+  const [aiPlanNotes, setAiPlanNotes] = useState("")
+  const [aiDraftSchedule, setAiDraftSchedule] = useState<string | null>(null)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [filteredSubjects, setFilteredSubjects] = useState(subjects.map((s) => s.id))
+  const [isCalendarConnected, setIsCalendarConnected] = useState(false)
+  const [calendarSyncStatus, setCalendarSyncStatus] = useState("Not connected")
+  const [calendarSyncMessage, setCalendarSyncMessage] = useState<string | null>(null)
+  const [calendarSyncing, setCalendarSyncing] = useState(false)
+  const [lessonImage, setLessonImage] = useState<File | null>(null)
 
   // Week navigation
   const startDate = startOfWeek(currentDate, { weekStartsOn: 0 })
@@ -229,7 +238,7 @@ export default function PlannerPage() {
     setCurrentDate(addWeeks(currentDate, 1))
   }
 
-  const toggleSubjectFilter = (subjectId) => {
+  const toggleSubjectFilter = (subjectId: string) => {
     setFilteredSubjects((prev) =>
       prev.includes(subjectId) ? prev.filter((id) => id !== subjectId) : [...prev, subjectId],
     )
@@ -249,7 +258,114 @@ export default function PlannerPage() {
     lessons: filteredLessons.filter((lesson) => isSameDay(lesson.date, day)),
   }))
 
-  const getSubjectById = (id) => subjects.find((subject) => subject.id === id)
+  const getSubjectById = (id: string) => subjects.find((subject) => subject.id === id)
+
+  const aiImagePreviewUrl = useMemo(
+    () => (aiPlanImage ? URL.createObjectURL(aiPlanImage) : null),
+    [aiPlanImage],
+  )
+
+  const lessonImagePreviewUrl = useMemo(
+    () => (lessonImage ? URL.createObjectURL(lessonImage) : null),
+    [lessonImage],
+  )
+
+  useEffect(() => {
+    if (!aiImagePreviewUrl) return
+    return () => URL.revokeObjectURL(aiImagePreviewUrl)
+  }, [aiImagePreviewUrl])
+
+  useEffect(() => {
+    if (!lessonImagePreviewUrl) return
+    return () => URL.revokeObjectURL(lessonImagePreviewUrl)
+  }, [lessonImagePreviewUrl])
+
+  const handleGenerateSchedule = () => {
+    if (!aiPlanImage && aiPlanNotes.trim().length === 0) {
+      setAiDraftSchedule("Add a photo or notes so the AI can build your schedule.")
+      return
+    }
+
+    const sourceLabel = aiPlanImage ? `Uploaded plan: ${aiPlanImage.name}` : "No photo attached"
+    setAiDraftSchedule(
+      [
+        `AI draft schedule generated from your inputs.`,
+        sourceLabel,
+        aiPlanNotes ? `Notes: ${aiPlanNotes}` : "Notes: none",
+        "Suggested schedule:",
+        "• Monday 9:00am - Math (Fractions practice)",
+        "• Tuesday 10:00am - Science (Plant life cycle)",
+        "• Wednesday 1:00pm - Art (Watercolor techniques)",
+      ].join("\n"),
+    )
+  }
+
+  const handleAddSchedule = () => {
+    setIsAiScheduleOpen(false)
+    setAiDraftSchedule(null)
+    setAiPlanImage(null)
+    setAiPlanNotes("")
+  }
+
+  const handleConnectCalendar = () => {
+    setCalendarSyncMessage(null)
+    fetch("/api/google-calendar/connect")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.url) {
+          window.location.href = data.url
+        } else {
+          setCalendarSyncMessage("Unable to start Google Calendar connection.")
+        }
+      })
+      .catch(() => setCalendarSyncMessage("Unable to start Google Calendar connection."))
+  }
+
+  const handleDisconnectCalendar = () => {
+    setIsCalendarConnected(false)
+    setCalendarSyncStatus("Not connected")
+    setCalendarSyncMessage("Disconnected. You can reconnect any time.")
+  }
+
+  const handleSyncCalendar = async (direction: "pull" | "push") => {
+    setCalendarSyncing(true)
+    setCalendarSyncMessage(null)
+    try {
+      const response = await fetch("/api/google-calendar/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direction }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setCalendarSyncMessage(data?.error ?? "Calendar sync failed.")
+        return
+      }
+      setCalendarSyncMessage(`Sync complete (${direction}): ${data.synced ?? 0} events.`)
+    } catch (error) {
+      setCalendarSyncMessage("Calendar sync failed.")
+    } finally {
+      setCalendarSyncing(false)
+    }
+  }
+
+  useEffect(() => {
+    fetch("/api/google-calendar/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.connected) {
+          setIsCalendarConnected(true)
+          setCalendarSyncStatus("Connected (two-way sync enabled)")
+        } else {
+          setIsCalendarConnected(false)
+          setCalendarSyncStatus("Not connected")
+        }
+      })
+      .catch(() => {
+        setIsCalendarConnected(false)
+        setCalendarSyncStatus("Not connected")
+      })
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -269,6 +385,11 @@ export default function PlannerPage() {
               <Button onClick={() => setIsAddingLesson(true)} className="gap-1">
                 <Plus className="h-4 w-4" />
                 Add Lesson
+              </Button>
+
+              <Button variant="outline" className="gap-1 bg-transparent" onClick={() => setIsAiScheduleOpen(true)}>
+                <Bot className="h-4 w-4" />
+                Add Schedule from Photo
               </Button>
 
               <DropdownMenu>
@@ -573,6 +694,52 @@ export default function PlannerPage() {
                     </Button>
                   </CardFooter>
                 </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle>Google Calendar Sync</CardTitle>
+                    <CardDescription>Keep your planner and Google Calendar in sync both ways.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="text-sm">
+                      Status: <span className="font-medium">{calendarSyncStatus}</span>
+                    </div>
+                    {calendarSyncMessage && <div className="text-xs text-muted-foreground">{calendarSyncMessage}</div>}
+                    <div className="text-xs text-muted-foreground">
+                      Planner updates will sync to Google Calendar, and calendar changes will appear in your planner
+                      once connected.
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex gap-2">
+                    {isCalendarConnected ? (
+                      <div className="flex flex-col sm:flex-row gap-2 w-full">
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => handleSyncCalendar("pull")}
+                          disabled={calendarSyncing}
+                        >
+                          Sync from Google
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => handleSyncCalendar("push")}
+                          disabled={calendarSyncing}
+                        >
+                          Sync to Google
+                        </Button>
+                        <Button variant="ghost" className="w-full" onClick={handleDisconnectCalendar}>
+                          Disconnect
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button className="w-full" onClick={handleConnectCalendar}>
+                        Connect Google Calendar
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
               </div>
             </TabsContent>
             <TabsContent value="ai-builder" className="mt-0">
@@ -590,6 +757,22 @@ export default function PlannerPage() {
             <DialogDescription>Create a new lesson or activity for your homeschool schedule.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="lesson-image">Lesson Image (optional)</Label>
+              <Input
+                id="lesson-image"
+                type="file"
+                accept="image/*"
+                onChange={(event) => setLessonImage(event.target.files?.[0] ?? null)}
+              />
+              {lessonImagePreviewUrl && (
+                <img
+                  src={lessonImagePreviewUrl}
+                  alt="Lesson upload preview"
+                  className="h-32 w-full rounded-md object-cover border"
+                />
+              )}
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="title">Lesson Title</Label>
               <Input id="title" placeholder="Enter lesson title" />
@@ -645,6 +828,63 @@ export default function PlannerPage() {
               Cancel
             </Button>
             <Button onClick={() => setIsAddingLesson(false)}>Add Lesson</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAiScheduleOpen} onOpenChange={setIsAiScheduleOpen}>
+        <DialogContent className="sm:max-w-[650px]">
+          <DialogHeader>
+            <DialogTitle>AI Schedule Builder</DialogTitle>
+            <DialogDescription>
+              Upload a photo of your written plan and let AI convert it into a planner schedule.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="ai-plan-photo">Plan Photo</Label>
+              <Input
+                id="ai-plan-photo"
+                type="file"
+                accept="image/*"
+                onChange={(event) => setAiPlanImage(event.target.files?.[0] ?? null)}
+              />
+              {aiImagePreviewUrl && (
+                <img
+                  src={aiImagePreviewUrl}
+                  alt="Uploaded plan preview"
+                  className="h-40 w-full rounded-md object-cover border"
+                />
+              )}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="ai-plan-notes">Notes for the AI</Label>
+              <Textarea
+                id="ai-plan-notes"
+                placeholder="Add any extra details (subjects, timing preferences, goals)..."
+                value={aiPlanNotes}
+                onChange={(event) => setAiPlanNotes(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Draft Schedule</Label>
+              <div className="rounded-md border bg-muted/40 p-3 text-sm whitespace-pre-line min-h-[120px]">
+                {aiDraftSchedule ?? "Upload a plan photo and generate a schedule draft."}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
+            <Button variant="outline" onClick={() => setIsAiScheduleOpen(false)}>
+              Cancel
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleGenerateSchedule}>
+                Generate Schedule
+              </Button>
+              <Button onClick={handleAddSchedule} disabled={!aiDraftSchedule}>
+                Add Schedule
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

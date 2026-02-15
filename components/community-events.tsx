@@ -60,7 +60,7 @@ export default function CommunityEvents() {
   const { toast } = useToast()
   const [events, setEvents] = useState(eventsData)
   const [isLoading, setIsLoading] = useState(true)
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<Record<string, string[]>>({
     types: [],
     ages: [],
   })
@@ -96,7 +96,7 @@ export default function CommunityEvents() {
   const eventTypes = ["Workshop", "Open House", "Field Trip", "Club", "Class", "Social"]
   const ageGroups = ["Preschool", "Elementary", "Middle School", "High School", "All Ages"]
 
-  const handleFilterChange = (category, value) => {
+  const handleFilterChange = (category: string, value: string) => {
     setFilters((prev) => {
       const currentValues = prev[category]
       const newValues = currentValues.includes(value)
@@ -110,7 +110,7 @@ export default function CommunityEvents() {
     })
   }
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return new Intl.DateTimeFormat("en-US", {
       weekday: "short",

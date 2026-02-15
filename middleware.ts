@@ -19,21 +19,13 @@ export function middleware(request: NextRequest) {
   // Get the session cookie
   const session = request.cookies.get("session")?.value
 
-  // For client-side auth, we'll let the ProtectedRoute component handle the redirect
-  // This prevents the middleware from redirecting authenticated users
-  // DEV MODE: The block below is commented out to bypass auth for development.
-  // To re-enable, uncomment this block.
-  /*
   if (isProtectedPath) {
-    // Only redirect if we're absolutely sure there's no session
-    // This allows client-side auth to work properly
     if (!session && !request.cookies.has("firebase-auth-token")) {
       const signInUrl = new URL("/sign-in", request.url)
       signInUrl.searchParams.set("callbackUrl", pathname)
       return NextResponse.redirect(signInUrl)
     }
   }
-  */
 
   // If the path is for authentication and there's a session, redirect to dashboard
   if (isAuthPath && session) {
@@ -46,7 +38,7 @@ export function middleware(request: NextRequest) {
   // Content Security Policy
   response.headers.set(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.vercel-insights.com https://*.firebaseio.com https://*.googleapis.com; connect-src 'self' https://*.vercel-insights.com https://*.firebaseio.com https://*.googleapis.com https://api.mapbox.com; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://api.mapbox.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com; font-src 'self' data:; frame-src https://*.firebaseapp.com;",
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://*.vercel-insights.com https://*.firebaseio.com https://*.googleapis.com https://maps.googleapis.com https://maps.gstatic.com; connect-src 'self' https://*.vercel-insights.com https://*.firebaseio.com https://*.googleapis.com https://maps.googleapis.com https://maps.gstatic.com https://api.mapbox.com; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://maps.googleapis.com https://maps.gstatic.com https://api.mapbox.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com https://maps.googleapis.com; font-src 'self' data:; frame-src https://*.firebaseapp.com;",
   )
 
   // Other security headers

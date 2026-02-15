@@ -1,5 +1,6 @@
-import { sql } from '@vercel/postgres'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
+import { collection, docToData, nowIso } from "@/lib/firestore-helpers"
+import { requireAuth } from "@/lib/auth-service"
 
 // GET all public groups or groups by state
 export async function GET(request: NextRequest) {
@@ -9,33 +10,32 @@ export async function GET(request: NextRequest) {
     const userGroups = searchParams.get('userGroups')
     const userId = searchParams.get('userId')
 
-    let query: any
-
-    if (userGroups === 'true' && userId) {
-      // Get groups the user is a member of
-      query = await sql`
-        SELECT DISTINCT g.* FROM groups g
-        INNER JOIN group_members gm ON g.id = gm.group_id
-        WHERE gm.user_id = ${userId}
-        ORDER BY g.created_at DESC
-      `
-    } else if (stateAbbr) {
-      // Get public groups filtered by state
-      query = await sql`
-        SELECT * FROM groups 
-        WHERE is_private = false AND state_abbreviation = ${stateAbbr}
-        ORDER BY created_at DESC
-      `
-    } else {
-      // Get all public groups
-      query = await sql`
-        SELECT * FROM groups 
-        WHERE is_private = false
-        ORDER BY created_at DESC
-      `
+    if (userGroups === "true" && userId) {
+      const memberships = await collection("groupMembers")
+        .where("userId", "==", userId)
+        .get()
+      const groupDocs = await Promise.all(
+        memberships.docs.map((doc) =>
+          collection("groups").doc(doc.data().groupId).get()
+        )
+      )
+      return NextResponse.json(groupDocs.filter((doc) => doc.exists).map(docToData))
     }
 
-    return NextResponse.json(query.rows)
+    if (stateAbbr) {
+      const snapshot = await collection("groups")
+        .where("isPrivate", "==", false)
+        .where("stateAbbreviation", "==", stateAbbr)
+        .orderBy("createdAt", "desc")
+        .get()
+      return NextResponse.json(snapshot.docs.map(docToData))
+    }
+
+    const snapshot = await collection("groups")
+      .where("isPrivate", "==", false)
+      .orderBy("createdAt", "desc")
+      .get()
+    return NextResponse.json(snapshot.docs.map(docToData))
   } catch (error) {
     console.error('Failed to fetch groups:', error)
     return NextResponse.json(
@@ -48,9 +48,10 @@ export async function GET(request: NextRequest) {
 // POST create a new group
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+
     const body = await request.json()
     const {
-      createdById,
       name,
       description,
       location,
@@ -61,30 +62,41 @@ export async function POST(request: NextRequest) {
       imageUrl,
     } = body
 
-    if (!createdById || !name) {
+    if (!name) {
       return NextResponse.json(
-        { error: 'createdById and name are required' },
+        { error: 'name is required' },
         { status: 400 }
       )
     }
 
-    const result = await sql`
-      INSERT INTO groups (created_by_id, name, description, location, group_type, state_abbreviation, max_members, is_private, image_url)
-      VALUES (${createdById}, ${name}, ${description || null}, ${location || null}, ${groupType || 'coop'}, ${stateAbbreviation || null}, ${maxMembers || null}, ${isPrivate || false}, ${imageUrl || null})
-      RETURNING *
-    `
+    const timestamp = nowIso()
+    const groupRef = await collection("groups").add({
+      createdById: user.userId,
+      name,
+      description: description || "",
+      location: location || "",
+      groupType: groupType || "coop",
+      stateAbbreviation: stateAbbreviation || "",
+      maxMembers: maxMembers ?? null,
+      isPrivate: isPrivate || false,
+      imageUrl: imageUrl || "",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
 
-    // Add the creator as a member with admin role
-    if (result.rows.length > 0) {
-      const groupId = result.rows[0].id
-      await sql`
-        INSERT INTO group_members (group_id, user_id, role)
-        VALUES (${groupId}, ${createdById}, 'admin')
-      `
+    await collection("groupMembers").add({
+      groupId: groupRef.id,
+      userId: user.userId,
+      role: "admin",
+      joinedAt: timestamp,
+    })
+
+    const created = await groupRef.get()
+    return NextResponse.json(docToData(created), { status: 201 })
+  } catch (error: any) {
+    if (error?.message === "Authentication required") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
-    return NextResponse.json(result.rows[0], { status: 201 })
-  } catch (error) {
     console.error('Failed to create group:', error)
     return NextResponse.json(
       { error: 'Failed to create group' },

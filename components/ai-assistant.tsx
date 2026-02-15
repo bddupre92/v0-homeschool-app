@@ -20,7 +20,7 @@ export default function AIAssistant() {
   ])
   const [isTyping, setIsTyping] = useState(false)
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault()
     if (!message.trim()) return
 
