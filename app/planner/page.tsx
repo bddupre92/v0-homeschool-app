@@ -238,7 +238,7 @@ export default function PlannerPage() {
     setCurrentDate(addWeeks(currentDate, 1))
   }
 
-  const toggleSubjectFilter = (subjectId) => {
+  const toggleSubjectFilter = (subjectId: string) => {
     setFilteredSubjects((prev) =>
       prev.includes(subjectId) ? prev.filter((id) => id !== subjectId) : [...prev, subjectId],
     )
@@ -258,7 +258,7 @@ export default function PlannerPage() {
     lessons: filteredLessons.filter((lesson) => isSameDay(lesson.date, day)),
   }))
 
-  const getSubjectById = (id) => subjects.find((subject) => subject.id === id)
+  const getSubjectById = (id: string) => subjects.find((subject) => subject.id === id)
 
   const aiImagePreviewUrl = useMemo(
     () => (aiPlanImage ? URL.createObjectURL(aiPlanImage) : null),

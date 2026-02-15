@@ -4,7 +4,7 @@ import type { FieldErrors, Resolver } from "react-hook-form"
 // This function takes a Zod schema and returns a resolver compatible with React Hook Form.
 // It is now fully synchronous to prevent unhandled promise rejections.
 export const zodFormResolver = <T extends ZodSchema>(schema: T): Resolver<any> => {
-  return (values) => {
+  return (values: Record<string, unknown>) => {
     try {
       // Using synchronous `parse` instead of `parseAsync`
       const validatedData = schema.parse(values)

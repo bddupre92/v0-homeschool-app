@@ -157,7 +157,7 @@ export default function ResourcesPage() {
   const [sortBy, setSortBy] = useState("featured")
   const [activeTab, setActiveTab] = useState("all")
 
-  const handleFilterChange = (category, value) => {
+  const handleFilterChange = (category: string, value: string) => {
     setSelectedFilters((prev) => {
       const currentValues = [...prev[category]]
       const index = currentValues.indexOf(value)

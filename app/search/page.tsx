@@ -84,7 +84,7 @@ export default function SearchPage() {
     resourceTypes: [],
   })
 
-  const handleFilterChange = (category, value) => {
+  const handleFilterChange = (category: string, value: string) => {
     setSelectedFilters((prev) => {
       const currentValues = prev[category]
       return {

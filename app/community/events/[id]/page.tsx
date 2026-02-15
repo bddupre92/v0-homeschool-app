@@ -26,7 +26,7 @@ const eventsData = [
   },
 ]
 
-export default async function EventPage({ params }) {
+export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const event = eventsData.find((e) => e.id === id)
 
@@ -34,7 +34,7 @@ export default async function EventPage({ params }) {
     notFound()
   }
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return new Intl.DateTimeFormat("en-US", {
       weekday: "long",
