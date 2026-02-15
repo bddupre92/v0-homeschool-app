@@ -61,7 +61,7 @@ export default function CommunityGroups() {
   const { toast } = useToast()
   const [groups, setGroups] = useState(groupsData)
   const [isLoading, setIsLoading] = useState(true)
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<Record<string, string[]>>({
     types: [],
     ages: [],
     frequency: [],
@@ -99,7 +99,7 @@ export default function CommunityGroups() {
   const ageGroups = ["Preschool", "Elementary", "Middle School", "High School", "Teens", "All Ages"]
   const frequencies = ["Weekly", "Bi-weekly", "Monthly", "Quarterly"]
 
-  const handleFilterChange = (category, value) => {
+  const handleFilterChange = (category: string, value: string) => {
     setFilters((prev) => {
       const currentValues = prev[category]
       const newValues = currentValues.includes(value)

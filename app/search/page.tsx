@@ -77,7 +77,7 @@ const resourceTypes = ["Printable", "Video", "Interactive", "Lesson Plan", "Acti
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedFilters, setSelectedFilters] = useState({
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
     grades: [],
     subjects: [],
     approaches: [],

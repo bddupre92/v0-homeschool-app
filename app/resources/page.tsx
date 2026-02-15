@@ -149,7 +149,7 @@ const resourceTypes = ["Printable", "Activity", "Worksheet", "Unit Study", "Guid
 export default function ResourcesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedFilters, setSelectedFilters] = useState({
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
     grades: [],
     subjects: [],
     types: [],

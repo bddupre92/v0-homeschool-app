@@ -1,19 +1,20 @@
 "use client"
 
 import React, { useState, useEffect, createContext, useContext, type ReactNode } from "react"
-import { 
-  onAuthStateChanged, 
+import {
+  onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
+  sendEmailVerification as firebaseSendEmailVerification,
   updateProfile,
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
-  type User 
+  type User
 } from "firebase/auth"
 import { auth, isFirebaseAvailable } from "@/lib/firebase"
 import { doc, setDoc, serverTimestamp } from "firebase/firestore"
@@ -47,8 +48,14 @@ const mockUser: User = {
 }
 
 // --- Context Definition ---
+interface UserProfile {
+  role?: string
+  [key: string]: unknown
+}
+
 interface AuthContextType {
   user: User | null
+  userProfile: UserProfile | null
   loading: boolean
   signUp: (email: string, password: string, name: string) => Promise<void>
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<void>
@@ -56,10 +63,12 @@ interface AuthContextType {
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   updateUserProfile: (updates: { displayName?: string; photoURL?: string }) => Promise<void>
+  sendEmailVerification: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  userProfile: null,
   loading: true,
   signUp: async () => {},
   signIn: async () => {},
@@ -67,11 +76,13 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
   resetPassword: async () => {},
   updateUserProfile: async () => {},
+  sendEmailVerification: async () => {},
 })
 
 // --- Provider Component ---
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(DEV_MODE_BYPASS_AUTH ? mockUser : null)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(DEV_MODE_BYPASS_AUTH ? { role: "admin" } : null)
   const [loading, setLoading] = useState(!DEV_MODE_BYPASS_AUTH)
 
   // Authentication methods
@@ -245,6 +256,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const sendEmailVerification = async () => {
+    if (DEV_MODE_BYPASS_AUTH) {
+      console.log("Dev mode: Simulating email verification")
+      return
+    }
+
+    if (!user) {
+      throw new Error("No authenticated user found.")
+    }
+
+    try {
+      await firebaseSendEmailVerification(user)
+    } catch (error: unknown) {
+      console.error("Send email verification error:", error)
+      throw error
+    }
+  }
+
   useEffect(() => {
     // Skip useEffect entirely in dev mode since we set initial state
     if (DEV_MODE_BYPASS_AUTH) {
@@ -280,15 +309,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const value = { 
-    user, 
-    loading, 
-    signUp, 
-    signIn, 
-    signInWithGoogle, 
-    signOut, 
-    resetPassword, 
-    updateUserProfile 
+  const value = {
+    user,
+    userProfile,
+    loading,
+    signUp,
+    signIn,
+    signInWithGoogle,
+    signOut,
+    resetPassword,
+    updateUserProfile,
+    sendEmailVerification,
   }
 
   // Display a full-page loader while checking auth state
