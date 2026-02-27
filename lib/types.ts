@@ -140,3 +140,30 @@ export interface LessonPacketFormData {
   location?: string
   stateCode?: string
 }
+
+// ─── Saved (DB-backed) Lesson Packet Types ──────────────────────────────────
+
+export interface SavedLessonPacket extends LessonPacket {
+  userId: string
+  isFavorite: boolean
+  tags: string[]
+  timesPrinted: number
+  isShared: boolean
+  sharedToGroupId?: string
+  updatedAt: string
+}
+
+export interface PacketFilters {
+  subject?: string
+  grade?: string
+  childName?: string
+  isFavorite?: boolean
+  search?: string
+}
+
+export interface PacketListResult {
+  packets: SavedLessonPacket[]
+  total: number
+  page: number
+  pageSize: number
+}

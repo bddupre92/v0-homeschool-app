@@ -56,7 +56,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import Navigation from "@/components/navigation"
 import AICurriculumWorkflow from "@/components/ai-curriculum-workflow"
-import LessonPacketGenerator from "@/components/lesson-packet-generator"
+import LessonPacketsTab from "@/components/lesson-packets-tab"
 
 // Sample data for the planner
 const subjects = [
@@ -585,7 +585,7 @@ export default function PlannerPage() {
               <AICurriculumWorkflow />
             </TabsContent>
             <TabsContent value="lesson-packets" className="mt-0">
-              <LessonPacketGenerator />
+              <LessonPacketsTab />
             </TabsContent>
           </Tabs>
         </div>

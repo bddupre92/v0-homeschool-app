@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Loader2, Sparkles, FileText } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { savePacket } from "@/app/actions/packet-actions"
 import type { LessonPacket } from "@/lib/types"
 import LessonPacketViewer from "./lesson-packet-viewer"
 
@@ -33,6 +34,7 @@ export default function LessonPacketGenerator() {
   const { toast } = useToast()
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedPacket, setGeneratedPacket] = useState<LessonPacket | null>(null)
+  const [savedPacketId, setSavedPacketId] = useState<string | null>(null)
   const [streamProgress, setStreamProgress] = useState("")
 
   const form = useForm<FormData>({
@@ -124,9 +126,20 @@ export default function LessonPacketGenerator() {
       }
 
       setGeneratedPacket(packet)
+
+      // Auto-save to database
+      const saveResult = await savePacket(packet, {
+        learningStyle: data.learningStyle,
+        interests: data.interests,
+        location: data.location,
+      })
+      if (saveResult.success && saveResult.packet) {
+        setSavedPacketId(saveResult.packet.id)
+      }
+
       toast({
         title: "Lesson packet created!",
-        description: `"${packet.title}" is ready to teach.`,
+        description: `"${packet.title}" is ready to teach.${saveResult.success ? " Saved to your library." : ""}`,
       })
     } catch (error) {
       console.error("Error generating lesson packet:", error)
@@ -148,12 +161,13 @@ export default function LessonPacketGenerator() {
           variant="outline"
           onClick={() => {
             setGeneratedPacket(null)
+            setSavedPacketId(null)
             form.reset()
           }}
         >
           Generate Another Packet
         </Button>
-        <LessonPacketViewer packet={generatedPacket} />
+        <LessonPacketViewer packet={generatedPacket} savedPacketId={savedPacketId} />
       </div>
     )
   }

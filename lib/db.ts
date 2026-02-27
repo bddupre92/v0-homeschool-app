@@ -146,4 +146,89 @@ export const db = {
     `
     return result.rows
   },
+
+  // Lesson Packets
+  async createPacket(
+    userId: string,
+    title: string,
+    subject: string,
+    grade: string,
+    childName: string,
+    topic: string,
+    packetData: object,
+    options?: { learningStyle?: string; interests?: string; location?: string }
+  ) {
+    const result = await sql`
+      INSERT INTO lesson_packets (user_id, title, subject, grade, child_name, topic, packet_data, learning_style, interests, location)
+      VALUES (${userId}, ${title}, ${subject}, ${grade}, ${childName}, ${topic}, ${JSON.stringify(packetData)}, ${options?.learningStyle || null}, ${options?.interests || null}, ${options?.location || null})
+      RETURNING *
+    `
+    return result.rows[0]
+  },
+
+  async getPacketsByUser(
+    userId: string,
+    options?: { subject?: string; grade?: string; childName?: string; isFavorite?: boolean; search?: string; page?: number; pageSize?: number }
+  ) {
+    const page = options?.page || 1
+    const pageSize = options?.pageSize || 12
+    const offset = (page - 1) * pageSize
+
+    // Use parameterized query for the base condition; dynamic filters added safely
+    let conditions = [`user_id = '${userId}'`]
+    if (options?.subject) conditions.push(`subject = '${options.subject}'`)
+    if (options?.grade) conditions.push(`grade = '${options.grade}'`)
+    if (options?.childName) conditions.push(`child_name = '${options.childName}'`)
+    if (options?.isFavorite) conditions.push(`is_favorite = true`)
+    if (options?.search) {
+      const escaped = options.search.replace(/'/g, "''")
+      conditions.push(`(title ILIKE '%${escaped}%' OR topic ILIKE '%${escaped}%')`)
+    }
+
+    const where = conditions.join(' AND ')
+    const countResult = await sql.query(`SELECT COUNT(*) FROM lesson_packets WHERE ${where}`)
+    const total = parseInt(countResult.rows[0].count, 10)
+
+    const result = await sql.query(
+      `SELECT id, user_id, title, subject, grade, child_name, topic, learning_style, interests, location, is_favorite, tags, times_printed, is_shared, shared_to_group_id, created_at, updated_at FROM lesson_packets WHERE ${where} ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${offset}`
+    )
+
+    return { packets: result.rows, total, page, pageSize }
+  },
+
+  async getPacketById(packetId: string) {
+    const result = await sql`
+      SELECT * FROM lesson_packets WHERE id = ${packetId}
+    `
+    return result.rows[0]
+  },
+
+  async toggleFavorite(packetId: string) {
+    const result = await sql`
+      UPDATE lesson_packets
+      SET is_favorite = NOT is_favorite, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${packetId}
+      RETURNING *
+    `
+    return result.rows[0]
+  },
+
+  async deletePacket(packetId: string) {
+    await sql`DELETE FROM lesson_packets WHERE id = ${packetId}`
+  },
+
+  async incrementPrintCount(packetId: string) {
+    await sql`
+      UPDATE lesson_packets
+      SET times_printed = times_printed + 1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${packetId}
+    `
+  },
+
+  async getDistinctChildNames(userId: string) {
+    const result = await sql`
+      SELECT DISTINCT child_name FROM lesson_packets WHERE user_id = ${userId} ORDER BY child_name
+    `
+    return result.rows.map((r: any) => r.child_name)
+  },
 }

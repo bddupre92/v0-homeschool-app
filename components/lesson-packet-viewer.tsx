@@ -16,18 +16,23 @@ import {
   Puzzle,
   Printer,
 } from "lucide-react"
+import { trackPrint } from "@/app/actions/packet-actions"
 import type { LessonPacket } from "@/lib/types"
 import LessonPacketPrintView from "./lesson-packet-print-view"
 
 interface LessonPacketViewerProps {
   packet: LessonPacket
+  savedPacketId?: string | null
 }
 
-export default function LessonPacketViewer({ packet }: LessonPacketViewerProps) {
+export default function LessonPacketViewer({ packet, savedPacketId }: LessonPacketViewerProps) {
   const printRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState("student-lesson")
 
   const handlePrint = () => {
+    if (savedPacketId) {
+      trackPrint(savedPacketId)
+    }
     window.print()
   }
 
