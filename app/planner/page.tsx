@@ -16,6 +16,7 @@ import {
   Share2,
   Users,
   Bot,
+  FileCheck,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -55,6 +56,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import Navigation from "@/components/navigation"
 import AICurriculumWorkflow from "@/components/ai-curriculum-workflow"
+import LessonPacketGenerator from "@/components/lesson-packet-generator"
 
 // Sample data for the planner
 const subjects = [
@@ -366,6 +368,10 @@ export default function PlannerPage() {
                   <Bot className="h-4 w-4" />
                   AI Builder
                 </TabsTrigger>
+                <TabsTrigger value="lesson-packets" className="flex items-center gap-1">
+                  <FileCheck className="h-4 w-4" />
+                  Lesson Packets
+                </TabsTrigger>
               </TabsList>
 
               <div className="flex items-center gap-2">
@@ -577,6 +583,9 @@ export default function PlannerPage() {
             </TabsContent>
             <TabsContent value="ai-builder" className="mt-0">
               <AICurriculumWorkflow />
+            </TabsContent>
+            <TabsContent value="lesson-packets" className="mt-0">
+              <LessonPacketGenerator />
             </TabsContent>
           </Tabs>
         </div>
