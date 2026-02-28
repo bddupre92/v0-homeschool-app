@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { ArrowLeft, Search, MapPin, Loader2, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -11,7 +12,15 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Navigation from "@/components/navigation"
 import { Footer } from "@/components/footer"
-import GroupDiscoveryMap from "@/components/group-discovery-map"
+
+const GroupDiscoveryMap = dynamic(() => import("@/components/group-discovery-map"), {
+  ssr: false,
+  loading: () => (
+    <Card className="flex items-center justify-center" style={{ height: "500px" }}>
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </Card>
+  ),
+})
 import GroupMatchCard from "@/components/group-match-card"
 import { getGroups, joinGroup } from "@/app/actions/group-actions"
 import { rankGroups } from "@/lib/group-matching"

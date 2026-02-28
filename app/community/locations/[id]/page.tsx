@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
+import dynamic from "next/dynamic"
 import {
   ArrowLeft,
   Star,
@@ -13,6 +14,7 @@ import {
   ThumbsUp,
   MessageSquare,
   Clock,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,8 +22,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { EnhancedLocationMap } from "@/components/enhanced-location-map"
 import Navigation from "@/components/navigation"
+
+const EnhancedLocationMap = dynamic(
+  () => import("@/components/enhanced-location-map").then((mod) => mod.EnhancedLocationMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-[400px]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  }
+)
 
 // Add the import for our new hook at the top of the file
 import { useMapboxToken } from "@/hooks/use-mapbox"

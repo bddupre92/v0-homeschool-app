@@ -42,24 +42,34 @@ export default function GroupDiscoveryMap({
   const { token, isLoading: tokenLoading } = useMapboxToken()
   const [mapLoaded, setMapLoaded] = useState(false)
 
+  const [mapError, setMapError] = useState<string | null>(null)
+
   useEffect(() => {
     if (!mapContainer.current || !token || map.current) return
 
-    mapboxgl.accessToken = token
+    try {
+      mapboxgl.accessToken = token
 
-    const center: [number, number] = userLocation || [-98.5795, 39.8283] // US center
-    const zoom = userLocation ? 10 : 3.5
+      const center: [number, number] = userLocation || [-98.5795, 39.8283] // US center
+      const zoom = userLocation ? 10 : 3.5
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/light-v11",
-      center,
-      zoom,
-    })
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/light-v11",
+        center,
+        zoom,
+      })
 
-    map.current.addControl(new mapboxgl.NavigationControl(), "top-right")
+      map.current.addControl(new mapboxgl.NavigationControl(), "top-right")
 
-    map.current.on("load", () => setMapLoaded(true))
+      map.current.on("load", () => setMapLoaded(true))
+      map.current.on("error", (e) => {
+        console.error("[v0] Mapbox error:", e)
+      })
+    } catch (err) {
+      console.error("[v0] Failed to initialize map:", err)
+      setMapError("Map could not be loaded. Please try again later.")
+    }
 
     return () => {
       map.current?.remove()
@@ -143,12 +153,12 @@ export default function GroupDiscoveryMap({
     )
   }
 
-  if (!token) {
+  if (!token || mapError) {
     return (
       <Card className="flex items-center justify-center p-6" style={{ height }}>
         <div className="text-center text-muted-foreground">
           <MapPin className="h-8 w-8 mx-auto mb-2" />
-          <p className="text-sm">Map requires a Mapbox token to display.</p>
+          <p className="text-sm">{mapError || "Map requires a Mapbox token to display."}</p>
         </div>
       </Card>
     )

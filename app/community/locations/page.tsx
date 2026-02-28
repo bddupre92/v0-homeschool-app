@@ -2,15 +2,28 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Filter, MapPin, Star, Grid, MapIcon } from "lucide-react"
+import dynamic from "next/dynamic"
+import { Search, Filter, MapPin, Star, Grid, MapIcon, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { EnhancedLocationMap, type Location } from "@/components/enhanced-location-map"
+import type { Location } from "@/components/enhanced-location-map"
 import Navigation from "@/components/navigation"
 import { useMapboxToken } from "@/hooks/use-mapbox"
+
+const EnhancedLocationMap = dynamic(
+  () => import("@/components/enhanced-location-map").then((mod) => mod.EnhancedLocationMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-[600px]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  }
+)
 
 export default function LocationsPage() {
   const router = useRouter()
