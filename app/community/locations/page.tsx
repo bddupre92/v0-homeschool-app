@@ -175,6 +175,7 @@ export default function LocationsPage() {
             </Button>
           </div>
 
+          <Tabs value={viewMode} onValueChange={setViewMode}>
           <TabsContent value="grid" className="mt-0">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredLocations.map((location) => (
@@ -260,6 +261,7 @@ export default function LocationsPage() {
               </Card>
             )}
           </TabsContent>
+          </Tabs>
 
           <div className="grid gap-4 mt-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredLocations.map((location) => (
