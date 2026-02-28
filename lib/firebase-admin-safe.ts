@@ -14,14 +14,22 @@ const skipFirebaseAdmin = isBuildEnvironment || !isServer
 const createMockFirestore = () => {
   const mockDoc = {
     id: "mock-doc-id",
-    get: async () => ({ 
-      exists: false, 
+    get: async () => ({
+      exists: false,
       data: () => ({}),
       id: "mock-doc-id"
     }),
     set: async () => {},
     update: async () => {},
     delete: async () => {},
+  }
+
+  // Chainable mock query that supports where/orderBy/limit chaining
+  const mockQuery: any = {
+    get: async () => ({ docs: [] }),
+    where: () => mockQuery,
+    orderBy: () => mockQuery,
+    limit: () => mockQuery,
   }
 
   return {
@@ -32,9 +40,9 @@ const createMockFirestore = () => {
         id: id || "mock-doc-id",
       }),
       add: async () => ({ id: "mock-doc-id" }),
-      where: () => ({
-        get: async () => ({ docs: [] }),
-      }),
+      where: () => mockQuery,
+      orderBy: () => mockQuery,
+      limit: () => mockQuery,
     }),
     FieldValue: {
       arrayUnion: (...values: any[]) => ({ _methodName: "arrayUnion", _elements: values }),

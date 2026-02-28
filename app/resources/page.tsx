@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { BookOpen, Filter, Grid3X3, List, Plus, Search, Download, Star, Clock } from "lucide-react"
+import { BookOpen, Filter, Grid3X3, List, Plus, Search, Download, Star, Clock, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,123 +13,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import Navigation from "@/components/navigation"
-
-// Sample resource data
-const resources = [
-  {
-    id: "r1",
-    title: "Hands-on Fractions Activities",
-    description: "Fun and engaging activities to teach fractions to elementary students",
-    type: "activity",
-    tags: ["Math", "Elementary", "Hands-on"],
-    author: "Math Learning Center",
-    rating: 4.8,
-    downloads: 1245,
-    dateAdded: "2025-03-15",
-    isFeatured: true,
-    isPremium: false,
-    thumbnail: "/placeholder.svg?height=200&width=300",
-  },
-  {
-    id: "r2",
-    title: "Nature Journal Templates",
-    description: "Printable templates for nature study journals",
-    type: "printable",
-    tags: ["Science", "Charlotte Mason", "Printable"],
-    author: "Nature Study Collective",
-    rating: 4.6,
-    downloads: 987,
-    dateAdded: "2025-03-20",
-    isFeatured: true,
-    isPremium: false,
-    thumbnail: "/placeholder.svg?height=200&width=300",
-  },
-  {
-    id: "r3",
-    title: "History Timeline Project",
-    description: "Create an interactive history timeline with your students",
-    type: "project",
-    tags: ["History", "All Ages", "Interactive"],
-    author: "Classical Conversations",
-    rating: 4.7,
-    downloads: 756,
-    dateAdded: "2025-03-25",
-    isFeatured: false,
-    isPremium: false,
-    thumbnail: "/placeholder.svg?height=200&width=300",
-  },
-  {
-    id: "r4",
-    title: "Reading Comprehension Worksheets",
-    description: "Printable worksheets to improve reading comprehension skills",
-    type: "worksheet",
-    tags: ["Language Arts", "Elementary", "Printable"],
-    author: "Reading Success",
-    rating: 4.5,
-    downloads: 1876,
-    dateAdded: "2025-03-10",
-    isFeatured: false,
-    isPremium: false,
-    thumbnail: "/placeholder.svg?height=200&width=300",
-  },
-  {
-    id: "r5",
-    title: "Science Experiment: Water Cycle in a Bag",
-    description: "Easy demonstration of the water cycle using household items",
-    type: "activity",
-    tags: ["Science", "Elementary", "Hands-on"],
-    author: "Science Explorers",
-    rating: 4.9,
-    downloads: 2341,
-    dateAdded: "2025-04-01",
-    isFeatured: true,
-    isPremium: false,
-    thumbnail: "/placeholder.svg?height=200&width=300",
-  },
-  {
-    id: "r6",
-    title: "Multiplication Tables Practice",
-    description: "Interactive multiplication tables practice with games and quizzes",
-    type: "interactive",
-    tags: ["Math", "Elementary", "Interactive"],
-    author: "Math Wizards",
-    rating: 4.7,
-    downloads: 1543,
-    dateAdded: "2025-03-18",
-    isFeatured: false,
-    isPremium: true,
-    thumbnail: "/placeholder.svg?height=200&width=300",
-  },
-  {
-    id: "r7",
-    title: "Poetry Analysis Guide",
-    description: "Guide to analyzing and understanding poetry for middle and high school students",
-    type: "guide",
-    tags: ["Language Arts", "Middle School", "High School"],
-    author: "Literary Scholars",
-    rating: 4.6,
-    downloads: 876,
-    dateAdded: "2025-03-22",
-    isFeatured: false,
-    isPremium: true,
-    thumbnail: "/placeholder.svg?height=200&width=300",
-  },
-  {
-    id: "r8",
-    title: "Ancient Egypt Unit Study",
-    description: "Comprehensive unit study on Ancient Egypt with activities and resources",
-    type: "unit study",
-    tags: ["History", "Elementary", "Middle School"],
-    author: "Historical Homeschoolers",
-    rating: 4.8,
-    downloads: 1234,
-    dateAdded: "2025-03-28",
-    isFeatured: true,
-    isPremium: true,
-    thumbnail: "/placeholder.svg?height=200&width=300",
-  },
-]
+import { getResources, createResource, toggleSaveResource, getSavedResources } from "@/app/actions/resource-actions"
+import { toast } from "@/hooks/use-toast"
 
 // Filter categories
 const grades = ["Preschool", "Kindergarten", "Elementary", "Middle School", "High School"]
@@ -150,12 +45,65 @@ export default function ResourcesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFilters, setSelectedFilters] = useState({
-    grades: [],
-    subjects: [],
-    types: [],
+    grades: [] as string[],
+    subjects: [] as string[],
+    types: [] as string[],
   })
   const [sortBy, setSortBy] = useState("featured")
   const [activeTab, setActiveTab] = useState("all")
+  const [resources, setResources] = useState<any[]>([])
+  const [savedIds, setSavedIds] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const loadResources = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const result = await getResources({ sortBy })
+      if (result.success && result.resources.length > 0) {
+        setResources(result.resources)
+      }
+      // Also load saved resources
+      const savedResult = await getSavedResources()
+      if (savedResult.success && savedResult.savedIds) {
+        setSavedIds(savedResult.savedIds)
+      }
+    } catch (error) {
+      console.error("Error loading resources:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [sortBy])
+
+  useEffect(() => {
+    loadResources()
+  }, [loadResources])
+
+  const handleCreateResource = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    try {
+      const form = e.currentTarget
+      const formData = new FormData(form)
+      const result = await createResource(formData)
+
+      if (result.success) {
+        toast({ title: "Success", description: "Resource submitted successfully!" })
+        setIsCreateDialogOpen(false)
+        form.reset()
+        loadResources()
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to submit resource", variant: "destructive" })
+      }
+    } catch (error) {
+      console.error("Error creating resource:", error)
+      toast({ title: "Error", description: "An unexpected error occurred", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const handleFilterChange = (category, value) => {
     setSelectedFilters((prev) => {
@@ -235,13 +183,9 @@ export default function ResourcesPage() {
               </p>
             </div>
 
-            <Button 
+            <Button
               className="gap-1 sm:self-start"
-              onClick={() => {
-                // Navigate to resource submission form or open modal
-                console.log('Opening resource submission form')
-                alert('Resource submission form would open here')
-              }}
+              onClick={() => setIsCreateDialogOpen(true)}
             >
               <Plus className="h-4 w-4" />
               Submit Resource
@@ -750,18 +694,118 @@ export default function ResourcesPage() {
             </TabsContent>
 
             <TabsContent value="saved" className="mt-0">
-              <div className="text-center py-12">
-                <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No saved resources</h3>
-                <p className="text-muted-foreground mb-4">
-                  You haven't saved any resources yet. Browse resources and save them for later.
-                </p>
-                <Button onClick={() => document.querySelector('[value="all"]')?.click()}>Browse Resources</Button>
-              </div>
+              {sortedResources.filter((r) => savedIds.includes(r.id)).length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {sortedResources
+                    .filter((r) => savedIds.includes(r.id))
+                    .map((resource) => (
+                      <Link key={resource.id} href={`/resources/${resource.id}`} className="block">
+                        <Card className="h-full overflow-hidden hover:shadow-md transition-shadow resource-card">
+                          <div className="aspect-video relative">
+                            <img
+                              src={resource.thumbnail || "/placeholder.svg"}
+                              alt={resource.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <CardHeader className="p-4 pb-2">
+                            <CardTitle className="text-lg">{resource.title}</CardTitle>
+                            <CardDescription className="line-clamp-2">{resource.description}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="p-4 pt-0 pb-2">
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {resource.tags.slice(0, 3).map((tag: string) => (
+                                <Badge key={tag} variant="secondary" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No saved resources</h3>
+                  <p className="text-muted-foreground mb-4">
+                    You haven't saved any resources yet. Browse resources and save them for later.
+                  </p>
+                  <Button onClick={() => setActiveTab("all")}>Browse Resources</Button>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
+
+          {isLoading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Create Resource Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Submit a Resource</DialogTitle>
+            <DialogDescription>
+              Share a resource with the homeschool community.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateResource}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="res-title">Title *</Label>
+                <Input id="res-title" name="title" placeholder="Enter resource title" required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="res-description">Description</Label>
+                <Textarea id="res-description" name="description" placeholder="Describe the resource" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="res-type">Type *</Label>
+                  <Select name="type" required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {resourceTypes.map((type) => (
+                        <SelectItem key={type} value={type.toLowerCase()}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="res-author">Author</Label>
+                  <Input id="res-author" name="author" placeholder="Author or publisher" />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="res-tags">Tags (comma separated)</Label>
+                <Input id="res-tags" name="tags" placeholder="e.g., Math, Elementary, Hands-on" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="res-thumbnail">Thumbnail URL</Label>
+                <Input id="res-thumbnail" name="thumbnail" placeholder="Enter image URL (optional)" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Submit Resource"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

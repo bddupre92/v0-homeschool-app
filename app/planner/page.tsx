@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks } from "date-fns"
 import {
   Calendar,
@@ -12,6 +12,7 @@ import {
   Filter,
   LayoutGrid,
   List,
+  Loader2,
   Plus,
   Share2,
   Users,
@@ -57,6 +58,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import Navigation from "@/components/navigation"
 import AICurriculumWorkflow from "@/components/ai-curriculum-workflow"
 import LessonPacketsTab from "@/components/lesson-packets-tab"
+import { getLessons, createLesson, deleteLesson, toggleLessonCompletion } from "@/app/actions/planner-actions"
+import { toast } from "@/hooks/use-toast"
 
 // Sample data for the planner
 const subjects = [
@@ -70,153 +73,100 @@ const subjects = [
   { id: "foreign", name: "Foreign Language", color: "bg-cyan-500" },
 ]
 
-// Sample lesson plans
-const sampleLessons = [
-  {
-    id: "1",
-    title: "Fractions Introduction",
-    subject: "math",
-    date: new Date(2025, 3, 15, 9, 0),
-    duration: 45,
-    description: "Introduction to basic fractions with hands-on activities",
-    materials: ["Fraction tiles", "Worksheets", "Colored paper"],
-    completed: false,
-  },
-  {
-    id: "2",
-    title: "Plant Life Cycle",
-    subject: "science",
-    date: new Date(2025, 3, 15, 10, 0),
-    duration: 60,
-    description: "Exploring the stages of plant growth with bean sprouting experiment",
-    materials: ["Bean seeds", "Paper towels", "Plastic bags", "Science journal"],
-    completed: false,
-  },
-  {
-    id: "3",
-    title: "Poetry Analysis",
-    subject: "language",
-    date: new Date(2025, 3, 16, 9, 0),
-    duration: 45,
-    description: "Reading and analyzing poems by Robert Frost",
-    materials: ["Poetry anthology", "Notebooks", "Highlighters"],
-    completed: false,
-  },
-  {
-    id: "4",
-    title: "Ancient Egypt",
-    subject: "history",
-    date: new Date(2025, 3, 16, 11, 0),
-    duration: 60,
-    description: "Introduction to Ancient Egyptian civilization and hieroglyphics",
-    materials: ["History textbook", "Hieroglyphic chart", "Paper and markers"],
-    completed: false,
-  },
-  {
-    id: "5",
-    title: "Watercolor Techniques",
-    subject: "art",
-    date: new Date(2025, 3, 17, 13, 0),
-    duration: 90,
-    description: "Learning basic watercolor painting techniques",
-    materials: ["Watercolor paints", "Brushes", "Watercolor paper", "Water containers"],
-    completed: false,
-  },
-  {
-    id: "6",
-    title: "Multiplication Tables",
-    subject: "math",
-    date: new Date(2025, 3, 17, 9, 0),
-    duration: 30,
-    description: "Practice multiplication tables 1-12",
-    materials: ["Flashcards", "Multiplication chart", "Math workbook"],
-    completed: false,
-  },
-  {
-    id: "7",
-    title: "Reading Comprehension",
-    subject: "language",
-    date: new Date(2025, 3, 18, 10, 0),
-    duration: 45,
-    description: "Reading and discussing 'Charlotte's Web' chapters 5-7",
-    materials: ["Charlotte's Web book", "Reading journal", "Vocabulary list"],
-    completed: false,
-  },
-  {
-    id: "8",
-    title: "Simple Machines",
-    subject: "science",
-    date: new Date(2025, 3, 19, 11, 0),
-    duration: 60,
-    description: "Exploring levers, pulleys, and inclined planes",
-    materials: ["Simple machines kit", "Science textbook", "Notebook"],
-    completed: false,
-  },
-]
-
-// Sample curriculum resources
-const curriculumResources = [
-  {
-    id: "c1",
-    title: "Math U See: Gamma",
-    subject: "math",
-    description: "Complete math curriculum focusing on multiplication",
-    publisher: "Math U See",
-    lessons: 30,
-    progress: 12,
-  },
-  {
-    id: "c2",
-    title: "Apologia Science: Exploring Creation",
-    subject: "science",
-    description: "Elementary science curriculum with hands-on experiments",
-    publisher: "Apologia",
-    lessons: 24,
-    progress: 8,
-  },
-  {
-    id: "c3",
-    title: "All About Reading: Level 3",
-    subject: "language",
-    description: "Comprehensive reading program with phonics and fluency",
-    publisher: "All About Learning Press",
-    lessons: 40,
-    progress: 15,
-  },
-  {
-    id: "c4",
-    title: "Story of the World: Volume 1",
-    subject: "history",
-    description: "Ancient history curriculum with activities and readings",
-    publisher: "Well-Trained Mind Press",
-    lessons: 42,
-    progress: 18,
-  },
-]
-
-// Sample collaborators
-const collaborators = [
-  {
-    id: "u1",
-    name: "Sarah Johnson",
-    role: "Co-teacher",
-    avatar: "/placeholder.svg",
-  },
-  {
-    id: "u2",
-    name: "Michael Chen",
-    role: "Science Specialist",
-    avatar: "/placeholder.svg",
-  },
-]
-
 export default function PlannerPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState("week")
-  const [selectedLesson, setSelectedLesson] = useState(null)
+  const [selectedLesson, setSelectedLesson] = useState<any>(null)
   const [isAddingLesson, setIsAddingLesson] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [filteredSubjects, setFilteredSubjects] = useState(subjects.map((s) => s.id))
+  const [lessons, setLessons] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeletingLesson, setIsDeletingLesson] = useState(false)
+
+  const loadLessons = useCallback(async () => {
+    try {
+      const result = await getLessons()
+      if (result.success && result.lessons) {
+        setLessons(
+          result.lessons.map((lesson: any) => ({
+            ...lesson,
+            date: new Date(lesson.date),
+          }))
+        )
+      }
+    } catch (error) {
+      console.error("Error loading lessons:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadLessons()
+  }, [loadLessons])
+
+  const handleCreateLesson = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    try {
+      const form = e.currentTarget
+      const formData = new FormData(form)
+      const result = await createLesson(formData)
+
+      if (result.success) {
+        toast({ title: "Success", description: "Lesson added to your planner!" })
+        setIsAddingLesson(false)
+        form.reset()
+        loadLessons()
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to add lesson", variant: "destructive" })
+      }
+    } catch (error) {
+      console.error("Error creating lesson:", error)
+      toast({ title: "Error", description: "An unexpected error occurred", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteLesson = async (lessonId: string) => {
+    setIsDeletingLesson(true)
+    try {
+      const result = await deleteLesson(lessonId)
+      if (result.success) {
+        toast({ title: "Success", description: "Lesson deleted" })
+        setSelectedLesson(null)
+        loadLessons()
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to delete lesson", variant: "destructive" })
+      }
+    } catch (error) {
+      console.error("Error deleting lesson:", error)
+      toast({ title: "Error", description: "An unexpected error occurred", variant: "destructive" })
+    } finally {
+      setIsDeletingLesson(false)
+    }
+  }
+
+  const handleToggleCompletion = async (lessonId: string) => {
+    try {
+      const result = await toggleLessonCompletion(lessonId)
+      if (result.success) {
+        // Update local state immediately
+        setLessons((prev) =>
+          prev.map((l) => (l.id === lessonId ? { ...l, completed: result.completed } : l))
+        )
+        if (selectedLesson?.id === lessonId) {
+          setSelectedLesson((prev: any) => prev ? { ...prev, completed: result.completed } : null)
+        }
+      }
+    } catch (error) {
+      console.error("Error toggling completion:", error)
+    }
+  }
 
   // Week navigation
   const startDate = startOfWeek(currentDate, { weekStartsOn: 0 })
@@ -238,7 +188,7 @@ export default function PlannerPage() {
   }
 
   // Filter lessons by selected subjects and current week
-  const filteredLessons = sampleLessons.filter(
+  const filteredLessons = lessons.filter(
     (lesson) =>
       filteredSubjects.includes(lesson.subject) &&
       lesson.date >= startOfWeek(currentDate) &&
@@ -476,7 +426,14 @@ export default function PlannerPage() {
                                   </div>
                                 </div>
                               </div>
-                              <Checkbox checked={lesson.completed} />
+                              <Checkbox
+                                checked={lesson.completed}
+                                onCheckedChange={(e) => {
+                                  e.stopPropagation?.()
+                                  handleToggleCompletion(lesson.id)
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
                             </div>
                           )
                         })}
@@ -598,63 +555,67 @@ export default function PlannerPage() {
             <DialogTitle>Add New Lesson</DialogTitle>
             <DialogDescription>Create a new lesson or activity for your homeschool schedule.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="title">Lesson Title</Label>
-              <Input id="title" placeholder="Enter lesson title" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleCreateLesson}>
+            <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="subject">Subject</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Subjects</SelectLabel>
-                      {subjects.map((subject) => (
-                        <SelectItem key={subject.id} value={subject.id}>
-                          <div className="flex items-center">
-                            <div className={`w-3 h-3 rounded-full ${subject.color} mr-2`}></div>
-                            {subject.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="title">Lesson Title *</Label>
+                <Input id="title" name="title" placeholder="Enter lesson title" required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="subject">Subject *</Label>
+                  <Select name="subject" required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select subject" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Subjects</SelectLabel>
+                        {subjects.map((subject) => (
+                          <SelectItem key={subject.id} value={subject.id}>
+                            <div className="flex items-center">
+                              <div className={`w-3 h-3 rounded-full ${subject.color} mr-2`}></div>
+                              {subject.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="duration">Duration (minutes)</Label>
+                  <Input id="duration" name="duration" type="number" placeholder="45" min="5" step="5" defaultValue="45" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="date">Date *</Label>
+                  <Input id="date" name="date" type="date" required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="time">Time</Label>
+                  <Input id="time" name="time" type="time" />
+                </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="duration">Duration (minutes)</Label>
-                <Input id="duration" type="number" placeholder="45" min="5" step="5" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="date">Date</Label>
-                <Input id="date" type="date" />
+                <Label htmlFor="description">Description</Label>
+                <Textarea id="description" name="description" placeholder="Enter lesson description" />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="time">Time</Label>
-                <Input id="time" type="time" />
+                <Label htmlFor="materials">Materials Needed</Label>
+                <Textarea id="materials" name="materials" placeholder="List materials needed, one per line" />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea id="description" placeholder="Enter lesson description" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="materials">Materials Needed</Label>
-              <Textarea id="materials" placeholder="List materials needed, one per line" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddingLesson(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setIsAddingLesson(false)}>Add Lesson</Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsAddingLesson(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Adding..." : "Add Lesson"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -690,17 +651,24 @@ export default function PlannerPage() {
                 </ul>
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox id="completed" checked={selectedLesson.completed} />
+                <Checkbox
+                  id="completed"
+                  checked={selectedLesson.completed}
+                  onCheckedChange={() => handleToggleCompletion(selectedLesson.id)}
+                />
                 <Label htmlFor="completed">Mark as completed</Label>
               </div>
             </div>
             <DialogFooter className="flex justify-between sm:justify-between">
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  Edit
-                </Button>
-                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive bg-transparent">
-                  Delete
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:text-destructive bg-transparent"
+                  onClick={() => handleDeleteLesson(selectedLesson.id)}
+                  disabled={isDeletingLesson}
+                >
+                  {isDeletingLesson ? "Deleting..." : "Delete"}
                 </Button>
               </div>
               <Button onClick={() => setSelectedLesson(null)}>Close</Button>
