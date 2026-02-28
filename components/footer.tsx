@@ -9,7 +9,7 @@ export function Footer() {
       <div className="container">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="font-bold text-lg mb-4">HomeScholar</h3>
+            <h3 className="font-bold text-lg mb-4">AtoZ Family</h3>
             <p className="text-sm text-muted-foreground mb-4">
               Your all-in-one platform for homeschool resources, planning, and community.
             </p>
@@ -49,11 +49,6 @@ export function Footer() {
               <li>
                 <Link href="/planner" className="text-muted-foreground hover:text-foreground">
                   Planner
-                </Link>
-              </li>
-              <li>
-                <Link href="/scroll" className="text-muted-foreground hover:text-foreground">
-                  Discover
                 </Link>
               </li>
             </ul>
@@ -110,7 +105,7 @@ export function Footer() {
         </div>
 
         <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} HomeScholar. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} AtoZ Family. All rights reserved.</p>
         </div>
       </div>
     </footer>
