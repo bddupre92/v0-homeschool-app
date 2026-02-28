@@ -12,9 +12,14 @@ export function useMapboxToken() {
     async function fetchToken() {
       try {
         setLoading(true)
-        const fetchedToken = await getMapboxToken()
-        setToken(fetchedToken)
-        setError(null)
+        const result = await getMapboxToken()
+        if (result.error) {
+          setError(new Error(result.error))
+          setToken(null)
+        } else {
+          setToken(result.token)
+          setError(null)
+        }
       } catch (err) {
         console.error("Error fetching Mapbox token:", err)
         setError(err instanceof Error ? err : new Error("Failed to fetch Mapbox token"))
@@ -26,5 +31,5 @@ export function useMapboxToken() {
     fetchToken()
   }, [])
 
-  return { token, loading, error }
+  return { token, loading, error, isLoading: loading }
 }
