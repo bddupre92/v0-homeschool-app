@@ -86,9 +86,9 @@ export async function POST(request: NextRequest) {
     `
 
     const userResult = await pool.query(userQuery, [
-      user.uid,
+      user.userId,
       user.email,
-      user.displayName || "User",
+      user.email || "User",
     ])
     const userId = userResult.rows[0].id
 

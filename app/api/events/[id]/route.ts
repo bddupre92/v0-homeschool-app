@@ -64,7 +64,7 @@ export async function PUT(
 
     // Get user ID
     const userQuery = "SELECT id FROM users WHERE firebase_uid = $1"
-    const userResult = await pool.query(userQuery, [user.uid])
+    const userResult = await pool.query(userQuery, [user.userId])
     const userId = userResult.rows[0]?.id
 
     if (!userId || ownerResult.rows[0].created_by_id !== userId) {
@@ -133,7 +133,7 @@ export async function DELETE(
 
     // Get user ID
     const userQuery = "SELECT id FROM users WHERE firebase_uid = $1"
-    const userResult = await pool.query(userQuery, [user.uid])
+    const userResult = await pool.query(userQuery, [user.userId])
     const userId = userResult.rows[0]?.id
 
     if (!userId || ownerResult.rows[0].created_by_id !== userId) {

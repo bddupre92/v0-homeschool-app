@@ -16,7 +16,7 @@ export async function DELETE(
 
     // Get current user's ID from database
     const userIdQuery = "SELECT id FROM users WHERE firebase_uid = $1"
-    const userIdResult = await pool.query(userIdQuery, [user.uid])
+    const userIdResult = await pool.query(userIdQuery, [user.userId])
 
     if (userIdResult.rows.length === 0) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })

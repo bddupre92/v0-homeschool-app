@@ -3,6 +3,11 @@ import { sql } from '@vercel/postgres'
 // Export the sql function for use in API routes and server actions
 export { sql }
 
+// Compatibility wrapper for API routes that use the pool.query(text, params) pattern
+export function getPool() {
+  return { query: (text: string, params?: any[]) => sql.query(text, params) }
+}
+
 // Helper functions for common database operations
 export const db = {
   // Users
