@@ -12,10 +12,36 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import Navigation from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { createGroup } from "@/app/actions/group-actions"
+
+const PHILOSOPHIES = [
+  { value: "classical", label: "Classical" },
+  { value: "montessori", label: "Montessori" },
+  { value: "charlotte_mason", label: "Charlotte Mason" },
+  { value: "unschooling", label: "Unschooling" },
+  { value: "eclectic", label: "Eclectic" },
+  { value: "waldorf", label: "Waldorf" },
+  { value: "reggio", label: "Reggio Emilia" },
+  { value: "traditional", label: "Traditional" },
+  { value: "other", label: "Other" },
+]
+
+const SUBJECTS = [
+  "Math", "Science", "English", "History", "Art",
+  "Music", "PE", "Foreign Language", "Technology", "Geography",
+]
+
+const AGE_GROUPS = [
+  { value: "preschool", label: "Preschool (3-5)" },
+  { value: "elementary", label: "Elementary (6-10)" },
+  { value: "middle", label: "Middle School (11-13)" },
+  { value: "high", label: "High School (14-18)" },
+]
 
 export default function CreateGroupPage() {
   const router = useRouter()
@@ -23,7 +49,23 @@ export default function CreateGroupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [groupType, setGroupType] = useState("")
-  const [ageGroup, setAgeGroup] = useState("")
+  const [philosophy, setPhilosophy] = useState("")
+  const [meetingFrequency, setMeetingFrequency] = useState("")
+  const [selectedAgeGroups, setSelectedAgeGroups] = useState<string[]>([])
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([])
+  const [isAcceptingMembers, setIsAcceptingMembers] = useState(true)
+
+  const toggleAgeGroup = (value: string) => {
+    setSelectedAgeGroups((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    )
+  }
+
+  const toggleSubject = (value: string) => {
+    setSelectedSubjects((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    )
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -32,7 +74,11 @@ export default function CreateGroupPage() {
 
     const formData = new FormData(e.currentTarget)
     formData.set("type", groupType)
-    formData.set("ageGroup", ageGroup)
+    formData.set("philosophy", philosophy)
+    formData.set("meetingFrequency", meetingFrequency)
+    formData.set("ageGroups", selectedAgeGroups.join(","))
+    formData.set("subjectsOffered", selectedSubjects.join(","))
+    formData.set("isAcceptingMembers", String(isAcceptingMembers))
 
     try {
       const result = await createGroup(formData)
@@ -81,8 +127,9 @@ export default function CreateGroupPage() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Basic Info */}
                 <div className="space-y-2">
-                  <Label htmlFor="name">Group Name</Label>
+                  <Label htmlFor="name">Group Name *</Label>
                   <Input id="name" name="name" placeholder="Enter the name of your group" required />
                 </div>
 
@@ -96,54 +143,136 @@ export default function CreateGroupPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="type">Group Type</Label>
-                  <Select value={groupType} onValueChange={setGroupType} required>
-                    <SelectTrigger id="type">
-                      <SelectValue placeholder="Select group type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="co-op">Co-op</SelectItem>
-                      <SelectItem value="special-interest">Special Interest</SelectItem>
-                      <SelectItem value="support">Support Group</SelectItem>
-                      <SelectItem value="class">Class</SelectItem>
-                      <SelectItem value="social">Social Group</SelectItem>
-                      <SelectItem value="field-trip">Field Trip Group</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Group Type *</Label>
+                    <Select value={groupType} onValueChange={setGroupType} required>
+                      <SelectTrigger id="type">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="co-op">Co-op</SelectItem>
+                        <SelectItem value="special-interest">Special Interest</SelectItem>
+                        <SelectItem value="support">Support Group</SelectItem>
+                        <SelectItem value="class">Class</SelectItem>
+                        <SelectItem value="social">Social Group</SelectItem>
+                        <SelectItem value="field-trip">Field Trip Group</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="philosophy">Education Philosophy</Label>
+                    <Select value={philosophy} onValueChange={setPhilosophy}>
+                      <SelectTrigger id="philosophy">
+                        <SelectValue placeholder="Select philosophy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PHILOSOPHIES.map((p) => (
+                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
+                {/* Age Groups */}
                 <div className="space-y-2">
-                  <Label htmlFor="meetingSchedule">Meeting Schedule</Label>
-                  <Input id="meetingSchedule" name="meetingSchedule" placeholder="e.g., Every Tuesday, 9:00 AM - 2:00 PM" />
+                  <Label>Age Groups</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {AGE_GROUPS.map((ag) => (
+                      <div key={ag.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`age-${ag.value}`}
+                          checked={selectedAgeGroups.includes(ag.value)}
+                          onCheckedChange={() => toggleAgeGroup(ag.value)}
+                        />
+                        <label htmlFor={`age-${ag.value}`} className="text-sm cursor-pointer">
+                          {ag.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
+                {/* Subjects */}
                 <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
+                  <Label>Subjects Offered</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {SUBJECTS.map((subj) => (
+                      <div key={subj} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`subj-${subj}`}
+                          checked={selectedSubjects.includes(subj)}
+                          onCheckedChange={() => toggleSubject(subj)}
+                        />
+                        <label htmlFor={`subj-${subj}`} className="text-sm cursor-pointer">
+                          {subj}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Schedule */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="meetingSchedule">Meeting Schedule</Label>
+                    <Input
+                      id="meetingSchedule"
+                      name="meetingSchedule"
+                      placeholder="e.g., Every Tuesday, 9:00 AM - 2:00 PM"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="meetingFrequency">Meeting Frequency</Label>
+                    <Select value={meetingFrequency} onValueChange={setMeetingFrequency}>
+                      <SelectTrigger id="meetingFrequency">
+                        <SelectValue placeholder="Select frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="quarterly">Quarterly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location / Venue</Label>
                   <Input id="location" name="location" placeholder="Enter the venue name and address" />
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input id="city" name="city" placeholder="City" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="zipCode">Zip Code</Label>
+                    <Input id="zipCode" name="zipCode" placeholder="Zip code" />
+                  </div>
+                </div>
+
+                {/* Settings */}
                 <div className="space-y-2">
                   <Label htmlFor="maxMembers">Max Members (optional)</Label>
                   <Input id="maxMembers" name="maxMembers" type="number" placeholder="Leave blank for unlimited" />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="ageGroup">Age Group</Label>
-                  <Select value={ageGroup} onValueChange={setAgeGroup}>
-                    <SelectTrigger id="ageGroup">
-                      <SelectValue placeholder="Select age group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Ages</SelectItem>
-                      <SelectItem value="preschool">Preschool</SelectItem>
-                      <SelectItem value="elementary">Elementary</SelectItem>
-                      <SelectItem value="middle">Middle School</SelectItem>
-                      <SelectItem value="high">High School</SelectItem>
-                      <SelectItem value="teens">Teens</SelectItem>
-                      <SelectItem value="parents">Parents Only</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <Label htmlFor="accepting" className="text-base">Accepting New Members</Label>
+                    <p className="text-sm text-muted-foreground">Allow others to find and join your group</p>
+                  </div>
+                  <Switch
+                    id="accepting"
+                    checked={isAcceptingMembers}
+                    onCheckedChange={setIsAcceptingMembers}
+                  />
                 </div>
 
                 <div className="flex justify-end gap-2">

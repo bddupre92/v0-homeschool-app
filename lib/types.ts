@@ -167,3 +167,158 @@ export interface PacketListResult {
   page: number
   pageSize: number
 }
+
+// ─── Group / Co-op Discovery Types ────────────────────────────────────────────
+
+export interface GroupProfile {
+  id: string
+  name: string
+  description: string
+  location: string
+  groupType: string
+  stateAbbreviation?: string
+  maxMembers?: number
+  isPrivate: boolean
+  imageUrl?: string
+  createdById: string
+  createdAt: string
+  updatedAt: string
+  // Discovery fields
+  philosophy?: string
+  ageGroups: string[]
+  subjectsOffered: string[]
+  schedule?: GroupSchedule
+  meetingFrequency?: string
+  meetingSchedule?: string
+  latitude?: number
+  longitude?: number
+  city?: string
+  zipCode?: string
+  isAcceptingMembers: boolean
+  memberCount: number
+}
+
+export interface GroupSchedule {
+  day: string
+  startTime: string
+  endTime: string
+  frequency: string
+}
+
+export interface GroupMember {
+  id: string
+  userId: string
+  displayName: string
+  email: string
+  photoUrl?: string
+  role: "admin" | "moderator" | "member"
+  joinedAt: string
+}
+
+export interface GroupMatchResult extends GroupProfile {
+  matchScore: number
+  matchBreakdown: MatchBreakdown
+  distanceMiles?: number
+}
+
+export interface MatchBreakdown {
+  distance: number
+  ageOverlap: number
+  philosophyMatch: number
+  subjectOverlap: number
+  scheduleCompat: number
+}
+
+export interface UserGroupPreferences {
+  latitude?: number
+  longitude?: number
+  maxDistanceMiles: number
+  preferredPhilosophy?: string
+  childAgeGroups: string[]
+  wantedSubjects: string[]
+  preferredDay?: string
+}
+
+export interface GroupSharedPacket {
+  id: string
+  groupId: string
+  packetId: string
+  sharedByUserId: string
+  sharedByName: string
+  notes?: string
+  sharedAt: string
+  // Packet summary fields
+  packetTitle: string
+  packetSubject: string
+  packetGrade: string
+  packetChildName: string
+  packetTopic: string
+}
+
+export interface GroupAnnouncement {
+  id: string
+  groupId: string
+  authorUserId: string
+  authorName: string
+  authorPhotoUrl?: string
+  title: string
+  content: string
+  isPinned: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TeachingRotation {
+  id: string
+  groupId: string
+  teacherUserId: string
+  teacherName: string
+  subject: string
+  dayOfWeek: string
+  startTime?: string
+  endTime?: string
+  notes?: string
+  createdAt: string
+}
+
+export interface GroupFieldTrip {
+  id: string
+  groupId: string
+  organizerUserId: string
+  organizerName: string
+  title: string
+  description?: string
+  location: string
+  latitude?: number
+  longitude?: number
+  tripDate: string
+  maxAttendees?: number
+  costPerFamily?: number
+  relatedPacketId?: string
+  rsvpCount: number
+  userRsvpStatus?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FieldTripRSVP {
+  id: string
+  fieldTripId: string
+  userId: string
+  userName: string
+  numChildren: number
+  status: "going" | "maybe" | "not_going"
+  createdAt: string
+}
+
+export interface GroupDiscoveryFilters {
+  search?: string
+  philosophy?: string
+  ageGroup?: string
+  maxDistanceMiles?: number
+  subjects?: string[]
+  isAccepting?: boolean
+  city?: string
+  latitude?: number
+  longitude?: number
+}

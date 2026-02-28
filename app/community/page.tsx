@@ -1,5 +1,8 @@
 "use client"
+import Link from "next/link"
+import { Compass } from "lucide-react"
 import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import Navigation from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import CommunityEvents from "@/components/community-events"
@@ -19,7 +22,7 @@ export default function CommunityPage() {
             <TabsList className="grid w-full grid-cols-3 mb-8">
               <TabsTrigger value="events">Events</TabsTrigger>
               <TabsTrigger value="groups">Groups</TabsTrigger>
-              <TabsTrigger value="locations">Locations</TabsTrigger>
+              <TabsTrigger value="discover">Discover</TabsTrigger>
             </TabsList>
             <TabsContent value="events">
               <CommunityEvents />
@@ -27,10 +30,19 @@ export default function CommunityPage() {
             <TabsContent value="groups">
               <CommunityGroups />
             </TabsContent>
-            <TabsContent value="locations">
-              <Card className="p-6">
-                <h2 className="text-xl font-bold mb-4">Locations</h2>
-                <p>Map and location features will be displayed here.</p>
+            <TabsContent value="discover">
+              <Card className="p-8 text-center">
+                <Compass className="h-12 w-12 mx-auto mb-3 text-primary" />
+                <h2 className="text-xl font-bold mb-2">Discover Groups Near You</h2>
+                <p className="text-muted-foreground mb-4">
+                  Find homeschool co-ops and groups in your area using our matching algorithm and map-based discovery.
+                </p>
+                <Button asChild>
+                  <Link href="/community/groups/discover">
+                    <Compass className="h-4 w-4 mr-2" />
+                    Explore Groups
+                  </Link>
+                </Button>
               </Card>
             </TabsContent>
           </Tabs>

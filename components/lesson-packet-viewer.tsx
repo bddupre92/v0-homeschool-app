@@ -19,6 +19,7 @@ import {
 import { trackPrint } from "@/app/actions/packet-actions"
 import type { LessonPacket } from "@/lib/types"
 import LessonPacketPrintView from "./lesson-packet-print-view"
+import SharePacketModal from "./share-packet-modal"
 
 interface LessonPacketViewerProps {
   packet: LessonPacket
@@ -49,10 +50,15 @@ export default function LessonPacketViewer({ packet, savedPacketId }: LessonPack
               <span className="text-sm text-muted-foreground">for {packet.childName}</span>
             </div>
           </div>
-          <Button onClick={handlePrint} className="gap-2">
-            <Printer className="h-4 w-4" />
-            Print Packet
-          </Button>
+          <div className="flex gap-2">
+            {savedPacketId && (
+              <SharePacketModal packetId={savedPacketId} packetTitle={packet.title} />
+            )}
+            <Button onClick={handlePrint} className="gap-2">
+              <Printer className="h-4 w-4" />
+              Print Packet
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
