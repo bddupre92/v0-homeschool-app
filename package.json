@@ -18,7 +18,8 @@
   },
   "overrides": {
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "fast-xml-parser": ">=4.5.4"
   },
   "dependencies": {
     "@ai-sdk/groq": "latest",
