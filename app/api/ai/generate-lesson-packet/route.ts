@@ -132,5 +132,5 @@ Generate the complete lesson packet JSON now. Make it engaging, thorough, and pr
     prompt: prompt,
   })
 
-  return result.toAIStreamResponse()
+  return result.toDataStreamResponse()
 }

@@ -50,8 +50,7 @@ export async function POST(req: Request) {
     model: groq("llama3-70b-8192"),
     system: systemPrompt,
     prompt: prompt,
-    response_format: { type: "json" },
   })
 
-  return result.toAIStreamResponse()
+  return result.toDataStreamResponse()
 }

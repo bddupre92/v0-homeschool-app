@@ -22,7 +22,7 @@ export function ErrorTrackingProvider({ children }: { children: ReactNode }) {
           tracesSampleRate: 0.5,
           replaysSessionSampleRate: 0.1,
           replaysOnErrorSampleRate: 1.0,
-          integrations: [new Sentry.Replay()],
+          integrations: [Sentry.replayIntegration()],
         })
       }
     } catch (error) {
@@ -45,7 +45,7 @@ export function ErrorTrackingProvider({ children }: { children: ReactNode }) {
     console.log("Message:", message)
     try {
       if (process.env.NODE_ENV === "production" && Sentry) {
-        Sentry.captureMessage(message, "info", { extra: context })
+        Sentry.captureMessage(message, { level: "info", extra: context })
       }
     } catch (err) {
       console.error("Failed to capture message:", err)
