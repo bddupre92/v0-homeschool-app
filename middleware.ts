@@ -19,21 +19,39 @@ export function middleware(request: NextRequest) {
   // Get the session cookie
   const session = request.cookies.get("session")?.value
 
+  // Basic validation: a real Firebase session cookie is a JWT (3 dot-separated base64 parts)
+  const isValidSession = session && session.split(".").length === 3 && session.length > 100
+
   // Redirect unauthenticated users away from protected pages
-  if (isProtectedPath && !session) {
+  if (isProtectedPath && !isValidSession) {
     const signInUrl = new URL("/sign-in", request.url)
     signInUrl.searchParams.set("callbackUrl", pathname)
-    return NextResponse.redirect(signInUrl)
+    const response = NextResponse.redirect(signInUrl)
+    // Clear the invalid/stale session cookie if it exists
+    if (session && !isValidSession) {
+      response.cookies.set("session", "", { maxAge: 0, path: "/" })
+    }
+    return response
   }
 
-  // If the path is for authentication and there's a session, redirect to dashboard
-  if (isAuthPath && session) {
+  // If the path is for authentication and there's a valid session, redirect to dashboard
+  if (isAuthPath && isValidSession) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
+  }
+
+  // If on auth path with an invalid session cookie, clear it and let them through
+  if (isAuthPath && session && !isValidSession) {
+    const response = NextResponse.next()
+    response.cookies.set("session", "", { maxAge: 0, path: "/" })
+    return addSecurityHeaders(response)
   }
 
   // Add security headers
   const response = NextResponse.next()
+  return addSecurityHeaders(response)
+}
 
+function addSecurityHeaders(response: NextResponse): NextResponse {
   // Content Security Policy
   response.headers.set(
     "Content-Security-Policy",
