@@ -43,8 +43,8 @@ export default function AdvisorPage() {
     if (!user?.uid) return
     try {
       const [childrenData, blueprintData] = await Promise.all([
-        getChildren(user.uid),
-        getFamilyBlueprint(user.uid),
+        getChildren(),
+        getFamilyBlueprint(),
       ])
 
       if (childrenData && childrenData.length > 0) {
@@ -109,8 +109,8 @@ export default function AdvisorPage() {
       // Load recommendations and approved objectives
       try {
         const [recs, objectives] = await Promise.all([
-          getRecommendations(user.uid),
-          getApprovedObjectives(user.uid),
+          getRecommendations(),
+          getApprovedObjectives(),
         ])
         setRecommendations(recs)
         setApprovedObjectives(objectives)
@@ -129,10 +129,10 @@ export default function AdvisorPage() {
   }, [loadData])
 
   const handleSaveRecommendation = async (card: CurriculumPlanCard) => {
-    if (!user?.uid || children.length === 0) return
+    if (children.length === 0) return
 
     const child = children.find((c) => c.name === card.childName) || children[0]
-    const result = await saveRecommendation(user.uid, {
+    const result = await saveRecommendation("", {
       childId: child.id,
       title: `${card.childName}'s Year Curriculum — Grade ${card.grade} (${card.schoolYear})`,
       schoolYear: card.schoolYear,
@@ -154,7 +154,7 @@ export default function AdvisorPage() {
     if (result.success) {
       // Refresh recommendations
       try {
-        const recs = await getRecommendations(user.uid)
+        const recs = await getRecommendations()
         setRecommendations(recs)
       } catch {
         // ignore

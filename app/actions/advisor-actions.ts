@@ -1,10 +1,30 @@
 "use server"
 
 import { sql } from "@vercel/postgres"
+import { requireAuth } from "@/lib/auth-middleware"
+import { db } from "@/lib/db"
+import { AuthenticationError } from "@/lib/errors"
+
+// ─── Auth helpers ────────────────────────────────────────────────────────────
+
+async function getAuthenticatedUserId(): Promise<string> {
+  const auth = await requireAuth()
+  return db.resolveOrCreateUserId(auth.userId, auth.email || undefined)
+}
+
+async function getOptionalUserId(): Promise<string | null> {
+  try {
+    const auth = await requireAuth()
+    return db.resolveOrCreateUserId(auth.userId, auth.email || undefined)
+  } catch (error) {
+    if (error instanceof AuthenticationError) return null
+    throw error
+  }
+}
 
 // ─── Curriculum Recommendations ─────────────────────────────────────────────
 
-export async function saveRecommendation(userId: string, data: {
+export async function saveRecommendation(_userId: string, data: {
   childId: string
   title: string
   schoolYear?: string
@@ -23,6 +43,7 @@ export async function saveRecommendation(userId: string, data: {
   }[]
 }) {
   try {
+    const userId = await getAuthenticatedUserId()
     // Create the recommendation
     const rec = await sql`
       INSERT INTO curriculum_recommendations (user_id, child_id, title, school_year, grade, tags, ai_notes, status)
@@ -64,8 +85,9 @@ export async function saveRecommendation(userId: string, data: {
   }
 }
 
-export async function getRecommendations(userId: string, childId?: string) {
+export async function getRecommendations(_userId?: string, childId?: string) {
   try {
+    const userId = await getAuthenticatedUserId()
     let result
     if (childId) {
       result = await sql`
@@ -131,8 +153,9 @@ export async function getRecommendationDetail(recommendationId: string) {
   }
 }
 
-export async function getApprovedObjectives(userId: string) {
+export async function getApprovedObjectives(_userId?: string) {
   try {
+    const userId = await getAuthenticatedUserId()
     const result = await sql`
       SELECT ro.id, ro.title, ro.description, ro.status, ro.lesson_source, ro.lesson_packet_id,
              rs.name as subject, cr.child_id
