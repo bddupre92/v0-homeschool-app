@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import type { LessonBuildCard } from "@/lib/advisor-types"
+import { CitationText } from "@/components/ui/citation-text"
+import { ReferencesSection } from "@/components/advisor-cards/references-section"
+import { MaterialLink } from "@/components/advisor-cards/material-link"
 
 export function LessonBuildCardUI(props: {
   card: LessonBuildCard
@@ -93,7 +96,9 @@ export function LessonBuildCardUI(props: {
               </button>
               {isExpanded && (
                 <div className="px-3 pb-3 space-y-3 border-t bg-muted/20">
-                  <p className="text-sm text-muted-foreground pt-2">{lesson.description}</p>
+                  <p className="text-sm text-muted-foreground pt-2">
+                    <CitationText text={lesson.description} references={card.references} />
+                  </p>
                   {lesson.materials?.length > 0 && (
                     <div>
                       <p className="text-xs font-medium mb-1 flex items-center gap-1">
@@ -101,7 +106,7 @@ export function LessonBuildCardUI(props: {
                       </p>
                       <div className="flex flex-wrap gap-1">
                         {lesson.materials.map((m, mi) => (
-                          <Badge key={mi} variant="secondary" className="text-xs">{m}</Badge>
+                          <MaterialLink key={mi} material={m} />
                         ))}
                       </div>
                     </div>
@@ -169,6 +174,10 @@ export function LessonBuildCardUI(props: {
 
         {card.summary && (
           <p className="text-xs text-muted-foreground pt-1">{card.summary}</p>
+        )}
+
+        {card.references && card.references.length > 0 && (
+          <ReferencesSection references={card.references} />
         )}
 
         {onSave && !saved && (

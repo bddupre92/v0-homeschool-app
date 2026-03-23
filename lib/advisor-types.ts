@@ -1,3 +1,5 @@
+import type { MaterialResource, Reference } from "./types"
+
 // ─── AI Curriculum Advisor Types ─────────────────────────────────────────────
 
 export interface AdvisorMessage {
@@ -82,9 +84,10 @@ export interface LessonBuildCard {
     lessonTitle: string
     duration: number
     description: string
-    materials: string[]
+    materials: (string | MaterialResource)[]
     packetDepth: "light" | "full"
   }[]
+  references?: Reference[]
   summary: string
 }
 
@@ -142,3 +145,21 @@ export type AdvisorWorkflowMode =
   | "build_lessons"
   | "schedule_lessons"
   | "build_and_schedule"
+
+// ─── Multi-Child Workflow Tracker ────────────────────────────────────────────
+
+export interface WorkflowTask {
+  id: string
+  childName: string
+  subject: string
+  status: "pending" | "building" | "awaiting_approval" | "approved" | "scheduled" | "skipped"
+  lessonCount?: number
+}
+
+export interface WorkflowPlan {
+  id: string
+  title: string
+  tasks: WorkflowTask[]
+  currentTaskIndex: number
+  createdAt: string
+}

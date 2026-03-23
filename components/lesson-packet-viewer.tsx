@@ -16,8 +16,11 @@ import {
   Puzzle,
   Printer,
 } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 import { trackPrint } from "@/app/actions/packet-actions"
 import type { LessonPacket } from "@/lib/types"
+import { CitationText } from "@/components/ui/citation-text"
+import { ReferencesSection } from "@/components/advisor-cards/references-section"
 import LessonPacketPrintView from "./lesson-packet-print-view"
 import SharePacketModal from "./share-packet-modal"
 
@@ -122,7 +125,9 @@ export default function LessonPacketViewer({ packet, savedPacketId }: LessonPack
                   <h4 className="font-semibold mb-3">Reading</h4>
                   <div className="prose prose-sm max-w-none">
                     {packet.studentLesson?.readingContent?.split("\n").map((paragraph, i) => (
-                      <p key={i}>{paragraph}</p>
+                      <p key={i}>
+                        <CitationText text={paragraph} references={packet.references} />
+                      </p>
                     ))}
                   </div>
                 </div>
@@ -306,7 +311,14 @@ export default function LessonPacketViewer({ packet, savedPacketId }: LessonPack
                         <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center gap-2">
                             <span className="w-5 h-5 border-2 rounded" />
-                            <span className="font-medium text-sm">{item.item}</span>
+                            {item.url ? (
+                              <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-medium text-sm text-primary hover:underline inline-flex items-center gap-1">
+                                {item.item}
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            ) : (
+                              <span className="font-medium text-sm">{item.item}</span>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <span>{item.quantity}</span>
@@ -476,7 +488,14 @@ export default function LessonPacketViewer({ packet, savedPacketId }: LessonPack
                     <div className="space-y-2">
                       {packet.localExploration.onlineResources.map((resource, i) => (
                         <div key={i} className="p-3 border rounded-lg">
-                          <h5 className="font-medium text-sm">{resource.title}</h5>
+                          {resource.url ? (
+                            <a href={resource.url} target="_blank" rel="noopener noreferrer" className="font-medium text-sm text-primary hover:underline inline-flex items-center gap-1">
+                              {resource.title}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            <h5 className="font-medium text-sm">{resource.title}</h5>
+                          )}
                           <p className="text-xs text-muted-foreground">{resource.description}</p>
                         </div>
                       ))}
@@ -552,6 +571,15 @@ export default function LessonPacketViewer({ packet, savedPacketId }: LessonPack
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* References section at bottom */}
+        {packet.references && packet.references.length > 0 && (
+          <Card>
+            <CardContent className="pt-4">
+              <ReferencesSection references={packet.references} />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Print view - hidden on screen, shown when printing */}

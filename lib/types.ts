@@ -4,6 +4,24 @@ export interface ResearchResult {
   snippet: string
 }
 
+// ─── Material & Citation Types ──────────────────────────────────────────────
+
+export interface MaterialResource {
+  name: string
+  url?: string
+  type: "book" | "supply" | "article" | "video" | "website"
+  price?: string
+}
+
+export interface Reference {
+  id: number
+  title: string
+  url?: string
+  author?: string
+  type: "book" | "article" | "video" | "website" | "research"
+  snippet?: string
+}
+
 // ─── AI Lesson Packet Types ─────────────────────────────────────────────────
 
 export interface LessonPacket {
@@ -22,6 +40,7 @@ export interface LessonPacket {
   experiment: Experiment
   localExploration: LocalExploration
   extensions: Extensions
+  references?: Reference[]
 }
 
 export interface StudentLesson {
@@ -78,6 +97,8 @@ export interface MaterialItem {
   item: string
   quantity: string
   notes?: string
+  url?: string
+  type?: "book" | "supply" | "article" | "video" | "website"
 }
 
 export interface HouseholdAlternative {
@@ -117,6 +138,7 @@ export interface FieldTripIdea {
 export interface OnlineResource {
   title: string
   description: string
+  url?: string
 }
 
 export interface Extensions {

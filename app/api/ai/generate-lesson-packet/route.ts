@@ -1,5 +1,6 @@
 import { streamText } from "ai"
 import { groq } from "@ai-sdk/groq"
+import { buildPersonalizationDirectives } from "@/lib/ai/personalization-directives"
 
 export const maxDuration = 120
 
@@ -111,8 +112,23 @@ JSON SCHEMA (follow this EXACTLY):
     "advanced": [
       { "activity": "string - activity name", "description": "string - challenge activity for advanced learners" }
     ]
-  }
+  },
+  "references": [
+    { "id": 1, "title": "string - source title", "url": "string (optional) - URL if known", "author": "string (optional)", "type": "book | article | video | website | research", "snippet": "string - brief description of what was cited" }
+  ]
 }`
+
+  // Build personalization directives
+  const philosophyArray = philosophy ? (Array.isArray(philosophy) ? philosophy : [philosophy]) : undefined
+  const valuesArray = familyValues ? (Array.isArray(familyValues) ? familyValues : familyValues.split(",").map((v: string) => v.trim())) : undefined
+  const interestsArray = interests ? (Array.isArray(interests) ? interests : interests.split(",").map((i: string) => i.trim())) : undefined
+
+  const directives = buildPersonalizationDirectives(
+    learningStyle,
+    philosophyArray,
+    valuesArray,
+    interestsArray,
+  )
 
   const prompt = `Create a complete lesson packet for:
 
@@ -126,6 +142,16 @@ ${location ? `LOCATION: ${location} (suggest relevant local field trips and expl
 ${familyValues ? `FAMILY VALUES: ${familyValues} (subtly weave these values into discussion questions, reflection activities, and character connections)` : ""}
 ${philosophy ? `EDUCATIONAL PHILOSOPHY: ${philosophy} (align the teaching approach with this philosophy)` : ""}
 ${strengths ? `CHILD'S STRENGTHS: ${strengths} (leverage these strengths in activities)` : ""}
+
+${directives}
+
+RESOURCE & CITATION RULES:
+- When recommending books or resources in materialsList or onlineResources, include the URL if you know it with confidence.
+- For onlineResources, include a "url" field with the actual URL when known (e.g., Khan Academy, PBS, National Geographic Kids).
+- For materialsList items, include a "url" field for purchasable books/materials when you know the URL.
+- Include a "references" array at the top level listing sources you drew from — include id, title, url (if known), author, type, and a brief snippet.
+- Use [N] citation markers in readingContent and teacherGuide.overview when referencing specific sources.
+- Only include URLs you are confident are correct.
 
 Generate the complete lesson packet JSON now. Make it engaging, thorough, and practical. The parent should be able to print this out and teach an amazing lesson today. Every lesson should trace back to the family's values and the child's unique profile.`
 

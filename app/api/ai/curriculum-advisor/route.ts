@@ -1,5 +1,6 @@
 import { streamText } from "ai"
 import { groq } from "@ai-sdk/groq"
+import { buildPersonalizationDirectives } from "@/lib/ai/personalization-directives"
 
 export const maxDuration = 120
 
@@ -87,6 +88,14 @@ ${approvedObjectives.map((o: any) => `- [${o.subject}] ${o.title}${o.lesson_sour
 
 You can reference these objectives when building lessons or scheduling. The parent has already approved these learning goals.`
     : ""
+
+  // Build personalization directives from family profile
+  const personalizationDirectives = buildPersonalizationDirectives(
+    childProfile?.learningStyle,
+    familyBlueprint?.philosophy,
+    familyBlueprint?.values,
+    childProfile?.interests,
+  )
 
   // Intent-specific instructions
   let intentInstructions = ""
@@ -179,10 +188,18 @@ When you have enough context, include EXACTLY ONE structured JSON block in \`\`\
       "objectiveTitle": "The learning objective this covers",
       "lessonTitle": "Engaging lesson title",
       "duration": 45,
-      "description": "What the student will learn and do in this lesson",
-      "materials": ["Material 1", "Material 2"],
+      "description": "What the student will learn and do in this lesson. Cite sources inline [1] when referencing methodologies or research.",
+      "materials": [
+        "pencil",
+        "notebook",
+        {"name": "The Story of the World Vol 1", "type": "book", "price": "~$15"},
+        {"name": "Khan Academy: Fractions", "url": "https://www.khanacademy.org/math/arithmetic/fraction-arithmetic", "type": "website"}
+      ],
       "packetDepth": "light"
     }
+  ],
+  "references": [
+    {"id": 1, "title": "Charlotte Mason's Philosophy of Education", "author": "Charlotte Mason", "type": "book", "snippet": "Foundational text on the living books approach to education"}
   ],
   "summary": "Brief summary of the lesson set"
 }
@@ -193,6 +210,8 @@ CRITICAL RULES:
 - Output exactly ONE \`\`\`json block containing ONE object with a "lessons" array. Do NOT output multiple separate JSON blocks — put ALL lessons inside the single "lessons" array.
 - You MUST always provide a non-empty "lessonTitle" and "objectiveTitle" for EVERY lesson in the array. Never leave these fields blank, null, or empty.
 - Each lessonTitle should be specific and engaging (e.g., "Butterfly Life Cycle Adventure" not just "Science Lesson").
+- For materials: use plain strings for basic supplies, and {"name", "url?", "type", "price?"} objects for books, websites, videos, and articles.
+- Include a "references" array with all cited sources — these appear as a "Sources" section on the card.
 - If building for multiple children, use "childName": "Asher & Zuri" and put all lessons in one array.`
   } else if (intent === "schedule_lessons") {
     // Calculate next Monday for default weekStart
@@ -247,16 +266,27 @@ CRITICAL: Output exactly ONE \`\`\`json block per response. Put ALL lessons insi
   "childName": "Child Name",
   "subject": "Subject",
   "lessons": [
-    { "lessonTitle": "Title 1", "objectiveTitle": "Objective 1", "duration": 45, "description": "...", "materials": ["..."], "packetDepth": "light" },
+    { "lessonTitle": "Title 1", "objectiveTitle": "Objective 1", "duration": 45, "description": "Description with citations [1]...", "materials": ["pencil", {"name": "Book Title", "type": "book"}], "packetDepth": "light" },
     { "lessonTitle": "Title 2", "objectiveTitle": "Objective 2", "duration": 30, "description": "...", "materials": ["..."], "packetDepth": "light" }
   ],
+  "references": [{"id": 1, "title": "Source", "type": "article", "snippet": "Why this is relevant"}],
   "summary": "Week X of Y — topic overview"
 }
 
 Start by asking about subjects/objectives and the desired scope (e.g., "a semester" = ~18 weeks, "a quarter" = ~9 weeks). Generate a lesson_build card first.
 After the parent approves, generate a schedule_proposal card for the approved lessons, then offer to build the next batch.
 
-For building steps, use the lesson_build JSON format. For scheduling steps, use the schedule_proposal JSON format.`
+For building steps, use the lesson_build JSON format. For scheduling steps, use the schedule_proposal JSON format.
+
+MULTI-CHILD WORKFLOW:
+When the parent asks to build for multiple children (e.g., "build for Asher and Zuri", "all my kids", "both children"):
+1. State the FULL PLAN upfront: "I'll build [subject] lessons for [Child1] first, then [Child2]. Here's the plan:" with a brief overview.
+2. Build ONE child at a time — generate a lesson_build card for the first child only.
+3. After generating, EXPLICITLY ask: "I've built [N] [subject] lessons for [Child1]. Would you like to approve these before I build [Child2]'s lessons?"
+4. After approval, automatically move to the next child and generate their lessons.
+5. Keep a running summary in your text: "Progress: [Child1] ✓ approved | [Child2] — building next | [Child3] — waiting"
+6. Each child gets their OWN lesson_build card with their name. Do NOT combine multiple children into one card.
+7. Adapt each child's lessons to THEIR specific learning style, grade, and interests — siblings should NOT get the same lessons.`
   }
 
   const systemPrompt = `You are the AtoZ Family AI Curriculum Advisor — a knowledgeable, warm, and practical homeschool planning assistant.
@@ -288,7 +318,17 @@ ${complianceContext}
 
 ${objectivesContext}
 
+${personalizationDirectives}
+
 ${intentInstructions}
+
+RESOURCE & CITATION RULES:
+- When recommending books, include the full title and author. If you know a well-known URL (e.g., Khan Academy, PBS Kids), include it.
+- When referencing a teaching methodology, educational research, or specific resource, cite it inline using [N] notation (e.g., "Charlotte Mason emphasized short lessons [1]").
+- In the "materials" array for lesson_build cards, you may use either plain strings for basic supplies ("pencil", "paper") or objects with metadata: {"name": "The Story of the World", "url": "https://...", "type": "book", "price": "~$15"}.
+- Include a "references" array at the card level listing all cited sources: [{"id": 1, "title": "Source title", "url": "https://...", "author": "Author", "type": "book|article|video|website|research", "snippet": "Brief description"}].
+- Only include URLs you are confident are correct. It's better to omit a URL than to guess incorrectly.
+- For materials you're unsure about exact URLs, just use the name as a plain string — parents can search for it themselves.
 
 RESPONSE RULES:
 1. Always be conversational — you're chatting, not writing an essay.

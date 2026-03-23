@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Send, Bot, Sparkles, Loader2, Trash2, BookOpen, CalendarDays, Layers, ClipboardCheck, BarChart3, MessageCircle } from "lucide-react"
+import { Send, Bot, Sparkles, Loader2, Trash2, BookOpen, CalendarDays, Layers, ClipboardCheck, BarChart3, MessageCircle, ListChecks } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -16,6 +16,8 @@ import type {
   FamilyBlueprintData,
   AdvisorIntent,
   AdvisorWorkflowMode,
+  WorkflowPlan,
+  WorkflowTask,
 } from "@/lib/advisor-types"
 import { CurriculumPlanCardUI } from "@/components/advisor-cards/curriculum-plan-card"
 import { ComplianceCheckCardUI } from "@/components/advisor-cards/compliance-check-card"
@@ -23,6 +25,8 @@ import { ProgressReportCardUI } from "@/components/advisor-cards/progress-report
 import { LessonSuggestionCardUI } from "@/components/advisor-cards/lesson-suggestion-card"
 import { LessonBuildCardUI } from "@/components/advisor-cards/lesson-build-card"
 import { ScheduleProposalCardUI } from "@/components/advisor-cards/schedule-proposal-card"
+import { WorkflowProgressCard } from "@/components/advisor-cards/workflow-progress-card"
+import { WorkflowSidebar } from "@/components/advisor-cards/workflow-sidebar"
 import LessonPacketViewer from "@/components/lesson-packet-viewer"
 import { savePacket } from "@/app/actions/packet-actions"
 import type { LessonPacket } from "@/lib/types"
@@ -93,8 +97,29 @@ function normalizeCard(parsed: any): any {
       description: l.description || l.summary || l.overview ||
         (Array.isArray(l.learningObjectives) ? l.learningObjectives.join("; ") : "") ||
         (Array.isArray(l.procedure) ? l.procedure.join("; ") : "") || "",
-      materials: Array.isArray(l.materials) ? l.materials : [],
+      materials: Array.isArray(l.materials)
+        ? l.materials.map((m: any) =>
+            typeof m === "string"
+              ? m
+              : {
+                  name: m.name || m.item || m.title || "",
+                  url: m.url || undefined,
+                  type: m.type || "supply",
+                  price: m.price || undefined,
+                }
+          )
+        : [],
       packetDepth: l.packetDepth || l.packet_depth || "light",
+    }))
+
+    // Normalize card-level references
+    parsed.references = (parsed.references || parsed.sources || parsed.citations || []).map((r: any) => ({
+      id: r.id || r.number || 0,
+      title: r.title || r.name || "",
+      url: r.url || undefined,
+      author: r.author || undefined,
+      type: r.type || "article",
+      snippet: r.snippet || r.description || "",
     }))
   }
 
@@ -342,6 +367,8 @@ export default function AIAdvisorChat({
   const [isStreaming, setIsStreaming] = useState(false)
   const [selectedChild, setSelectedChild] = useState<ChildProfile | null>(children[0] || null)
   const [workflowMode, setWorkflowMode] = useState<AdvisorWorkflowMode | null>(null)
+  const [workflowPlan, setWorkflowPlan] = useState<WorkflowPlan | null>(null)
+  const [showWorkflowSidebar, setShowWorkflowSidebar] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -645,6 +672,8 @@ export default function AIAdvisorChat({
 
   const clearChat = () => {
     setWorkflowMode(null)
+    setWorkflowPlan(null)
+    setShowWorkflowSidebar(false)
     setMessages([
       {
         id: "welcome",
@@ -656,10 +685,138 @@ export default function AIAdvisorChat({
     ])
   }
 
+  // ─── Multi-Child Workflow Management ─────────────────────────────────────
+
+  const detectMultiChildIntent = useCallback((text: string): boolean => {
+    const lower = text.toLowerCase()
+    const mentionedChildren = children.filter((c) =>
+      lower.includes(c.name.toLowerCase())
+    )
+    const hasMultiKeywords = lower.includes("all my kids") || lower.includes("both") ||
+      lower.includes("all children") || lower.includes("everyone") || lower.includes("each child")
+    return mentionedChildren.length > 1 || (hasMultiKeywords && children.length > 1)
+  }, [children])
+
+  const initializeWorkflowPlan = useCallback((subjects: string[]) => {
+    const tasks: WorkflowTask[] = []
+    for (const child of children) {
+      for (const subject of subjects) {
+        tasks.push({
+          id: `${child.id}-${subject}`,
+          childName: child.name,
+          subject,
+          status: "pending",
+        })
+      }
+    }
+    if (tasks.length > 0) {
+      tasks[0].status = "building"
+    }
+    const plan: WorkflowPlan = {
+      id: crypto.randomUUID(),
+      title: subjects.length === 1 ? `${subjects[0]} for All Children` : "Multi-Subject Build",
+      tasks,
+      currentTaskIndex: 0,
+      createdAt: new Date().toISOString(),
+    }
+    setWorkflowPlan(plan)
+    setShowWorkflowSidebar(true)
+    return plan
+  }, [children])
+
+  const updateWorkflowTask = useCallback((taskId: string, updates: Partial<WorkflowTask>) => {
+    setWorkflowPlan((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t)),
+      }
+    })
+  }, [])
+
+  const handleWorkflowApprove = useCallback((taskId: string) => {
+    updateWorkflowTask(taskId, { status: "approved" })
+    // Find the next pending task and start building
+    setWorkflowPlan((prev) => {
+      if (!prev) return prev
+      const nextIdx = prev.tasks.findIndex((t) => t.status === "pending")
+      if (nextIdx !== -1) {
+        const nextTask = prev.tasks[nextIdx]
+        const updatedTasks = prev.tasks.map((t, i) =>
+          i === nextIdx ? { ...t, status: "building" as const } : t
+        )
+        // Auto-send message to build next child
+        setTimeout(() => {
+          sendMessage(
+            `Great, ${taskId.split("-")[0]}'s lessons are approved! Now please build ${nextTask.subject} lessons for ${nextTask.childName}.`
+          )
+        }, 300)
+        return { ...prev, tasks: updatedTasks, currentTaskIndex: nextIdx }
+      }
+      return prev
+    })
+  }, [updateWorkflowTask])
+
+  const handleWorkflowSkip = useCallback((taskId: string) => {
+    updateWorkflowTask(taskId, { status: "skipped" })
+  }, [updateWorkflowTask])
+
+  const handleWorkflowSchedule = useCallback((taskId: string) => {
+    updateWorkflowTask(taskId, { status: "scheduled" })
+  }, [updateWorkflowTask])
+
+  // Update workflow plan when lesson_build cards arrive
+  useEffect(() => {
+    if (!workflowPlan) return
+    const latestMsg = messages[messages.length - 1]
+    if (latestMsg?.structuredData?.type === "lesson_build") {
+      const card = latestMsg.structuredData as LessonBuildCard
+      const childName = card.childName
+      const subject = card.subject
+      // Find matching task and mark as awaiting_approval
+      setWorkflowPlan((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          tasks: prev.tasks.map((t) => {
+            if (
+              t.childName.toLowerCase() === childName?.toLowerCase() &&
+              t.subject.toLowerCase() === subject?.toLowerCase() &&
+              t.status === "building"
+            ) {
+              return { ...t, status: "awaiting_approval", lessonCount: card.lessons?.length || 0 }
+            }
+            return t
+          }),
+        }
+      })
+    }
+  }, [messages, workflowPlan])
+
+  // Auto-detect multi-child intent and initialize workflow plan
+  useEffect(() => {
+    if (workflowPlan) return // Already have a plan
+    if (messages.length < 2) return
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")
+    if (!lastUserMsg) return
+    if (detectMultiChildIntent(lastUserMsg.content) && (workflowMode === "build_lessons" || workflowMode === "build_and_schedule")) {
+      // Extract likely subject from message
+      const lower = lastUserMsg.content.toLowerCase()
+      const subjects: string[] = []
+      const subjectKeywords = ["math", "science", "reading", "language arts", "history", "social studies", "writing", "art", "music", "pe"]
+      for (const kw of subjectKeywords) {
+        if (lower.includes(kw)) subjects.push(kw.charAt(0).toUpperCase() + kw.slice(1))
+      }
+      if (subjects.length === 0) subjects.push("Lessons")
+      initializeWorkflowPlan(subjects)
+    }
+  }, [messages, workflowPlan, workflowMode, detectMultiChildIntent, initializeWorkflowPlan])
+
   const showModeSelector = messages.length <= 1 && !workflowMode
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] max-w-4xl mx-auto">
+    <div className="flex h-[calc(100vh-8rem)] max-w-5xl mx-auto">
+    <div className="flex flex-col flex-1 min-w-0">
       {/* Header with child selector */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-background">
         <div className="flex items-center gap-3">
@@ -697,6 +854,17 @@ export default function AIAdvisorChat({
             <Badge variant="secondary" className="text-xs cursor-pointer" onClick={() => { setWorkflowMode(null) }}>
               {WORKFLOW_MODES.find(m => m.id === workflowMode)?.label} ✕
             </Badge>
+          )}
+          {workflowPlan && (
+            <Button
+              variant={showWorkflowSidebar ? "default" : "outline"}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setShowWorkflowSidebar(!showWorkflowSidebar)}
+              title="Toggle build progress"
+            >
+              <ListChecks className="h-4 w-4" />
+            </Button>
           )}
           <Button variant="ghost" size="icon" onClick={clearChat} title="Clear chat">
             <Trash2 className="h-4 w-4" />
@@ -756,6 +924,18 @@ export default function AIAdvisorChat({
             )}
           </div>
         ))}
+
+        {/* Workflow progress card — shown inline when a multi-child plan is active */}
+        {workflowPlan && workflowPlan.tasks.length > 0 && (
+          <div className="px-11">
+            <WorkflowProgressCard
+              plan={workflowPlan}
+              onApprove={handleWorkflowApprove}
+              onSkip={handleWorkflowSkip}
+              onSchedule={handleWorkflowSchedule}
+            />
+          </div>
+        )}
 
         {isStreaming && messages[messages.length - 1]?.content === "" && (
           <div className="flex gap-3">
@@ -858,6 +1038,18 @@ export default function AIAdvisorChat({
           </Button>
         </div>
       </div>
+    </div>
+
+    {/* Workflow sidebar — shown when multi-child plan is active */}
+    {showWorkflowSidebar && workflowPlan && (
+      <WorkflowSidebar
+        plan={workflowPlan}
+        onClose={() => setShowWorkflowSidebar(false)}
+        onApprove={handleWorkflowApprove}
+        onSkip={handleWorkflowSkip}
+        onSchedule={handleWorkflowSchedule}
+      />
+    )}
     </div>
   )
 }
