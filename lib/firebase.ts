@@ -7,7 +7,7 @@ const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
   authDomain: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'demo-project'}.firebaseapp.com`,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'demo-project',
-  storageBucket: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'demo-project'}.appspot.com`,
+  storageBucket: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'demo-project'}.firebasestorage.app`,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
 }
@@ -33,44 +33,40 @@ const hasDemoValues = requiredEnvVars.some(varName => {
 })
 
 if (missingVars.length > 0) {
-  console.warn(`Missing Firebase environment variables: ${missingVars.join(', ')}`)
-  console.warn("Running in development mode without Firebase")
+  initError = `Missing env vars: ${missingVars.join(', ')}`
+  console.warn(initError)
 } else if (hasDemoValues) {
-  console.warn('Demo Firebase values detected. Please replace with real Firebase configuration.')
-  console.warn('Running in development mode without Firebase')
+  initError = 'Demo/placeholder Firebase values detected'
+  console.warn(initError)
 } else {
-  // This pattern ensures that we're not re-initializing the app on every hot-reload
-  if (getApps().length) {
-    app = getApp()
-  } else {
-    try {
+  try {
+    if (getApps().length) {
+      app = getApp()
+    } else {
       app = initializeApp(firebaseConfig)
-      console.log('Firebase initialized successfully')
+    }
+    console.log('Firebase app initialized successfully with project:', firebaseConfig.projectId)
+  } catch (error: any) {
+    initError = `initializeApp error: ${error?.message || String(error)}`
+    console.error('Firebase initialization failed:', error)
+    app = null
+  }
+
+  if (app) {
+    try {
+      auth = getAuth(app)
+      db = getFirestore(app)
+      storage = getStorage(app)
+      console.log('Firebase services ready')
     } catch (error: any) {
-      initError = error?.message || String(error)
-      console.error('Firebase initialization failed:', error)
-      console.warn('Running in development mode without Firebase')
-      app = null
+      const msg = `Services error: ${error?.message || String(error)}`
+      initError = initError ? `${initError} | ${msg}` : msg
+      console.error('Firebase services initialization failed:', error)
     }
   }
 }
 
-if (app) {
-  try {
-    auth = getAuth(app)
-    db = getFirestore(app)
-    storage = getStorage(app)
-  } catch (error: any) {
-    initError = (initError || '') + ' | Services error: ' + (error?.message || String(error))
-    console.error('Firebase services initialization failed:', error)
-    // Keep app non-null so isFirebaseAvailable still returns true for auth-only use
-  }
-}
-
-// Helper function to check if Firebase is available
 export const isFirebaseAvailable = () => app !== null
-
-// Expose initialization error for diagnostics
 export const getFirebaseInitError = () => initError
 
 export { app, auth, db, storage }
