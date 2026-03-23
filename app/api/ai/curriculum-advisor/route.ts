@@ -1,6 +1,7 @@
 import { streamText } from "ai"
-import { groq } from "@ai-sdk/groq"
 import { buildPersonalizationDirectives } from "@/lib/ai/personalization-directives"
+import { getModelForIntent, trimConversationHistory, estimateTokens } from "@/lib/ai/model-config"
+import { checkAIRateLimit, getRateLimitKey } from "@/lib/ai/rate-limit-ai"
 
 export const maxDuration = 120
 
@@ -9,6 +10,16 @@ export async function POST(req: Request) {
     return new Response(
       JSON.stringify({ error: "AI service is not configured. Please set the GROQ_API_KEY environment variable." }),
       { status: 503, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  // Rate limit: 15 requests per minute
+  const rlKey = getRateLimitKey(req)
+  const rl = checkAIRateLimit(rlKey, 15, 60_000)
+  if (rl.limited) {
+    return new Response(
+      JSON.stringify({ error: rl.message }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
     )
   }
 
@@ -302,21 +313,27 @@ RULES:
 - JSON must be valid (no trailing commas, no comments). "type" must be one of: curriculum_plan, compliance_check, progress_report, lesson_suggestion, lesson_build, schedule_proposal.
 - NEVER reference children not in the family.`
 
-  // Build messages array from conversation history
+  // Build messages with sliding window — only keep recent history to save tokens
+  const rawHistory = (conversationHistory || []).map((msg: any) => ({
+    role: msg.role as "user" | "assistant",
+    content: msg.content,
+  }))
+  const trimmedHistory = trimConversationHistory(rawHistory, 2000)
   const messages = [
-    ...(conversationHistory || []).map((msg: any) => ({
-      role: msg.role as "user" | "assistant",
-      content: msg.content,
-    })),
+    ...trimmedHistory,
     { role: "user" as const, content: message },
   ]
 
-  console.log(`[curriculum-advisor] System prompt length: ${systemPrompt.length} chars, Messages: ${messages.length}, Intent: ${intent}`)
+  // Select model based on intent (8B for simple tasks, 70B for creative)
+  const modelConfig = getModelForIntent(intent)
+
+  console.log(`[curriculum-advisor] Prompt: ${estimateTokens(systemPrompt)} tokens, History: ${trimmedHistory.length}/${rawHistory.length} msgs, Model: ${intent}, Tier: ${modelConfig.description}`)
 
   const result = await streamText({
-    model: groq("llama-3.3-70b-versatile"),
+    model: modelConfig.model,
     system: systemPrompt,
     messages,
+    maxTokens: modelConfig.maxOutputTokens,
   })
 
   return result.toTextStreamResponse()

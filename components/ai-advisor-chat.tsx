@@ -476,8 +476,11 @@ export default function AIAdvisorChat({
 
     try {
       const intent = detectIntent(messageText)
-      const conversationHistory = messages
-        .filter((m) => m.id !== "welcome")
+      // Only send last 6 messages as history to save tokens (sliding window)
+      const recentMessages = messages
+        .filter((m) => m.id !== "welcome" && m.content)
+        .slice(-6)
+      const conversationHistory = recentMessages
         .map((m) => ({ role: m.role, content: m.content }))
 
       const response = await fetch("/api/ai/curriculum-advisor", {

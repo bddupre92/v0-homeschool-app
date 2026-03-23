@@ -1,9 +1,15 @@
 import { streamText } from "ai"
 import { groq } from "@ai-sdk/groq"
+import { checkAIRateLimit, getRateLimitKey } from "@/lib/ai/rate-limit-ai"
 
 export const maxDuration = 60
 
 export async function POST(req: Request) {
+  const rl = checkAIRateLimit(getRateLimitKey(req), 10, 60_000)
+  if (rl.limited) {
+    return new Response(JSON.stringify({ error: rl.message }), { status: 429, headers: { "Content-Type": "application/json" } })
+  }
+
   const { researchQuery, researchContext, childName, duration, learningStyle, focusAreas } = await req.json()
 
   const systemPrompt = `You are a master homeschool curriculum designer.

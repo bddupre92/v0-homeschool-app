@@ -2,10 +2,16 @@ import { streamText } from "ai"
 import { groq } from "@ai-sdk/groq"
 import { z } from "zod"
 import { searchWeb } from "@/lib/tools/search"
+import { checkAIRateLimit, getRateLimitKey } from "@/lib/ai/rate-limit-ai"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
+  const rl = checkAIRateLimit(getRateLimitKey(req), 10, 60_000)
+  if (rl.limited) {
+    return new Response(JSON.stringify({ error: rl.message }), { status: 429, headers: { "Content-Type": "application/json" } })
+  }
+
   const { subject, grade, topics } = await req.json()
 
   const result = await streamText({
