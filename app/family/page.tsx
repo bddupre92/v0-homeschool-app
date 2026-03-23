@@ -189,10 +189,10 @@ export default function FamilyPage() {
       if (result.success) {
         toast({ title: "Blueprint saved", description: "Your family blueprint has been saved." })
       } else {
-        toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" })
+        toast({ title: "Error", description: result.error || "Failed to save blueprint.", variant: "destructive" })
       }
-    } catch {
-      toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" })
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to save blueprint.", variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -217,10 +217,10 @@ export default function FamilyPage() {
         setShowAddChild(false)
         loadData()
       } else {
-        toast({ title: "Error", description: "Failed to add child.", variant: "destructive" })
+        toast({ title: "Error", description: result.error || "Failed to add child.", variant: "destructive" })
       }
-    } catch {
-      toast({ title: "Error", description: "Failed to add child.", variant: "destructive" })
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to add child.", variant: "destructive" })
     } finally {
       setSavingChild(false)
     }

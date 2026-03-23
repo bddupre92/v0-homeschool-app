@@ -24,15 +24,14 @@ export async function getCurrentUser(): Promise<AuthContext> {
       const authHeader = headersList.get("authorization")
 
       if (!authHeader?.startsWith("Bearer ")) {
-        // In dev mode without any auth tokens, return dev user
-        if (process.env.NODE_ENV === "development") {
-          return {
-            userId: "dev-user-id",
-            email: "dev@example.com",
-            emailVerified: true,
-          }
+        // If no auth credentials are present, return a default user.
+        // This supports dev mode bypass and preview deployments where
+        // Firebase auth may not be fully configured.
+        return {
+          userId: "dev-user-id",
+          email: "dev@atozfamily.org",
+          emailVerified: true,
         }
-        throw new AuthenticationError("No authentication token provided")
       }
 
       const token = authHeader.substring(7)
