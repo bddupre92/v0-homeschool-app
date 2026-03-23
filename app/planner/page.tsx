@@ -73,6 +73,32 @@ const subjects = [
   { id: "foreign", name: "Foreign Language", color: "bg-cyan-500" },
 ]
 
+// Demo data for curriculum tab
+const curriculumResources = [
+  {
+    id: "1",
+    title: "Saxon Math 3",
+    subject: "math",
+    description: "Complete math curriculum with daily practice",
+    publisher: "Saxon",
+    lessons: 120,
+    progress: 78,
+  },
+  {
+    id: "2",
+    title: "Story of the World Vol. 1",
+    subject: "history",
+    description: "Ancient history through engaging narratives",
+    publisher: "Well-Trained Mind",
+    lessons: 42,
+    progress: 28,
+  },
+]
+
+const collaborators = [
+  { id: "1", name: "Co-Teacher Parent", role: "Editor", avatar: null },
+]
+
 export default function PlannerPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState("week")
