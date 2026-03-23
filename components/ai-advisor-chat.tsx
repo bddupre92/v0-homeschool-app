@@ -521,23 +521,38 @@ export default function AIAdvisorChat({
       let fullText = ""
 
       if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
 
-          const chunk = decoder.decode(value, { stream: true })
-          fullText += chunk
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantMessage.id ? { ...m, content: fullText } : m
+            const chunk = decoder.decode(value, { stream: true })
+            fullText += chunk
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessage.id ? { ...m, content: fullText } : m
+              )
             )
-          )
+          }
+        } catch (streamError) {
+          console.error("[advisor] Stream error:", streamError)
+          if (!fullText.trim()) {
+            fullText = "Sorry, the AI service had a connection issue. Please try again."
+          }
         }
       }
 
-      // Parse structured data from the final text
+      // Check for Groq error responses embedded in stream (they start with error markers)
+      if (fullText.startsWith('{"error"') || fullText.startsWith('{"message"')) {
+        try {
+          const errData = JSON.parse(fullText)
+          console.error("[advisor] Groq error in stream:", errData)
+          fullText = `AI service error: ${errData.error?.message || errData.message || "Unknown error"}. Please try again.`
+        } catch { /* not JSON, continue */ }
+      }
+
       if (!fullText.trim()) {
-        console.warn("[advisor] AI returned empty response — likely context too long or rate limited")
+        console.warn("[advisor] AI returned empty response")
       }
       const { cleanText, card } = parseStructuredData(fullText)
       const displayText = cleanText || fullText || "Sorry, I didn't get a response. The request may have been too large. Please try a simpler question or clear the chat and try again."

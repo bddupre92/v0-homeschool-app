@@ -276,28 +276,31 @@ After approval, use schedule_proposal with "lessons" (NOT "schedule") as the arr
 For multiple children: build ONE child at a time, ask for approval, then build the next.`
   }
 
+  // Only include context relevant to the current intent to save tokens
+  const needsCompliance = intent === "compliance_check"
+  const needsState = intent === "compliance_check" || intent === "year_curriculum"
+  const needsObjectives = intent === "build_lessons" || intent === "build_and_schedule" || intent === "schedule_lessons"
+
+  const contextBlocks = [
+    childContext,
+    allChildrenContext,
+    familyContext,
+    needsState ? stateContext : "",
+    needsCompliance ? complianceContext : "",
+    needsObjectives ? objectivesContext : "",
+    personalizationDirectives,
+  ].filter(Boolean).join("\n\n")
+
   const systemPrompt = `You are the AtoZ Family AI Curriculum Advisor — a warm, practical homeschool planning assistant. Reference children BY NAME. Align with the family's philosophy and values. Be specific and actionable.
 
-${childContext}
-
-${allChildrenContext}
-
-${familyContext}
-
-${stateContext}
-
-${complianceContext}
-
-${objectivesContext}
-
-${personalizationDirectives}
+${contextBlocks}
 
 ${intentInstructions}
 
 RULES:
 - Be conversational. Generate JSON in \`\`\`json fences when you have enough context. Do NOT announce JSON — just output it.
 - JSON must be valid (no trailing commas, no comments). "type" must be one of: curriculum_plan, compliance_check, progress_report, lesson_suggestion, lesson_build, schedule_proposal.
-- NEVER reference children not in the family. NEVER hallucinate filing/hours data.`
+- NEVER reference children not in the family.`
 
   // Build messages array from conversation history
   const messages = [
@@ -308,6 +311,8 @@ RULES:
     { role: "user" as const, content: message },
   ]
 
+  console.log(`[curriculum-advisor] System prompt length: ${systemPrompt.length} chars, Messages: ${messages.length}, Intent: ${intent}`)
+
   const result = await streamText({
     model: groq("llama-3.3-70b-versatile"),
     system: systemPrompt,
@@ -315,8 +320,9 @@ RULES:
   })
 
   return result.toTextStreamResponse()
-  } catch (error) {
-    console.error("[curriculum-advisor] Error:", error)
+  } catch (error: any) {
+    console.error("[curriculum-advisor] Error:", error?.message || error)
+    if (error?.cause) console.error("[curriculum-advisor] Cause:", error.cause)
     const message = error instanceof Error ? error.message : "An unexpected error occurred"
     return new Response(
       JSON.stringify({ error: message }),
