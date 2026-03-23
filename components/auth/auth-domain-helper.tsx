@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, Info } from "lucide-react"
-import { isFirebaseAvailable } from "@/lib/firebase"
+import { isFirebaseAvailable, getFirebaseInitError } from "@/lib/firebase"
 
 export default function AuthDomainHelper() {
   const [showDetails, setShowDetails] = useState(false)
@@ -19,7 +19,11 @@ export default function AuthDomainHelper() {
 
     // Check if Firebase initialized
     if (!isFirebaseAvailable()) {
+      const initErr = getFirebaseInitError()
       issues.push("Firebase app failed to initialize")
+      if (initErr) {
+        issues.push(`Init error: ${initErr}`)
+      }
 
       // Check which env vars are missing (NEXT_PUBLIC_ vars are inlined at build time)
       const vars = {

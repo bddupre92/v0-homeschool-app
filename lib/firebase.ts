@@ -16,6 +16,7 @@ let app: FirebaseApp | null = null
 let auth: Auth | null = null
 let db: Firestore | null = null
 let storage: Storage | null = null
+let initError: string | null = null
 
 // Validate required environment variables
 const requiredEnvVars = [
@@ -45,7 +46,8 @@ if (missingVars.length > 0) {
     try {
       app = initializeApp(firebaseConfig)
       console.log('Firebase initialized successfully')
-    } catch (error) {
+    } catch (error: any) {
+      initError = error?.message || String(error)
       console.error('Firebase initialization failed:', error)
       console.warn('Running in development mode without Firebase')
       app = null
@@ -61,5 +63,8 @@ if (app) {
 
 // Helper function to check if Firebase is available
 export const isFirebaseAvailable = () => app !== null
+
+// Expose initialization error for diagnostics
+export const getFirebaseInitError = () => initError
 
 export { app, auth, db, storage }
