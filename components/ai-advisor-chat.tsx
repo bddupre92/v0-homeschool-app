@@ -714,18 +714,48 @@ export default function AIAdvisorChat({
   }
 
   const handleScheduleRequest = (buildCard: LessonBuildCard) => {
-    // Prevent duplicate sends if already streaming
     if (isStreaming) return
-    // Switch to schedule workflow and auto-send a scheduling request
-    setWorkflowMode("schedule_lessons")
-    const lessonTitles = (buildCard.lessons || [])
-      .map((l) => l.lessonTitle || l.objectiveTitle || "Untitled")
-      .join(", ")
+
+    // Generate schedule directly from lesson data — no AI call needed
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    const times = ["9:00 AM", "10:00 AM", "11:00 AM", "1:00 PM", "2:00 PM"]
     const childName = buildCard.childName || selectedChild?.name || "my child"
-    const subject = buildCard.subject || "the lessons"
-    sendMessage(
-      `I've approved these ${subject} lessons for ${childName}: ${lessonTitles}. Please schedule them onto my planner for this week.`
-    )
+    const subject = buildCard.subject || "Lessons"
+
+    // Calculate next Monday
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7
+    const nextMonday = new Date(now)
+    nextMonday.setDate(now.getDate() + daysUntilMonday)
+    const weekStart = nextMonday.toISOString().split("T")[0]
+
+    // Distribute lessons across the week
+    const scheduledLessons = (buildCard.lessons || []).map((lesson, i) => ({
+      title: lesson.lessonTitle || lesson.objectiveTitle || "Untitled",
+      subject: subject,
+      day: days[i % days.length],
+      time: times[i % times.length],
+      duration: lesson.duration || 45,
+    }))
+
+    const scheduleCard: StructuredCard = {
+      type: "schedule_proposal",
+      childName,
+      weekStart,
+      lessons: scheduledLessons,
+      summary: `${scheduledLessons.length} ${subject} lessons for ${childName}, week of ${weekStart}`,
+    }
+
+    // Add as a new assistant message with the schedule card
+    const scheduleMsg: AdvisorMessage = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: `Here's a proposed schedule for ${childName}'s ${subject} lessons this week. You can adjust the times and confirm to add them to your planner.`,
+      structuredData: scheduleCard,
+    }
+    setMessages((prev) => [...prev, scheduleMsg])
+    setWorkflowMode("schedule_lessons")
   }
 
   const clearChat = () => {
