@@ -99,11 +99,27 @@ function normalizeCard(parsed: any): any {
   }
 
   if (parsed.type === "schedule_proposal") {
+    // Normalize childName
+    parsed.childName = parsed.childName || parsed.child_name || parsed.studentName ||
+      (Array.isArray(parsed.studentNames) ? parsed.studentNames.join(" & ") : "") || ""
+
+    // Default weekStart to next Monday if missing
+    if (!parsed.weekStart || !parsed.week_start) {
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+      const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7
+      const nextMonday = new Date(now)
+      nextMonday.setDate(now.getDate() + daysUntilMonday)
+      parsed.weekStart = parsed.weekStart || parsed.week_start || nextMonday.toISOString().split("T")[0]
+    } else {
+      parsed.weekStart = parsed.weekStart || parsed.week_start
+    }
+
     parsed.lessons = (parsed.lessons || []).map((l: any) => ({
       title: l.title || l.lessonTitle || l.lesson_title || l.name || "",
       subject: l.subject || l.subjectName || "",
       day: l.day || "",
-      time: l.time || l.startTime || l.start_time || "",
+      time: l.time || l.startTime || l.start_time || "9:00 AM",
       duration: l.duration || l.minutes || 45,
       objectiveId: l.objectiveId || l.objective_id || undefined,
       lessonPacketId: l.lessonPacketId || l.lesson_packet_id || undefined,

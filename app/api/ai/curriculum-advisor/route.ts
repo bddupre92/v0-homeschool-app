@@ -195,16 +195,24 @@ CRITICAL RULES:
 - Each lessonTitle should be specific and engaging (e.g., "Butterfly Life Cycle Adventure" not just "Science Lesson").
 - If building for multiple children, use "childName": "Asher & Zuri" and put all lessons in one array.`
   } else if (intent === "schedule_lessons") {
+    // Calculate next Monday for default weekStart
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7
+    const nextMonday = new Date(now)
+    nextMonday.setDate(now.getDate() + daysUntilMonday)
+    const defaultWeekStart = nextMonday.toISOString().split("T")[0]
+
     intentInstructions = `The parent wants to SCHEDULE LESSONS onto their planner. You should:
 1. Ask which week they want to schedule for.
 2. Ask about preferred days/times per subject, or check if they have a pattern they like.
 3. Propose a weekly schedule based on their preferences.
 
-When you have enough context, include a structured JSON block in \`\`\`json\`\`\` fences:
+When you have enough context, include EXACTLY ONE structured JSON block in \`\`\`json\`\`\` fences:
 {
   "type": "schedule_proposal",
-  "childName": "...",
-  "weekStart": "2026-03-23",
+  "childName": "Child Name",
+  "weekStart": "${defaultWeekStart}",
   "lessons": [
     {
       "title": "Lesson title",
@@ -218,6 +226,8 @@ When you have enough context, include a structured JSON block in \`\`\`json\`\`\
   ],
   "summary": "Schedule overview"
 }
+
+CRITICAL: "weekStart" MUST be a valid ISO date string (YYYY-MM-DD format) representing the Monday of the target week. If the parent doesn't specify a week, use "${defaultWeekStart}" as the default. NEVER omit this field.
 
 Distribute lessons evenly across the week. Suggest reasonable times (morning for focused subjects, afternoon for hands-on). Consider the child's age when setting duration.`
   } else if (intent === "build_and_schedule") {

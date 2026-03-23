@@ -248,7 +248,16 @@ export async function scheduleLessonsToPlanner(lessons: {
     let count = 0
 
     for (const lesson of lessons) {
-      const weekStart = new Date(lesson.weekStart)
+      // Default weekStart to next Monday if missing or invalid
+      let weekStart = new Date(lesson.weekStart)
+      if (isNaN(weekStart.getTime())) {
+        const now = new Date()
+        const dayOfWeek = now.getDay()
+        const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7
+        weekStart = new Date(now)
+        weekStart.setDate(now.getDate() + daysUntilMonday)
+        weekStart.setHours(0, 0, 0, 0)
+      }
       const dayOffset = (dayMap[lesson.day] ?? 1) - weekStart.getDay()
       const lessonDate = new Date(weekStart)
       lessonDate.setDate(lessonDate.getDate() + ((dayOffset + 7) % 7))

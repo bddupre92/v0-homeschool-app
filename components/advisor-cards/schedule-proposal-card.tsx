@@ -20,6 +20,7 @@ export function ScheduleProposalCardUI({
   const [saveTemplate, setSaveTemplate] = useState(true)
   const [scheduled, setScheduled] = useState(false)
   const [scheduling, setScheduling] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Group lessons by day
   const allLessons = card.lessons || []
@@ -32,6 +33,7 @@ export function ScheduleProposalCardUI({
   const handleSchedule = async () => {
     if (!onSchedule) return
     setScheduling(true)
+    setError(null)
     try {
       await onSchedule(allLessons.map((l) => ({
         ...l,
@@ -40,8 +42,9 @@ export function ScheduleProposalCardUI({
         saveTemplate,
       })))
       setScheduled(true)
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to schedule:", err)
+      setError(err?.message || "Failed to schedule lessons. Please try again.")
     } finally {
       setScheduling(false)
     }
@@ -87,6 +90,9 @@ export function ScheduleProposalCardUI({
 
         {!scheduled && onSchedule && (
           <div className="space-y-2 pt-1">
+            {error && (
+              <p className="text-xs text-red-500 bg-red-500/10 rounded px-2 py-1.5">{error}</p>
+            )}
             <label className="flex items-center gap-2 text-xs cursor-pointer">
               <input
                 type="checkbox"
