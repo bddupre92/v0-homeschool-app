@@ -175,7 +175,7 @@ RESPONSE RULES:
     messages,
   })
 
-  return result.toDataStreamResponse()
+  return result.toTextStreamResponse()
   } catch (error) {
     console.error("[curriculum-advisor] Error:", error)
     const message = error instanceof Error ? error.message : "An unexpected error occurred"
