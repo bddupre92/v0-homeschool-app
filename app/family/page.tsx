@@ -535,7 +535,7 @@ export default function FamilyPage() {
                       <Label htmlFor="childName">Name</Label>
                       <Input
                         id="childName"
-                        placeholder="Emma"
+                        placeholder="Child's name"
                         value={newChild.name}
                         onChange={(e) => setNewChild(prev => ({ ...prev, name: e.target.value }))}
                       />

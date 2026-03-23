@@ -61,26 +61,9 @@ export default function PlanOverviewTab({ children, hourSummary, totalHours, tot
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-sm flex-1">Solar System Exploration</span>
-              <Badge variant="outline" className="text-xs">Science</Badge>
-              <span className="text-xs text-muted-foreground">Emma</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
-              <span className="text-sm flex-1">Fractions Through Baking</span>
-              <Badge variant="outline" className="text-xs">Math</Badge>
-              <span className="text-xs text-muted-foreground">Emma</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
-              <span className="text-sm flex-1">Journal: My Favorite Place</span>
-              <Badge variant="outline" className="text-xs">Language Arts</Badge>
-              <span className="text-xs text-muted-foreground">Liam</span>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No lessons scheduled for today. Head to the Planner to add some!
+          </p>
         </CardContent>
       </Card>
 

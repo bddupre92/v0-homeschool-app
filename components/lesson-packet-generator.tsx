@@ -196,7 +196,7 @@ export default function LessonPacketGenerator() {
                     <FormItem>
                       <FormLabel>Child's Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Emma" {...field} />
+                        <Input placeholder="Child's name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

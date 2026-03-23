@@ -14,58 +14,27 @@ import {
   saveRecommendation,
   getRecommendations,
   getRecommendationDetail,
+  getApprovedObjectives,
   reviewObjective,
   bulkReviewObjectives,
   setObjectiveLessonSource,
   markObjectiveCompleted,
   getStateFilingTypes,
 } from "@/app/actions/advisor-actions"
-import { Sparkles, ClipboardList, BookOpen } from "lucide-react"
+import { scheduleLessonsToPlanner } from "@/app/actions/planner-actions"
+import { Sparkles, ClipboardList, BookOpen, Loader2, Users } from "lucide-react"
 import Link from "next/link"
 import type { ChildProfile, FamilyBlueprintData, CurriculumPlanCard } from "@/lib/advisor-types"
 
-// Demo fallback data when DB is not yet set up
-const DEMO_CHILDREN: ChildProfile[] = [
-  {
-    id: "1",
-    name: "Emma",
-    age: 8,
-    grade: "3rd",
-    learningStyle: "Visual & Hands-On",
-    interests: ["animals", "art", "nature"],
-    strengths: ["reading", "creativity"],
-    challenges: ["math facts", "focus"],
-  },
-  {
-    id: "2",
-    name: "Liam",
-    age: 6,
-    grade: "1st",
-    learningStyle: "Kinesthetic",
-    interests: ["dinosaurs", "building", "sports"],
-    strengths: ["math", "physical activity"],
-    challenges: ["reading", "writing"],
-  },
-]
-
-const DEMO_BLUEPRINT: FamilyBlueprintData = {
-  familyName: "The Dupre Family",
-  values: ["Curiosity", "Perseverance", "Kindness"],
-  philosophy: ["Charlotte Mason"],
-  traitPillars: [
-    { name: "Curiosity", description: "Fostering a love of learning and exploration" },
-    { name: "Perseverance", description: "Building grit and resilience through challenges" },
-  ],
-  stateAbbreviation: "OR",
-}
-
 export default function AdvisorPage() {
   const { user } = useAuth()
-  const [children, setChildren] = useState<ChildProfile[]>(DEMO_CHILDREN)
-  const [familyBlueprint, setFamilyBlueprint] = useState<FamilyBlueprintData | null>(DEMO_BLUEPRINT)
+  const [children, setChildren] = useState<ChildProfile[]>([])
+  const [familyBlueprint, setFamilyBlueprint] = useState<FamilyBlueprintData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [stateReqs, setStateReqs] = useState<any>(null)
   const [stateFilings, setStateFilings] = useState<any[]>([])
   const [complianceData, setComplianceData] = useState<any>(null)
+  const [approvedObjectives, setApprovedObjectives] = useState<any[]>([])
   const [recommendations, setRecommendations] = useState<any[]>([])
   const [selectedRec, setSelectedRec] = useState<any>(null)
   const [activeTab, setActiveTab] = useState("chat")
@@ -137,15 +106,21 @@ export default function AdvisorPage() {
         // Compliance data not critical — AI will note it's unavailable
       }
 
-      // Load recommendations
+      // Load recommendations and approved objectives
       try {
-        const recs = await getRecommendations(user.uid)
+        const [recs, objectives] = await Promise.all([
+          getRecommendations(user.uid),
+          getApprovedObjectives(user.uid),
+        ])
         setRecommendations(recs)
+        setApprovedObjectives(objectives)
       } catch {
         // Recommendations table may not exist yet
       }
     } catch (error) {
       console.error("Failed to load advisor data:", error)
+    } finally {
+      setIsLoading(false)
     }
   }, [user?.uid])
 
@@ -228,6 +203,48 @@ export default function AdvisorPage() {
     }
   }
 
+  const handleScheduleLessons = async (lessons: any[]) => {
+    const result = await scheduleLessonsToPlanner(lessons)
+    if (!result.success) {
+      throw new Error(result.error || "Failed to schedule lessons")
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navigation />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </main>
+      </div>
+    )
+  }
+
+  if (!isLoading && children.length === 0) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navigation />
+        <main className="flex-1 flex items-center justify-center">
+          <Card className="max-w-md mx-auto">
+            <CardContent className="pt-8 pb-8 text-center">
+              <Users className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+              <h3 className="font-semibold mb-1">Set up your family first</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Add your children and family details so the AI advisor can create personalized curriculum plans.
+              </p>
+              <Link href="/family">
+                <Button>
+                  <Users className="h-4 w-4 mr-2" /> Go to Family Setup
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
@@ -277,7 +294,9 @@ export default function AdvisorPage() {
               stateRequirements={stateReqs}
               stateFilingTypes={stateFilings}
               complianceData={complianceData}
+              approvedObjectives={approvedObjectives}
               onSaveRecommendation={handleSaveRecommendation}
+              onScheduleLessons={handleScheduleLessons}
             />
           </TabsContent>
 

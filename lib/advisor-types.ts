@@ -14,6 +14,8 @@ export type StructuredCard =
   | ComplianceCheckCard
   | ProgressReportCard
   | LessonSuggestionCard
+  | LessonBuildCard
+  | ScheduleProposalCard
 
 export interface CurriculumPlanCard {
   type: "curriculum_plan"
@@ -68,6 +70,40 @@ export interface LessonSuggestionCard {
   }[]
 }
 
+export interface LessonBuildCard {
+  type: "lesson_build"
+  childName: string
+  subject: string
+  lessons: {
+    objectiveId?: string
+    objectiveTitle: string
+    lessonTitle: string
+    duration: number
+    description: string
+    materials: string[]
+    packetDepth: "light" | "full"
+  }[]
+  summary: string
+}
+
+export interface ScheduleProposalCard {
+  type: "schedule_proposal"
+  childName: string
+  weekStart: string
+  lessons: {
+    title: string
+    subject: string
+    day: string
+    time: string
+    duration: number
+    objectiveId?: string
+    lessonPacketId?: string
+  }[]
+  summary: string
+}
+
+// ─── Profiles ────────────────────────────────────────────────────────────────
+
 export interface ChildProfile {
   id: string
   name: string
@@ -87,9 +123,20 @@ export interface FamilyBlueprintData {
   stateAbbreviation?: string
 }
 
+// ─── Intents & Workflow Modes ────────────────────────────────────────────────
+
 export type AdvisorIntent =
   | "year_curriculum"
   | "compliance_check"
   | "learning_alignment"
   | "lesson_help"
+  | "build_lessons"
+  | "schedule_lessons"
+  | "build_and_schedule"
   | "general"
+
+export type AdvisorWorkflowMode =
+  | "chat"
+  | "build_lessons"
+  | "schedule_lessons"
+  | "build_and_schedule"

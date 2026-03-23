@@ -131,6 +131,25 @@ export async function getRecommendationDetail(recommendationId: string) {
   }
 }
 
+export async function getApprovedObjectives(userId: string) {
+  try {
+    const result = await sql`
+      SELECT ro.id, ro.title, ro.description, ro.status, ro.lesson_source, ro.lesson_packet_id,
+             rs.name as subject, cr.child_id
+      FROM recommendation_objectives ro
+      JOIN recommendation_subjects rs ON ro.subject_id = rs.id
+      JOIN curriculum_recommendations cr ON ro.recommendation_id = cr.id
+      WHERE cr.user_id = ${userId}
+        AND ro.status = 'approved'
+      ORDER BY rs.sort_order, ro.sort_order
+    `
+    return result.rows
+  } catch (error) {
+    console.error("Failed to get approved objectives:", error)
+    return []
+  }
+}
+
 export async function updateRecommendationStatus(recommendationId: string, status: string) {
   try {
     const result = await sql`

@@ -16,14 +16,18 @@ export async function POST(req: Request) {
     message,
     conversationHistory,
     childProfile,
+    allChildren,
     familyBlueprint,
     stateRequirements,
     complianceData,
+    approvedObjectives,
+    workflowMode,
     intent,
   } = await req.json()
 
+  // Build context for the selected child
   const childContext = childProfile
-    ? `CHILD PROFILE:
+    ? `SELECTED CHILD PROFILE:
 - Name: ${childProfile.name}
 - Age: ${childProfile.age || "Not specified"}
 - Grade: ${childProfile.grade || "Not specified"}
@@ -31,6 +35,14 @@ export async function POST(req: Request) {
 - Interests: ${childProfile.interests?.join(", ") || "Not specified"}
 - Strengths: ${childProfile.strengths?.join(", ") || "Not specified"}
 - Challenges: ${childProfile.challenges?.join(", ") || "Not specified"}`
+    : ""
+
+  // Build context for ALL children in the family
+  const allChildrenContext = allChildren?.length > 0
+    ? `ALL CHILDREN IN FAMILY:
+${allChildren.map((c: any) => `- ${c.name} (Age: ${c.age || "?"}, Grade: ${c.grade || "?"}, Style: ${c.learningStyle || "?"})`).join("\n")}
+
+IMPORTANT: These are the REAL children in this family. Never reference children who are not in this list.`
     : ""
 
   const familyContext = familyBlueprint
@@ -68,6 +80,14 @@ export async function POST(req: Request) {
 CRITICAL: When discussing compliance, ONLY report what the actual data shows. If filings array is empty, the parent has NOT filed anything. Do NOT say filings are "Done" unless the data explicitly shows them as completed.`
     : `ACTUAL COMPLIANCE STATUS: No compliance data available — the parent has not tracked any filings or hours yet.`
 
+  // Build context for approved objectives the AI can reference
+  const objectivesContext = approvedObjectives?.length > 0
+    ? `APPROVED CURRICULUM OBJECTIVES (approved by parent, not yet completed):
+${approvedObjectives.map((o: any) => `- [${o.subject}] ${o.title}${o.lesson_source ? ` (lesson source: ${o.lesson_source})` : ""}`).join("\n")}
+
+You can reference these objectives when building lessons or scheduling. The parent has already approved these learning goals.`
+    : ""
+
   // Intent-specific instructions
   let intentInstructions = ""
   if (intent === "year_curriculum") {
@@ -96,9 +116,9 @@ When generating the curriculum, include this JSON block wrapped in \`\`\`json\`\
   "summary": "Brief AI summary for the parent"
 }`
   } else if (intent === "compliance_check") {
-    intentInstructions = `The parent wants to check their COMPLIANCE STATUS. Based on their state, explain:
+    intentInstructions = `The parent wants to check their COMPLIANCE STATUS. Based on their state and ACTUAL compliance data, explain:
 1. What filings are required and their deadlines
-2. What they may be missing
+2. What they have actually completed vs what is missing (use ACTUAL data, not assumptions)
 3. How to stay on track
 
 Include a structured JSON block in \`\`\`json\`\`\` fences:
@@ -142,13 +162,75 @@ Include a structured JSON block in \`\`\`json\`\`\` fences when starting a tutor
     { "label": "Action taken or suggested", "status": "done" }
   ]
 }`
+  } else if (intent === "build_lessons") {
+    intentInstructions = `The parent wants to BUILD LESSON PLANS. You should:
+1. Ask which subject/topics they want lessons for, OR reference approved objectives if available.
+2. For each lesson, generate an overview with title, duration, description, and materials.
+3. The parent will choose per-lesson whether to generate a full 7-section packet (worksheets, quizzes, experiments, materials lists) or keep it as a light outline.
+
+When you have enough context, include a structured JSON block in \`\`\`json\`\`\` fences:
+{
+  "type": "lesson_build",
+  "childName": "...",
+  "subject": "Subject Name",
+  "lessons": [
+    {
+      "objectiveId": "optional-id",
+      "objectiveTitle": "The learning objective this covers",
+      "lessonTitle": "Engaging lesson title",
+      "duration": 45,
+      "description": "What the student will learn and do in this lesson",
+      "materials": ["Material 1", "Material 2"],
+      "packetDepth": "light"
+    }
+  ],
+  "summary": "Brief summary of the lesson set"
+}
+
+Generate 3-5 lessons per subject unless the parent specifies otherwise. Make lesson titles engaging and aligned with the child's interests and learning style.`
+  } else if (intent === "schedule_lessons") {
+    intentInstructions = `The parent wants to SCHEDULE LESSONS onto their planner. You should:
+1. Ask which week they want to schedule for.
+2. Ask about preferred days/times per subject, or check if they have a pattern they like.
+3. Propose a weekly schedule based on their preferences.
+
+When you have enough context, include a structured JSON block in \`\`\`json\`\`\` fences:
+{
+  "type": "schedule_proposal",
+  "childName": "...",
+  "weekStart": "2026-03-23",
+  "lessons": [
+    {
+      "title": "Lesson title",
+      "subject": "Subject",
+      "day": "Monday",
+      "time": "9:00 AM",
+      "duration": 45,
+      "objectiveId": "optional-id",
+      "lessonPacketId": "optional-id"
+    }
+  ],
+  "summary": "Schedule overview"
+}
+
+Distribute lessons evenly across the week. Suggest reasonable times (morning for focused subjects, afternoon for hands-on). Consider the child's age when setting duration.`
+  } else if (intent === "build_and_schedule") {
+    intentInstructions = `The parent wants the FULL WORKFLOW: build lesson plans AND schedule them. You should:
+1. FIRST, build the lessons (same as build_lessons intent) — generate lesson overviews.
+2. After the parent approves the lessons, THEN propose a schedule for them.
+
+Start by asking about subjects/objectives for lesson building. Generate a lesson_build card first.
+After the parent approves, generate a schedule_proposal card for the approved lessons.
+
+For the FIRST step, use the lesson_build JSON format. For the SECOND step (after approval), use the schedule_proposal JSON format.`
   }
 
   const systemPrompt = `You are the AtoZ Family AI Curriculum Advisor — a knowledgeable, warm, and practical homeschool planning assistant.
 
 You help parents plan their children's education by:
 - Generating personalized year-long curriculum plans with subjects and learning objectives
-- Recommending lessons tailored to each child's learning style, interests, and grade level
+- Building detailed lesson plans with worksheets, quizzes, experiments, and materials
+- Scheduling lessons onto the family's weekly planner
 - Tracking learning alignment and progress against family goals
 - Ensuring state compliance with homeschool requirements
 - Providing tutoring guidance adapted to the child's learning style
@@ -162,11 +244,15 @@ PERSONALITY:
 
 ${childContext}
 
+${allChildrenContext}
+
 ${familyContext}
 
 ${stateContext}
 
 ${complianceContext}
+
+${objectivesContext}
 
 ${intentInstructions}
 
@@ -177,7 +263,9 @@ RESPONSE RULES:
 4. If you don't have enough information to give good advice, ask targeted questions.
 5. Always consider the child's profile when making recommendations.
 6. For curriculum plans, generate comprehensive objectives organized by subject.
-7. For compliance, be specific about the family's state requirements and deadlines.`
+7. For compliance, be specific about the family's state requirements and deadlines.
+8. NEVER reference children who are not in the family. Only use names from the ALL CHILDREN list.
+9. NEVER assume or hallucinate data about filings, hours, or progress. Only state what the actual records show.`
 
   // Build messages array from conversation history
   const messages = [

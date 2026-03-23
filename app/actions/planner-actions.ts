@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { adminDb } from "@/lib/firebase-admin-safe"
 import { requireAuth } from "@/lib/auth-middleware"
-import { AuthenticationError, NotFoundError, AuthorizationError, formatErrorResponse } from "@/lib/errors"
+import { AuthenticationError } from "@/lib/errors"
 
 // Get the current user from the auth middleware
 async function getCurrentUser() {
@@ -216,5 +216,118 @@ export async function toggleLessonCompletion(lessonId: string) {
   } catch (error) {
     console.error("Error toggling lesson completion:", error)
     return { success: false, error: "Failed to update lesson" }
+  }
+}
+
+// Batch schedule lessons from AI advisor
+export async function scheduleLessonsToPlanner(lessons: {
+  title: string
+  subject: string
+  day: string
+  time: string
+  duration: number
+  weekStart: string
+  childName: string
+  objectiveId?: string
+  lessonPacketId?: string
+  description?: string
+  materials?: string[]
+}[]) {
+  const userId = await getCurrentUser()
+  if (!userId) {
+    redirect("/sign-in")
+  }
+
+  try {
+    const dayMap: Record<string, number> = {
+      Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+      Thursday: 4, Friday: 5, Saturday: 6,
+    }
+
+    const batch = adminDb.batch()
+    let count = 0
+
+    for (const lesson of lessons) {
+      const weekStart = new Date(lesson.weekStart)
+      const dayOffset = (dayMap[lesson.day] ?? 1) - weekStart.getDay()
+      const lessonDate = new Date(weekStart)
+      lessonDate.setDate(lessonDate.getDate() + ((dayOffset + 7) % 7))
+
+      // Parse time like "9:00 AM"
+      const timeParts = lesson.time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i)
+      if (timeParts) {
+        let hours = parseInt(timeParts[1])
+        const minutes = parseInt(timeParts[2])
+        const period = timeParts[3]?.toUpperCase()
+        if (period === "PM" && hours < 12) hours += 12
+        if (period === "AM" && hours === 12) hours = 0
+        lessonDate.setHours(hours, minutes, 0, 0)
+      }
+
+      const ref = adminDb.collection("lessons").doc()
+      batch.set(ref, {
+        title: lesson.title,
+        subject: lesson.subject,
+        date: lessonDate,
+        duration: lesson.duration || 45,
+        description: lesson.description || "",
+        materials: lesson.materials || [],
+        completed: false,
+        userId,
+        childName: lesson.childName,
+        objectiveId: lesson.objectiveId || null,
+        lessonPacketId: lesson.lessonPacketId || null,
+        createdAt: new Date(),
+        source: "ai_advisor",
+      })
+      count++
+    }
+
+    await batch.commit()
+    revalidatePath("/planner")
+    return { success: true, scheduledCount: count }
+  } catch (error) {
+    console.error("Error scheduling lessons:", error)
+    return { success: false, error: "Failed to schedule lessons", scheduledCount: 0 }
+  }
+}
+
+// Save a weekly schedule template
+export async function saveScheduleTemplate(slots: {
+  subject: string
+  dayOfWeek: string
+  time: string
+  duration: number
+}[]) {
+  const userId = await getCurrentUser()
+  if (!userId) {
+    redirect("/sign-in")
+  }
+
+  try {
+    const templateRef = adminDb.collection("schedule_templates").doc(userId)
+    await templateRef.set({
+      userId,
+      slots,
+      updatedAt: new Date(),
+    })
+    return { success: true }
+  } catch (error) {
+    console.error("Error saving schedule template:", error)
+    return { success: false, error: "Failed to save template" }
+  }
+}
+
+// Get the user's saved schedule template
+export async function getScheduleTemplate() {
+  const userId = await getCurrentUser()
+  if (!userId) return null
+
+  try {
+    const doc = await adminDb.collection("schedule_templates").doc(userId).get()
+    if (!doc.exists) return null
+    return doc.data()?.slots || null
+  } catch {
+    return null
   }
 }

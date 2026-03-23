@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Send, Bot, Sparkles, Loader2, Trash2, ChevronDown } from "lucide-react"
+import { Send, Bot, Sparkles, Loader2, Trash2, BookOpen, CalendarDays, Layers, ClipboardCheck, BarChart3, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -14,11 +14,14 @@ import type {
   ChildProfile,
   FamilyBlueprintData,
   AdvisorIntent,
+  AdvisorWorkflowMode,
 } from "@/lib/advisor-types"
 import { CurriculumPlanCardUI } from "@/components/advisor-cards/curriculum-plan-card"
 import { ComplianceCheckCardUI } from "@/components/advisor-cards/compliance-check-card"
 import { ProgressReportCardUI } from "@/components/advisor-cards/progress-report-card"
 import { LessonSuggestionCardUI } from "@/components/advisor-cards/lesson-suggestion-card"
+import { LessonBuildCardUI } from "@/components/advisor-cards/lesson-build-card"
+import { ScheduleProposalCardUI } from "@/components/advisor-cards/schedule-proposal-card"
 
 interface ComplianceData {
   totalHoursLogged: number
@@ -33,7 +36,9 @@ interface AIAdvisorChatProps {
   stateRequirements: any | null
   stateFilingTypes: any[]
   complianceData?: ComplianceData | null
+  approvedObjectives?: any[]
   onSaveRecommendation?: (data: any) => Promise<void>
+  onScheduleLessons?: (lessons: any[]) => Promise<void>
   initialMessages?: AdvisorMessage[]
 }
 
@@ -50,7 +55,15 @@ function parseStructuredData(text: string): { cleanText: string; card: Structure
   }
 }
 
-function StructuredCardRenderer({ card, onSave }: { card: StructuredCard; onSave?: (data: any) => void }) {
+function StructuredCardRenderer({
+  card,
+  onSave,
+  onSchedule,
+}: {
+  card: StructuredCard
+  onSave?: (data: any) => void
+  onSchedule?: (lessons: any[]) => void
+}) {
   switch (card.type) {
     case "curriculum_plan":
       return <CurriculumPlanCardUI card={card} onSave={onSave} />
@@ -60,10 +73,49 @@ function StructuredCardRenderer({ card, onSave }: { card: StructuredCard; onSave
       return <ProgressReportCardUI card={card} />
     case "lesson_suggestion":
       return <LessonSuggestionCardUI card={card} />
+    case "lesson_build":
+      return <LessonBuildCardUI card={card} onSave={onSave} />
+    case "schedule_proposal":
+      return <ScheduleProposalCardUI card={card} onSchedule={onSchedule} />
     default:
       return null
   }
 }
+
+const WORKFLOW_MODES = [
+  {
+    id: "build_lessons" as AdvisorWorkflowMode,
+    label: "Build Lesson Plans",
+    description: "Generate lesson packets with worksheets, quizzes, experiments, and materials lists",
+    icon: BookOpen,
+    color: "text-blue-500",
+    bgColor: "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20",
+  },
+  {
+    id: "schedule_lessons" as AdvisorWorkflowMode,
+    label: "Schedule Lessons",
+    description: "Place approved lessons onto your weekly planner calendar",
+    icon: CalendarDays,
+    color: "text-green-500",
+    bgColor: "bg-green-500/10 hover:bg-green-500/20 border-green-500/20",
+  },
+  {
+    id: "build_and_schedule" as AdvisorWorkflowMode,
+    label: "Build & Schedule",
+    description: "Build lessons, review them, then auto-schedule to your planner",
+    icon: Layers,
+    color: "text-purple-500",
+    bgColor: "bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20",
+  },
+  {
+    id: "chat" as AdvisorWorkflowMode,
+    label: "Plan My Year",
+    description: "Generate a full year curriculum for your child",
+    icon: ClipboardCheck,
+    color: "text-orange-500",
+    bgColor: "bg-orange-500/10 hover:bg-orange-500/20 border-orange-500/20",
+  },
+]
 
 export default function AIAdvisorChat({
   children,
@@ -71,7 +123,9 @@ export default function AIAdvisorChat({
   stateRequirements,
   stateFilingTypes,
   complianceData,
+  approvedObjectives,
   onSaveRecommendation,
+  onScheduleLessons,
   initialMessages,
 }: AIAdvisorChatProps) {
   const [messages, setMessages] = useState<AdvisorMessage[]>(
@@ -82,7 +136,7 @@ export default function AIAdvisorChat({
             id: "welcome",
             role: "assistant",
             content: children.length > 0
-              ? `Hi! I'm your AtoZ Family curriculum advisor. I see you have ${children.map(c => c.name).join(" and ")} — how can I help today? I can plan a year curriculum, check your compliance status, review learning progress, or help with specific lessons.`
+              ? `Hi! I'm your AtoZ Family curriculum advisor. I see you have ${children.map(c => c.name).join(" and ")} — choose a workflow below or just ask me anything!`
               : "Hi! I'm your AtoZ Family curriculum advisor. To give you the best recommendations, make sure to set up your family blueprint and add your children's profiles in the Family page. How can I help today?",
             structuredData: null,
             messageType: "text",
@@ -92,6 +146,7 @@ export default function AIAdvisorChat({
   const [input, setInput] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
   const [selectedChild, setSelectedChild] = useState<ChildProfile | null>(children[0] || null)
+  const [workflowMode, setWorkflowMode] = useState<AdvisorWorkflowMode | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -104,6 +159,11 @@ export default function AIAdvisorChat({
   }, [messages, scrollToBottom])
 
   const detectIntent = (text: string): AdvisorIntent => {
+    // If workflow mode is active, use it as the intent
+    if (workflowMode === "build_lessons") return "build_lessons"
+    if (workflowMode === "schedule_lessons") return "schedule_lessons"
+    if (workflowMode === "build_and_schedule") return "build_and_schedule"
+
     const lower = text.toLowerCase()
     if (lower.includes("year curriculum") || lower.includes("year plan") || lower.includes("annual plan") || lower.includes("curriculum for"))
       return "year_curriculum"
@@ -111,9 +171,28 @@ export default function AIAdvisorChat({
       return "compliance_check"
     if (lower.includes("progress") || lower.includes("alignment") || lower.includes("on track") || lower.includes("how is"))
       return "learning_alignment"
+    if (lower.includes("build lesson") || lower.includes("create lesson") || lower.includes("lesson packet") || lower.includes("generate lesson"))
+      return "build_lessons"
+    if (lower.includes("schedule") || lower.includes("planner") || lower.includes("calendar"))
+      return "schedule_lessons"
     if (lower.includes("stuck") || lower.includes("help with") || lower.includes("lesson") || lower.includes("tutor"))
       return "lesson_help"
     return "general"
+  }
+
+  const selectWorkflowMode = (mode: AdvisorWorkflowMode) => {
+    setWorkflowMode(mode)
+    const childName = selectedChild?.name || "my child"
+    const childNames = children.map(c => c.name).join(" and ")
+
+    const modeMessages: Record<AdvisorWorkflowMode, string> = {
+      build_lessons: `I want to build lesson plans for ${childNames}. What subjects and objectives should we start with?`,
+      schedule_lessons: `I'd like to schedule lessons for ${childNames} on my planner. Let's set up the weekly schedule.`,
+      build_and_schedule: `Let's build lesson plans for ${childNames} and then schedule them on my planner.`,
+      chat: `I need to create a year curriculum for ${childName}.`,
+    }
+
+    sendMessage(modeMessages[mode])
   }
 
   const sendMessage = async (text?: string) => {
@@ -150,11 +229,14 @@ export default function AIAdvisorChat({
           message: messageText,
           conversationHistory,
           childProfile: selectedChild,
+          allChildren: children,
           familyBlueprint,
           stateRequirements: stateRequirements
             ? { ...stateRequirements, filingTypes: stateFilingTypes }
             : null,
           complianceData: complianceData || null,
+          approvedObjectives: approvedObjectives || [],
+          workflowMode,
           intent,
         }),
       })
@@ -227,57 +309,19 @@ export default function AIAdvisorChat({
   }
 
   const clearChat = () => {
+    setWorkflowMode(null)
     setMessages([
       {
         id: "welcome",
         role: "assistant",
-        content: "Chat cleared! How can I help you today?",
+        content: "Chat cleared! Choose a workflow or ask me anything.",
         structuredData: null,
         messageType: "text",
       },
     ])
   }
 
-  const quickActions = [
-    {
-      label: "Plan my year",
-      icon: "📅",
-      action: () => {
-        if (selectedChild) {
-          sendMessage(`I need to create my year curriculum for ${selectedChild.name}`)
-        } else {
-          sendMessage("I need to create a year curriculum for my child")
-        }
-      },
-    },
-    {
-      label: "Check compliance",
-      icon: "🛡️",
-      action: () => sendMessage("Check my compliance status for this year"),
-    },
-    {
-      label: "Create a lesson",
-      icon: "📖",
-      action: () => {
-        if (selectedChild) {
-          sendMessage(`Help me create a lesson for ${selectedChild.name}`)
-        } else {
-          sendMessage("Help me create a lesson")
-        }
-      },
-    },
-    {
-      label: "Learning progress",
-      icon: "📊",
-      action: () => {
-        if (selectedChild) {
-          sendMessage(`How is ${selectedChild.name} doing? Check learning alignment.`)
-        } else {
-          sendMessage("How are my children doing? Check learning alignment.")
-        }
-      },
-    },
-  ]
+  const showModeSelector = messages.length <= 1 && !workflowMode
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] max-w-4xl mx-auto">
@@ -291,7 +335,9 @@ export default function AIAdvisorChat({
             <h2 className="font-semibold text-sm">AtoZ AI Advisor</h2>
             <div className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-xs text-muted-foreground">Online</span>
+              <span className="text-xs text-muted-foreground">
+                {workflowMode ? `Mode: ${WORKFLOW_MODES.find(m => m.id === workflowMode)?.label || "Chat"}` : "Online"}
+              </span>
             </div>
           </div>
         </div>
@@ -311,6 +357,11 @@ export default function AIAdvisorChat({
                 </option>
               ))}
             </select>
+          )}
+          {workflowMode && (
+            <Badge variant="secondary" className="text-xs cursor-pointer" onClick={() => { setWorkflowMode(null) }}>
+              {WORKFLOW_MODES.find(m => m.id === workflowMode)?.label} ✕
+            </Badge>
           )}
           <Button variant="ghost" size="icon" onClick={clearChat} title="Clear chat">
             <Trash2 className="h-4 w-4" />
@@ -349,6 +400,7 @@ export default function AIAdvisorChat({
                 <StructuredCardRenderer
                   card={msg.structuredData}
                   onSave={onSaveRecommendation}
+                  onSchedule={onScheduleLessons}
                 />
               )}
             </div>
@@ -381,23 +433,57 @@ export default function AIAdvisorChat({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick actions — only show when conversation is short */}
-      {messages.length <= 2 && (
-        <div className="px-4 pb-2">
-          <div className="flex flex-wrap gap-2">
-            {quickActions.map((action) => (
-              <Button
-                key={action.label}
-                variant="outline"
-                size="sm"
-                onClick={action.action}
-                disabled={isStreaming}
-                className="text-xs"
-              >
-                <span className="mr-1.5">{action.icon}</span>
-                {action.label}
-              </Button>
-            ))}
+      {/* Workflow mode selector — show when conversation hasn't started */}
+      {showModeSelector && (
+        <div className="px-4 pb-3">
+          <p className="text-xs text-muted-foreground mb-2 font-medium">Choose a workflow:</p>
+          <div className="grid grid-cols-2 gap-2">
+            {WORKFLOW_MODES.map((mode) => {
+              const Icon = mode.icon
+              return (
+                <button
+                  key={mode.id}
+                  onClick={() => selectWorkflowMode(mode.id)}
+                  disabled={isStreaming}
+                  className={cn(
+                    "flex items-start gap-3 p-3 rounded-lg border text-left transition-colors",
+                    mode.bgColor,
+                    "disabled:opacity-50"
+                  )}
+                >
+                  <Icon className={cn("h-5 w-5 shrink-0 mt-0.5", mode.color)} />
+                  <div>
+                    <p className="text-sm font-medium">{mode.label}</p>
+                    <p className="text-xs text-muted-foreground leading-snug">{mode.description}</p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex gap-2 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => sendMessage("Check my compliance status for this year")}
+              disabled={isStreaming}
+              className="text-xs flex-1"
+            >
+              <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />
+              Check Compliance
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const name = selectedChild?.name || "my children"
+                sendMessage(`How is ${name} doing? Check learning progress.`)
+              }}
+              disabled={isStreaming}
+              className="text-xs flex-1"
+            >
+              <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+              Learning Progress
+            </Button>
           </div>
         </div>
       )}

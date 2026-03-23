@@ -149,7 +149,7 @@ export default function AICurriculumBuilder() {
                       <FormItem>
                         <FormLabel>Child's Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Emma" {...field} />
+                          <Input placeholder="Child's name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
