@@ -5,15 +5,22 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { ExternalLink, Info, Copy, CheckCircle } from "lucide-react"
+import { isFirebaseAvailable } from "@/lib/firebase"
 
 export default function AuthDomainHelper() {
   const [currentDomain, setCurrentDomain] = useState<string>("")
   const [copied, setCopied] = useState(false)
   const [showHelper, setShowHelper] = useState(false)
+  const [isUnauthorized, setIsUnauthorized] = useState(false)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setCurrentDomain(window.location.origin)
+
+      // Only show the helper if Firebase is not available (config issue)
+      if (!isFirebaseAvailable()) {
+        setIsUnauthorized(true)
+      }
     }
   }, [])
 
@@ -23,8 +30,8 @@ export default function AuthDomainHelper() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Don't show in development mode or if domain is localhost
-  if (!currentDomain || currentDomain.includes('localhost') || process.env.NODE_ENV === 'development') {
+  // Don't show unless there's actually a problem
+  if (!isUnauthorized || !currentDomain || currentDomain.includes('localhost')) {
     return null
   }
 
