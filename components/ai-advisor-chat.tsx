@@ -369,6 +369,8 @@ export default function AIAdvisorChat({
   const [workflowMode, setWorkflowMode] = useState<AdvisorWorkflowMode | null>(null)
   const [workflowPlan, setWorkflowPlan] = useState<WorkflowPlan | null>(null)
   const [showWorkflowSidebar, setShowWorkflowSidebar] = useState(false)
+  const lastProcessedMsgIdRef = useRef<string | null>(null)
+  const workflowInitializedRef = useRef(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -674,6 +676,8 @@ export default function AIAdvisorChat({
     setWorkflowMode(null)
     setWorkflowPlan(null)
     setShowWorkflowSidebar(false)
+    lastProcessedMsgIdRef.current = null
+    workflowInitializedRef.current = false
     setMessages([
       {
         id: "welcome",
@@ -765,52 +769,64 @@ export default function AIAdvisorChat({
     updateWorkflowTask(taskId, { status: "scheduled" })
   }, [updateWorkflowTask])
 
-  // Update workflow plan when lesson_build cards arrive
+  // Update workflow plan when lesson_build cards arrive (only process each message once)
   useEffect(() => {
     if (!workflowPlan) return
     const latestMsg = messages[messages.length - 1]
-    if (latestMsg?.structuredData?.type === "lesson_build") {
-      const card = latestMsg.structuredData as LessonBuildCard
-      const childName = card.childName
-      const subject = card.subject
-      // Find matching task and mark as awaiting_approval
-      setWorkflowPlan((prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          tasks: prev.tasks.map((t) => {
-            if (
-              t.childName.toLowerCase() === childName?.toLowerCase() &&
-              t.subject.toLowerCase() === subject?.toLowerCase() &&
-              t.status === "building"
-            ) {
-              return { ...t, status: "awaiting_approval", lessonCount: card.lessons?.length || 0 }
-            }
-            return t
-          }),
-        }
-      })
-    }
-  }, [messages, workflowPlan])
+    if (!latestMsg || latestMsg.id === lastProcessedMsgIdRef.current) return
+    if (latestMsg.structuredData?.type !== "lesson_build") return
 
-  // Auto-detect multi-child intent and initialize workflow plan
+    lastProcessedMsgIdRef.current = latestMsg.id
+    const card = latestMsg.structuredData as LessonBuildCard
+    const childName = card.childName
+    const subject = card.subject
+
+    setWorkflowPlan((prev) => {
+      if (!prev) return prev
+      const hasMatch = prev.tasks.some(
+        (t) =>
+          t.childName.toLowerCase() === childName?.toLowerCase() &&
+          t.subject.toLowerCase() === subject?.toLowerCase() &&
+          t.status === "building"
+      )
+      if (!hasMatch) return prev
+      return {
+        ...prev,
+        tasks: prev.tasks.map((t) => {
+          if (
+            t.childName.toLowerCase() === childName?.toLowerCase() &&
+            t.subject.toLowerCase() === subject?.toLowerCase() &&
+            t.status === "building"
+          ) {
+            return { ...t, status: "awaiting_approval" as const, lessonCount: card.lessons?.length || 0 }
+          }
+          return t
+        }),
+      }
+    })
+  }, [messages.length, workflowPlan]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-detect multi-child intent and initialize workflow plan (run once)
   useEffect(() => {
-    if (workflowPlan) return // Already have a plan
+    if (workflowInitializedRef.current) return
+    if (workflowPlan) { workflowInitializedRef.current = true; return }
     if (messages.length < 2) return
+    if (workflowMode !== "build_lessons" && workflowMode !== "build_and_schedule") return
+
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")
     if (!lastUserMsg) return
-    if (detectMultiChildIntent(lastUserMsg.content) && (workflowMode === "build_lessons" || workflowMode === "build_and_schedule")) {
-      // Extract likely subject from message
-      const lower = lastUserMsg.content.toLowerCase()
-      const subjects: string[] = []
-      const subjectKeywords = ["math", "science", "reading", "language arts", "history", "social studies", "writing", "art", "music", "pe"]
-      for (const kw of subjectKeywords) {
-        if (lower.includes(kw)) subjects.push(kw.charAt(0).toUpperCase() + kw.slice(1))
-      }
-      if (subjects.length === 0) subjects.push("Lessons")
-      initializeWorkflowPlan(subjects)
+    if (!detectMultiChildIntent(lastUserMsg.content)) return
+
+    workflowInitializedRef.current = true
+    const lower = lastUserMsg.content.toLowerCase()
+    const subjects: string[] = []
+    const subjectKeywords = ["math", "science", "reading", "language arts", "history", "social studies", "writing", "art", "music", "pe"]
+    for (const kw of subjectKeywords) {
+      if (lower.includes(kw)) subjects.push(kw.charAt(0).toUpperCase() + kw.slice(1))
     }
-  }, [messages, workflowPlan, workflowMode, detectMultiChildIntent, initializeWorkflowPlan])
+    if (subjects.length === 0) subjects.push("Lessons")
+    initializeWorkflowPlan(subjects)
+  }, [messages.length, workflowPlan, workflowMode, detectMultiChildIntent, initializeWorkflowPlan]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const showModeSelector = messages.length <= 1 && !workflowMode
 
