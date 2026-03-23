@@ -10,6 +10,7 @@ import CommunityEvents from "@/components/community-events"
 import CommunityGroups from "@/components/community-groups"
 import { BookOpen, Calendar, Users, Clock, Target, Sparkles, Heart, Shield, ArrowRight, Loader2 } from "lucide-react"
 import { getDashboardStats, getFamilyBlueprint } from "@/app/actions/family-actions"
+import ProtectedRoute from "@/components/auth/protected-route"
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<{
@@ -50,6 +51,7 @@ export default function DashboardPage() {
   const complianceColor = stats?.complianceStatus === "On Track" ? "text-green-600" : "text-amber-600"
 
   return (
+    <ProtectedRoute>
     <div className="container mx-auto px-4 py-8 space-y-8">
       {/* Welcome Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -288,5 +290,6 @@ export default function DashboardPage() {
         </Card>
       )}
     </div>
+    </ProtectedRoute>
   )
 }

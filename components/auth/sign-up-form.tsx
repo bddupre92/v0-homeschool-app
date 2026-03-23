@@ -96,7 +96,7 @@ export default function SignUpForm() {
 
     try {
       await signInWithGoogle()
-      router.push("/dashboard")
+      window.location.href = "/dashboard"
     } catch (err: any) {
       console.error("Google sign in error:", err)
 

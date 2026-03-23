@@ -1,17 +1,11 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-// Add paths that should be protected (require authentication)
-const protectedPaths = ["/dashboard", "/boards", "/planner", "/profile", "/settings", "/resources/create", "/family"]
-
-// Add paths that should be accessible only to non-authenticated users
+// Auth pages where already-authenticated users should be redirected away
 const authPaths = ["/sign-in", "/sign-up", "/forgot-password", "/reset-password"]
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-
-  // Check if the path is protected
-  const isProtectedPath = protectedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))
 
   // Check if the path is for authentication
   const isAuthPath = authPaths.some((path) => pathname === path)
@@ -22,31 +16,22 @@ export function middleware(request: NextRequest) {
   // Basic validation: a real Firebase session cookie is a JWT (3 dot-separated base64 parts)
   const isValidSession = session && session.split(".").length === 3 && session.length > 100
 
-  // Redirect unauthenticated users away from protected pages
-  if (isProtectedPath && !isValidSession) {
-    const signInUrl = new URL("/sign-in", request.url)
-    signInUrl.searchParams.set("callbackUrl", pathname)
-    const response = NextResponse.redirect(signInUrl)
-    // Clear the invalid/stale session cookie if it exists
-    if (session && !isValidSession) {
-      response.cookies.set("session", "", { maxAge: 0, path: "/" })
-    }
-    return response
-  }
-
-  // If the path is for authentication and there's a valid session, redirect to dashboard
+  // If on an auth page with a valid session, redirect to dashboard
+  // (no need to show sign-in to someone already authenticated)
   if (isAuthPath && isValidSession) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
-  // If on auth path with an invalid session cookie, clear it and let them through
+  // If on auth path with an invalid/stale session cookie, clear it and let them through
   if (isAuthPath && session && !isValidSession) {
     const response = NextResponse.next()
     response.cookies.set("session", "", { maxAge: 0, path: "/" })
     return addSecurityHeaders(response)
   }
 
-  // Add security headers
+  // All other pages: let them through. Protected pages use client-side
+  // ProtectedRoute component to handle auth redirects, which works
+  // reliably with Firebase client-side auth state.
   const response = NextResponse.next()
   return addSecurityHeaders(response)
 }
