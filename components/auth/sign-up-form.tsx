@@ -83,7 +83,7 @@ export default function SignUpForm() {
           "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
         )
       } else {
-        setError("Failed to create an account. Please try again.")
+        setError(err.message || "Failed to create an account. Please try again.")
       }
     } finally {
       setIsLoading(false)
@@ -109,7 +109,7 @@ export default function SignUpForm() {
           "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
         )
       } else {
-        setError("Failed to sign up with Google.")
+        setError(err.message || "Failed to sign up with Google.")
       }
     } finally {
       setIsLoading(false)

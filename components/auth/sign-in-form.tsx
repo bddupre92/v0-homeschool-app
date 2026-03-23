@@ -67,7 +67,7 @@ export default function SignInForm() {
           "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
         )
       } else {
-        setError("Failed to sign in. Please check your credentials.")
+        setError(err.message || "Failed to sign in. Please check your credentials.")
       }
       console.error(err)
     } finally {
@@ -100,7 +100,7 @@ export default function SignInForm() {
           "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
         )
       } else {
-        setError("Failed to sign in with Google.")
+        setError(err.message || "Failed to sign in with Google.")
       }
     } finally {
       setIsLoading(false)

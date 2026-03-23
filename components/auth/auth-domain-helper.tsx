@@ -3,82 +3,83 @@
 import { useState, useEffect } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ExternalLink, Info, Copy, CheckCircle } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AlertCircle, Info } from "lucide-react"
 import { isFirebaseAvailable } from "@/lib/firebase"
 
 export default function AuthDomainHelper() {
-  const [currentDomain, setCurrentDomain] = useState<string>("")
-  const [copied, setCopied] = useState(false)
-  const [showHelper, setShowHelper] = useState(false)
-  const [isUnauthorized, setIsUnauthorized] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
+  const [diagnostics, setDiagnostics] = useState<string[]>([])
+  const [hasIssue, setHasIssue] = useState(false)
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setCurrentDomain(window.location.origin)
+    if (typeof window === "undefined") return
 
-      // Only show the helper if Firebase is not available (config issue)
-      if (!isFirebaseAvailable()) {
-        setIsUnauthorized(true)
+    const issues: string[] = []
+
+    // Check if Firebase initialized
+    if (!isFirebaseAvailable()) {
+      issues.push("Firebase app failed to initialize")
+
+      // Check which env vars are missing (NEXT_PUBLIC_ vars are inlined at build time)
+      const vars = {
+        NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+        NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
       }
+
+      for (const [key, value] of Object.entries(vars)) {
+        if (!value) {
+          issues.push(`Missing: ${key}`)
+        } else if (value.includes("demo") || value.includes("your-") || value === "123456789") {
+          issues.push(`Demo/placeholder value: ${key}`)
+        } else {
+          // Show first 4 chars to confirm it's set without revealing the full value
+          issues.push(`${key}: ${value.substring(0, 4)}...`)
+        }
+      }
+    }
+
+    if (issues.length > 0) {
+      setHasIssue(true)
+      setDiagnostics(issues)
     }
   }, [])
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(currentDomain)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  // Don't show unless there's actually a problem
-  if (!isUnauthorized || !currentDomain || currentDomain.includes('localhost')) {
-    return null
-  }
+  if (!hasIssue) return null
 
   return (
-    <div className="mb-6">
-      <Alert className="mb-2">
-        <Info className="h-4 w-4" />
-        <AlertTitle>Authentication Error</AlertTitle>
+    <div className="mb-6 w-full max-w-md">
+      <Alert variant="destructive" className="mb-2">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Firebase Configuration Issue</AlertTitle>
         <AlertDescription>
-          This domain is not authorized for Firebase Authentication.{" "}
-          <Button variant="link" className="p-0 h-auto" onClick={() => setShowHelper(!showHelper)}>
-            {showHelper ? "Hide instructions" : "Show instructions"}
+          Firebase is not initialized. Authentication will not work.{" "}
+          <Button variant="link" className="p-0 h-auto text-xs" onClick={() => setShowDetails(!showDetails)}>
+            {showDetails ? "Hide details" : "Show details"}
           </Button>
         </AlertDescription>
       </Alert>
 
-      {showHelper && (
-        <Card>
-          <CardHeader>
-            <CardTitle>How to fix this error</CardTitle>
-            <CardDescription>
-              You need to add this domain to your Firebase project&apos;s authorized domains list
-            </CardDescription>
+      {showDetails && (
+        <Card className="mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Diagnostics</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <ol className="list-decimal list-inside space-y-2">
-              <li>Go to the Firebase Console</li>
-              <li>Select your project</li>
-              <li>Go to Authentication &gt; Settings &gt; Authorized domains</li>
-              <li>Click &quot;Add domain&quot; and add the following domain:</li>
-            </ol>
-            <div className="flex items-center gap-2 p-2 bg-gray-100 rounded">
-              <code className="text-sm flex-1">{currentDomain}</code>
-              <Button size="sm" variant="ghost" onClick={copyToClipboard}>
-                {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
+          <CardContent>
+            <ul className="text-xs space-y-1 font-mono">
+              {diagnostics.map((d, i) => (
+                <li key={i} className={d.startsWith("Missing") || d.startsWith("Demo") ? "text-red-500" : "text-green-500"}>
+                  {d}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs mt-3 text-muted-foreground">
+              NEXT_PUBLIC_ env vars are embedded at build time. If they were added after the last build,
+              you need to redeploy for them to take effect.
+            </p>
           </CardContent>
-          <CardFooter>
-            <Button
-              variant="outline"
-              onClick={() => window.open("https://console.firebase.google.com/", "_blank")}
-              className="w-full"
-            >
-              Open Firebase Console <ExternalLink className="ml-2 h-4 w-4" />
-            </Button>
-          </CardFooter>
         </Card>
       )}
     </div>
