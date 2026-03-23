@@ -6,6 +6,12 @@ import { requireAuth } from "@/lib/auth-middleware"
 import { db } from "@/lib/db"
 import { AuthenticationError } from "@/lib/errors"
 
+// Helper to convert JS array to PostgreSQL array literal string
+function toPgArray(arr: string[] | undefined | null): string {
+  if (!arr || arr.length === 0) return "{}"
+  return `{${arr.map(s => `"${s.replace(/"/g, '\\"')}"`).join(",")}}`
+}
+
 // ─── Auth helpers ────────────────────────────────────────────────────────────
 
 async function getAuthenticatedUserId(): Promise<string> {
@@ -47,18 +53,18 @@ export async function saveFamilyBlueprint(data: {
   try {
     const userId = await getAuthenticatedUserId()
     const result = await sql`
-      INSERT INTO family_blueprints (user_id, family_name, values, philosophy, trait_pillars, state_abbreviation)
+      INSERT INTO family_blueprints (user_id, family_name, "values", philosophy, trait_pillars, state_abbreviation)
       VALUES (
         ${userId},
         ${data.familyName || null},
-        ${data.values || []},
-        ${data.philosophy || []},
+        ${toPgArray(data.values)},
+        ${toPgArray(data.philosophy)},
         ${JSON.stringify(data.traitPillars || [])},
         ${data.stateAbbreviation || null}
       )
       ON CONFLICT (user_id) DO UPDATE SET
         family_name = EXCLUDED.family_name,
-        values = EXCLUDED.values,
+        "values" = EXCLUDED."values",
         philosophy = EXCLUDED.philosophy,
         trait_pillars = EXCLUDED.trait_pillars,
         state_abbreviation = EXCLUDED.state_abbreviation,
@@ -108,9 +114,9 @@ export async function addChild(data: {
         ${data.age || null},
         ${data.grade || null},
         ${data.learningStyle || null},
-        ${data.interests || []},
-        ${data.strengths || []},
-        ${data.challenges || []}
+        ${toPgArray(data.interests)},
+        ${toPgArray(data.strengths)},
+        ${toPgArray(data.challenges)}
       )
       RETURNING *
     `
@@ -141,9 +147,9 @@ export async function updateChild(childId: string, data: {
         age = COALESCE(${data.age || null}, age),
         grade = COALESCE(${data.grade || null}, grade),
         learning_style = COALESCE(${data.learningStyle || null}, learning_style),
-        interests = COALESCE(${data.interests || null}, interests),
-        strengths = COALESCE(${data.strengths || null}, strengths),
-        challenges = COALESCE(${data.challenges || null}, challenges),
+        interests = COALESCE(${data.interests ? toPgArray(data.interests) : null}, interests),
+        strengths = COALESCE(${data.strengths ? toPgArray(data.strengths) : null}, strengths),
+        challenges = COALESCE(${data.challenges ? toPgArray(data.challenges) : null}, challenges),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ${childId}
       RETURNING *

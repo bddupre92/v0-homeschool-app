@@ -13,6 +13,7 @@ import { Footer } from "@/components/footer"
 import { ErrorTrackingProvider } from "@/lib/error-tracking"
 import { PerformanceMonitoringProvider } from "@/lib/performance-monitoring"
 import { SessionInitializer } from "@/components/session-initializer"
+import { DbInitializer } from "@/components/db-initializer"
 import QueryProvider from "@/components/query-provider"
 import { ModulePreferencesProvider } from "@/contexts/module-preferences-context"
 
@@ -100,6 +101,7 @@ export default function RootLayout({
                       <Footer />
                       <CookieConsent />
                       <SessionInitializer />
+                      <DbInitializer />
                     </ThemeProvider>
                   </QueryProvider>
                   </ModulePreferencesProvider>

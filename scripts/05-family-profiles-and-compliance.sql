@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS family_blueprints (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   family_name TEXT,
-  values TEXT[] DEFAULT '{}',
+  "values" TEXT[] DEFAULT '{}',
   philosophy TEXT[] DEFAULT '{}',
   trait_pillars JSONB DEFAULT '[]'::jsonb,
   state_abbreviation TEXT,
