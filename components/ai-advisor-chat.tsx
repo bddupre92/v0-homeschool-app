@@ -79,9 +79,9 @@ function normalizeCard(parsed: any): any {
     parsed.subject = parsed.subject || parsed.subjectName || parsed.subject_name || ""
     parsed.summary = parsed.summary || ""
 
-    // Normalize lessons array
+    // Normalize lessons array — handle many possible AI output formats
     if (!Array.isArray(parsed.lessons)) {
-      parsed.lessons = parsed.lesson_plans || parsed.lessonPlans || []
+      parsed.lessons = parsed.lesson_plans || parsed.lessonPlans || parsed.lesson_list || []
     }
 
     // Handle flat lesson format: AI returned a single lesson as top-level fields instead of a lessons array
@@ -89,38 +89,72 @@ function normalizeCard(parsed: any): any {
       parsed.lessons = [parsed]
     }
 
-    parsed.lessons = parsed.lessons.map((l: any) => ({
-      objectiveId: l.objectiveId || l.objective_id || undefined,
-      objectiveTitle: l.objectiveTitle || l.objective_title || l.objective || l.topic || "",
-      lessonTitle: l.lessonTitle || l.lesson_title || l.title || l.name || l.lesson_name || "",
-      duration: l.duration || l.time || l.minutes || 0,
-      description: l.description || l.summary || l.overview ||
-        (Array.isArray(l.learningObjectives) ? l.learningObjectives.join("; ") : "") ||
-        (Array.isArray(l.procedure) ? l.procedure.join("; ") : "") || "",
-      materials: Array.isArray(l.materials)
-        ? l.materials.map((m: any) =>
-            typeof m === "string"
-              ? m
-              : {
-                  name: m.name || m.item || m.title || "",
-                  url: m.url || undefined,
-                  type: m.type || "supply",
-                  price: m.price || undefined,
-                }
-          )
-        : [],
-      packetDepth: l.packetDepth || l.packet_depth || "light",
-    }))
+    // Handle object-of-lessons: AI returned { "lesson_1": {...}, "lesson_2": {...} } instead of an array
+    if (parsed.lessons.length === 0) {
+      const possibleLessons = Object.keys(parsed)
+        .filter((k) => k.match(/^lesson[_\s]?\d/i) || k.match(/^week[_\s]?\d/i))
+        .map((k) => parsed[k])
+        .filter((v) => v && typeof v === "object" && !Array.isArray(v))
+      if (possibleLessons.length > 0) {
+        parsed.lessons = possibleLessons
+      }
+    }
 
-    // Normalize card-level references
-    parsed.references = (parsed.references || parsed.sources || parsed.citations || []).map((r: any) => ({
-      id: r.id || r.number || 0,
-      title: r.title || r.name || "",
-      url: r.url || undefined,
-      author: r.author || undefined,
-      type: r.type || "article",
-      snippet: r.snippet || r.description || "",
-    }))
+    // Safely normalize materials — always produce a string array for maximum compatibility
+    const safeMaterials = (mats: any): string[] => {
+      if (!Array.isArray(mats)) return []
+      return mats.map((m: any) => {
+        if (typeof m === "string") return m
+        if (m && typeof m === "object") {
+          const name = m.name || m.item || m.title || ""
+          const typeHint = m.type && m.type !== "supply" ? ` (${m.type})` : ""
+          return name + typeHint
+        }
+        return String(m)
+      }).filter(Boolean)
+    }
+
+    parsed.lessons = parsed.lessons.map((l: any) => {
+      try {
+        return {
+          objectiveId: l.objectiveId || l.objective_id || undefined,
+          objectiveTitle: l.objectiveTitle || l.objective_title || l.objective || l.topic || "",
+          lessonTitle: l.lessonTitle || l.lesson_title || l.title || l.name || l.lesson_name || "",
+          duration: l.duration || l.time || l.minutes || 0,
+          description: l.description || l.summary || l.overview ||
+            (Array.isArray(l.learningObjectives) ? l.learningObjectives.join("; ") : "") ||
+            (Array.isArray(l.procedure) ? l.procedure.join("; ") : "") || "",
+          materials: safeMaterials(l.materials),
+          packetDepth: l.packetDepth || l.packet_depth || "light",
+        }
+      } catch {
+        console.warn("[normalizeCard] Failed to normalize lesson:", l)
+        return {
+          objectiveId: undefined,
+          objectiveTitle: String(l?.objectiveTitle || l?.objective || ""),
+          lessonTitle: String(l?.lessonTitle || l?.title || "Untitled Lesson"),
+          duration: 0,
+          description: String(l?.description || ""),
+          materials: [],
+          packetDepth: "light" as const,
+        }
+      }
+    }).filter((l: any) => l.lessonTitle || l.objectiveTitle)
+
+    // Normalize card-level references (with safety)
+    try {
+      const rawRefs = parsed.references || parsed.sources || parsed.citations || []
+      parsed.references = (Array.isArray(rawRefs) ? rawRefs : []).map((r: any) => ({
+        id: r.id || r.number || 0,
+        title: r.title || r.name || "",
+        url: r.url || undefined,
+        author: r.author || undefined,
+        type: r.type || "article",
+        snippet: r.snippet || r.description || "",
+      }))
+    } catch {
+      parsed.references = []
+    }
   }
 
   if (parsed.type === "schedule_proposal") {

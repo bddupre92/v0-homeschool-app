@@ -189,12 +189,7 @@ When you have enough context, include EXACTLY ONE structured JSON block in \`\`\
       "lessonTitle": "Engaging lesson title",
       "duration": 45,
       "description": "What the student will learn and do in this lesson. Cite sources inline [1] when referencing methodologies or research.",
-      "materials": [
-        "pencil",
-        "notebook",
-        {"name": "The Story of the World Vol 1", "type": "book", "price": "~$15"},
-        {"name": "Khan Academy: Fractions", "url": "https://www.khanacademy.org/math/arithmetic/fraction-arithmetic", "type": "website"}
-      ],
+      "materials": ["pencil", "notebook", "The Story of the World Vol 1 (book)", "Khan Academy: Fractions (website)"],
       "packetDepth": "light"
     }
   ],
@@ -210,7 +205,7 @@ CRITICAL RULES:
 - Output exactly ONE \`\`\`json block containing ONE object with a "lessons" array. Do NOT output multiple separate JSON blocks — put ALL lessons inside the single "lessons" array.
 - You MUST always provide a non-empty "lessonTitle" and "objectiveTitle" for EVERY lesson in the array. Never leave these fields blank, null, or empty.
 - Each lessonTitle should be specific and engaging (e.g., "Butterfly Life Cycle Adventure" not just "Science Lesson").
-- For materials: use plain strings for basic supplies, and {"name", "url?", "type", "price?"} objects for books, websites, videos, and articles.
+- For materials: use ONLY plain strings. Include book titles, website names, and supply names as simple strings. You can add a type hint in parentheses like "The Story of the World (book)" or "Khan Academy (website)".
 - Include a "references" array with all cited sources — these appear as a "Sources" section on the card.
 - If building for multiple children, use "childName": "Asher & Zuri" and put all lessons in one array.`
   } else if (intent === "schedule_lessons") {
@@ -266,8 +261,8 @@ CRITICAL: Output exactly ONE \`\`\`json block per response. Put ALL lessons insi
   "childName": "Child Name",
   "subject": "Subject",
   "lessons": [
-    { "lessonTitle": "Title 1", "objectiveTitle": "Objective 1", "duration": 45, "description": "Description with citations [1]...", "materials": ["pencil", {"name": "Book Title", "type": "book"}], "packetDepth": "light" },
-    { "lessonTitle": "Title 2", "objectiveTitle": "Objective 2", "duration": 30, "description": "...", "materials": ["..."], "packetDepth": "light" }
+    { "lessonTitle": "Title 1", "objectiveTitle": "Objective 1", "duration": 45, "description": "Description with citations [1]...", "materials": ["pencil", "notebook", "Book Title (book)"], "packetDepth": "light" },
+    { "lessonTitle": "Title 2", "objectiveTitle": "Objective 2", "duration": 30, "description": "...", "materials": ["colored pencils", "paper"], "packetDepth": "light" }
   ],
   "references": [{"id": 1, "title": "Source", "type": "article", "snippet": "Why this is relevant"}],
   "summary": "Week X of Y — topic overview"
@@ -323,12 +318,11 @@ ${personalizationDirectives}
 ${intentInstructions}
 
 RESOURCE & CITATION RULES:
-- When recommending books, include the full title and author. If you know a well-known URL (e.g., Khan Academy, PBS Kids), include it.
+- When recommending books, include the full title and author in the materials list as a plain string (e.g., "The Story of the World by Susan Wise Bauer (book)").
 - When referencing a teaching methodology, educational research, or specific resource, cite it inline using [N] notation (e.g., "Charlotte Mason emphasized short lessons [1]").
-- In the "materials" array for lesson_build cards, you may use either plain strings for basic supplies ("pencil", "paper") or objects with metadata: {"name": "The Story of the World", "url": "https://...", "type": "book", "price": "~$15"}.
-- Include a "references" array at the card level listing all cited sources: [{"id": 1, "title": "Source title", "url": "https://...", "author": "Author", "type": "book|article|video|website|research", "snippet": "Brief description"}].
-- Only include URLs you are confident are correct. It's better to omit a URL than to guess incorrectly.
-- For materials you're unsure about exact URLs, just use the name as a plain string — parents can search for it themselves.
+- The "materials" array must contain ONLY plain strings. Never put objects in the materials array.
+- Include a "references" array at the card level listing all cited sources. Each reference is an object with: id (number), title (string), author (string, optional), type (one of: book, article, video, website, research), snippet (string — brief description), url (string, optional — only if you know the exact URL).
+- Only include URLs in references you are confident are correct. It's better to omit a URL than to guess.
 
 RESPONSE RULES:
 1. Always be conversational — you're chatting, not writing an essay.
