@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, type ReactNode, useEffect } from "react"
+import { createContext, useContext, type ReactNode, useEffect, Suspense } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { Analytics as VercelAnalytics } from "@vercel/analytics/react"
 
@@ -97,21 +97,28 @@ export function AnalyticsComponent() {
   return <VercelAnalytics />
 }
 
-export function AnalyticsProvider({ children }: { children: ReactNode }) {
+function PageViewTracker() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  // Track page views
   useEffect(() => {
     if (pathname) {
       const url = searchParams?.size ? `${pathname}?${searchParams.toString()}` : pathname
-
       trackPageView(url)
     }
   }, [pathname, searchParams])
 
+  return null
+}
+
+export function AnalyticsProvider({ children }: { children: ReactNode }) {
   return (
-    <AnalyticsContext.Provider value={{ trackEvent, trackPageView, trackError }}>{children}</AnalyticsContext.Provider>
+    <AnalyticsContext.Provider value={{ trackEvent, trackPageView, trackError }}>
+      <Suspense fallback={null}>
+        <PageViewTracker />
+      </Suspense>
+      {children}
+    </AnalyticsContext.Provider>
   )
 }
 

@@ -75,44 +75,47 @@ export function EnhancedLocationMap({
 
   const { token, loading, error } = useMapboxToken()
 
+  const [mapError, setMapError] = useState<string | null>(null)
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current || !token || loading) return
 
-    // Set the token from our hook
-    mapboxgl.accessToken = token
+    try {
+      // Set the token from our hook
+      mapboxgl.accessToken = token
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: `mapbox://styles/mapbox/${mapStyle}`,
-      center,
-      zoom,
-    })
-
-    map.current.on("error", (e) => {
-      console.error("Mapbox error:", e)
-    })
-
-    // Add navigation controls
-    if (showControls) {
-      map.current.addControl(new mapboxgl.NavigationControl(), "top-right")
-      map.current.addControl(new mapboxgl.FullscreenControl(), "top-right")
-      map.current.addControl(new mapboxgl.ScaleControl(), "bottom-left")
-    }
-
-    // Add search control
-    if (showSearch) {
-      const geocoder = new MapboxGeocoder({
-        accessToken: mapboxgl.accessToken,
-        mapboxgl: mapboxgl,
-        marker: false,
-        placeholder: "Search for locations",
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: `mapbox://styles/mapbox/${mapStyle}`,
+        center,
+        zoom,
       })
-      map.current.addControl(geocoder, "top-left")
-    }
 
-    map.current.on("load", () => {
-      setMapLoaded(true)
+      map.current.on("error", (e) => {
+        console.error("Mapbox error:", e)
+      })
+
+      // Add navigation controls
+      if (showControls) {
+        map.current.addControl(new mapboxgl.NavigationControl(), "top-right")
+        map.current.addControl(new mapboxgl.FullscreenControl(), "top-right")
+        map.current.addControl(new mapboxgl.ScaleControl(), "bottom-left")
+      }
+
+      // Add search control
+      if (showSearch) {
+        const geocoder = new MapboxGeocoder({
+          accessToken: mapboxgl.accessToken,
+          mapboxgl: mapboxgl,
+          marker: false,
+          placeholder: "Search for locations",
+        })
+        map.current.addControl(geocoder, "top-left")
+      }
+
+      map.current.on("load", () => {
+        setMapLoaded(true)
 
       // Add source and layer for directions
       if (map.current && showDirections) {
@@ -211,6 +214,10 @@ export function EnhancedLocationMap({
         })
       }
     })
+    } catch (err) {
+      console.error("[v0] Failed to initialize map:", err)
+      setMapError("Map could not be loaded. Please try again later.")
+    }
 
     return () => {
       if (map.current) {
@@ -529,12 +536,12 @@ export function EnhancedLocationMap({
   }
 
   // Show error state
-  if (error || !token) {
+  if (error || !token || mapError) {
     return (
       <Card className="overflow-hidden relative">
         <div className="flex items-center justify-center" style={{ width, height }}>
           <div className="text-center p-4 text-red-500">
-            <p>Error loading map: {error?.message || "Could not load Mapbox token"}</p>
+            <p>Error loading map: {mapError || error?.message || "Could not load Mapbox token"}</p>
             <Button onClick={() => window.location.reload()} variant="outline" className="mt-4">
               Retry
             </Button>

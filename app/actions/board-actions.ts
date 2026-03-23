@@ -1,24 +1,110 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { adminDb, adminAuth } from "@/lib/firebase-admin-safe"
+import { adminDb } from "@/lib/firebase-admin-safe"
+import { requireAuth, getOptionalUser } from "@/lib/auth-middleware"
+import { AuthenticationError } from "@/lib/errors"
 
-// Get the current user from the session
+// Get the current user from the auth middleware
 async function getCurrentUser() {
-  const sessionCookie = cookies().get("session")?.value
-
-  if (!sessionCookie) {
-    return null
+  try {
+    const auth = await requireAuth()
+    return auth.userId
+  } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return null
+    }
+    throw error
   }
+}
+
+// Get boards for the current user
+export async function getBoards() {
+  const userId = await getCurrentUser()
+  if (!userId) redirect("/sign-in")
 
   try {
-    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true)
-    return decodedClaims.uid
+    const snapshot = await adminDb
+      .collection("boards")
+      .where("userId", "==", userId)
+      .get()
+
+    const boards = snapshot.docs.map((doc: any) => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        title: data.title || "",
+        description: data.description || "",
+        coverImage: data.coverImage || null,
+        isPrivate: data.isPrivate || false,
+        itemCount: data.items?.length || 0,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+      }
+    })
+
+    return { success: true, boards }
   } catch (error) {
-    console.error("Error verifying session:", error)
-    return null
+    console.error("[v0] Error getting boards:", error)
+    return { success: false, error: "Failed to load boards", boards: [] }
+  }
+}
+
+// Get a single board by ID with its items
+export async function getBoardById(boardId: string) {
+  const userId = await getCurrentUser()
+  if (!userId) redirect("/sign-in")
+
+  try {
+    const boardDoc = await adminDb.collection("boards").doc(boardId).get()
+
+    if (!boardDoc.exists) {
+      return { success: false, error: "Board not found", board: null }
+    }
+
+    const boardData = boardDoc.data()
+
+    if (boardData?.userId !== userId) {
+      return { success: false, error: "Access denied", board: null }
+    }
+
+    // Fetch board items
+    const itemsSnapshot = await adminDb
+      .collection("boardItems")
+      .where("boardId", "==", boardId)
+      .get()
+
+    const items = itemsSnapshot.docs.map((doc: any) => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        title: data.title || "",
+        description: data.description || "",
+        type: data.type || "",
+        tags: data.tags || [],
+        thumbnail: data.thumbnail || null,
+        source: data.source || "",
+        addedAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+      }
+    })
+
+    return {
+      success: true,
+      board: {
+        id: boardDoc.id,
+        title: boardData.title || "",
+        description: boardData.description || "",
+        coverImage: boardData.coverImage || null,
+        isPrivate: boardData.isPrivate || false,
+        createdAt: boardData.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        updatedAt: boardData.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        items,
+      },
+    }
+  } catch (error) {
+    console.error("[v0] Error getting board:", error)
+    return { success: false, error: "Failed to load board", board: null }
   }
 }
 

@@ -1,8 +1,8 @@
 "use client"
 
 import React, { useState, useEffect, createContext, useContext, type ReactNode } from "react"
-import { 
-  onAuthStateChanged, 
+import {
+  onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
@@ -13,7 +13,8 @@ import {
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
-  type User 
+  getIdToken,
+  type User
 } from "firebase/auth"
 import { auth, isFirebaseAvailable } from "@/lib/firebase"
 import { doc, setDoc, serverTimestamp } from "firebase/firestore"
@@ -22,8 +23,8 @@ import { db } from "@/lib/firebase"
 import { Loader2 } from "lucide-react"
 
 // --- Configuration ---
-// Set this to true to bypass Firebase auth and use a mock user for development.
-const DEV_MODE_BYPASS_AUTH = true
+// Set this to false to enable real Firebase authentication.
+const DEV_MODE_BYPASS_AUTH = false
 
 const mockUser: User = {
   uid: "dev-user-uid",
@@ -37,13 +38,60 @@ const mockUser: User = {
   refreshToken: "mock-refresh-token",
   tenantId: null,
   phoneNumber: null,
-  // Required User methods (can be stubs)
   delete: () => Promise.resolve(),
   getIdToken: () => Promise.resolve("mock-token"),
   getIdTokenResult: () => Promise.resolve({ token: "mock-token" } as any),
   reload: () => Promise.resolve(),
   toJSON: () => ({}),
   providerId: "password",
+}
+
+/**
+ * Race a promise against a timeout. Resolves/rejects with the original
+ * promise if it settles first, otherwise rejects with a timeout error.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ])
+}
+
+/**
+ * Creates a server-side session cookie by sending the Firebase ID token
+ * to our session API route.
+ */
+async function createSessionCookie(user: User): Promise<void> {
+  try {
+    const idToken = await withTimeout(getIdToken(user, true), 5000, "getIdToken")
+    const response = await withTimeout(
+      fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      }),
+      5000,
+      "session API"
+    )
+    if (!response.ok) {
+      console.error("Failed to create session cookie:", response.status)
+    }
+  } catch (error) {
+    console.error("Error creating session cookie:", error)
+  }
+}
+
+/**
+ * Clears the server-side session cookie.
+ */
+async function clearSessionCookie(): Promise<void> {
+  try {
+    await fetch("/api/auth/session", { method: "DELETE" })
+  } catch (error) {
+    console.error("Error clearing session cookie:", error)
+  }
 }
 
 // --- Context Definition ---
@@ -76,7 +124,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Authentication methods
   const signUp = async (email: string, password: string, name: string) => {
-    // In dev mode, simulate successful signup
     if (DEV_MODE_BYPASS_AUTH) {
       console.log("Dev mode: Simulating successful signup for", email)
       return
@@ -90,19 +137,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      // Update the user's display name
       await updateProfile(user, { displayName: name })
 
-      // Create user document in Firestore
+      // Await session cookie (needed for server-side auth on next navigation)
+      await createSessionCookie(user)
+
+      // Await Firestore user doc on sign-up (first-time record creation)
       if (db) {
-        await setDoc(doc(db, "users", user.uid), {
-          uid: user.uid,
-          email: user.email,
-          displayName: name,
-          emailVerified: user.emailVerified,
-          createdAt: serverTimestamp(),
-          lastLoginAt: serverTimestamp(),
-        })
+        try {
+          await withTimeout(
+            setDoc(doc(db, "users", user.uid), {
+              uid: user.uid,
+              email: user.email,
+              displayName: name,
+              emailVerified: user.emailVerified,
+              createdAt: serverTimestamp(),
+              lastLoginAt: serverTimestamp(),
+            }),
+            5000,
+            "Firestore user create"
+          )
+        } catch (err) {
+          console.error("Firestore user doc error (non-fatal):", err)
+        }
       }
     } catch (error: any) {
       console.error("Sign up error:", error)
@@ -111,7 +168,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signIn = async (email: string, password: string, rememberMe = false) => {
-    // In dev mode, simulate successful signin
     if (DEV_MODE_BYPASS_AUTH) {
       console.log("Dev mode: Simulating successful signin for", email)
       return
@@ -126,17 +182,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Set persistence based on remember me
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
-      
+
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      // Update last login time
+      // Await session cookie (needed for server-side auth on next navigation)
+      await createSessionCookie(user)
+
+      // Fire-and-forget: lastLoginAt update is non-critical
       if (db) {
-        await setDoc(doc(db, "users", user.uid), {
+        setDoc(doc(db, "users", user.uid), {
           lastLoginAt: serverTimestamp(),
-        }, { merge: true })
+        }, { merge: true }).catch(err => console.error("Firestore update error:", err))
       }
     } catch (error: any) {
       console.error("Sign in error:", error)
@@ -145,7 +203,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signInWithGoogle = async (rememberMe = false) => {
-    // In dev mode, simulate successful Google signin
     if (DEV_MODE_BYPASS_AUTH) {
       console.log("Dev mode: Simulating successful Google signin")
       return
@@ -156,26 +213,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Set persistence based on remember me
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
-      
+
       const provider = new GoogleAuthProvider()
       provider.addScope('email')
       provider.addScope('profile')
-      
+
       const userCredential = await signInWithPopup(auth, provider)
       const user = userCredential.user
 
-      // Create or update user document in Firestore
+      // Await session cookie (needed for server-side auth on next navigation)
+      await createSessionCookie(user)
+
+      // Fire-and-forget: user doc update is non-critical
       if (db) {
-        await setDoc(doc(db, "users", user.uid), {
+        setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
           email: user.email,
           displayName: user.displayName,
           photoURL: user.photoURL,
           emailVerified: user.emailVerified,
           lastLoginAt: serverTimestamp(),
-        }, { merge: true })
+        }, { merge: true }).catch(err => console.error("Firestore update error:", err))
       }
     } catch (error: any) {
       console.error("Google sign in error:", error)
@@ -184,11 +243,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
-    // In dev mode, simulate successful signout
     if (DEV_MODE_BYPASS_AUTH) {
       console.log("Dev mode: Simulating successful signout")
       return
     }
+
+    // Clear session cookie first
+    await clearSessionCookie()
 
     if (!isFirebaseAvailable() || !auth) {
       return
@@ -203,7 +264,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const resetPassword = async (email: string) => {
-    // In dev mode, simulate successful password reset
     if (DEV_MODE_BYPASS_AUTH) {
       console.log("Dev mode: Simulating successful password reset for", email)
       return
@@ -222,7 +282,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const updateUserProfile = async (updates: { displayName?: string; photoURL?: string }) => {
-    // In dev mode, simulate successful profile update
     if (DEV_MODE_BYPASS_AUTH) {
       console.log("Dev mode: Simulating successful profile update", updates)
       return
@@ -234,8 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       await updateProfile(auth.currentUser, updates)
-      
-      // Update user document in Firestore
+
       if (db) {
         await setDoc(doc(db, "users", auth.currentUser.uid), updates, { merge: true })
       }
@@ -246,31 +304,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Skip useEffect entirely in dev mode since we set initial state
     if (DEV_MODE_BYPASS_AUTH) {
       console.log("Dev mode: Skipping Firebase auth setup")
       return
     }
 
-    // If auth service is not available, stop loading and proceed without a user.
     if (!isFirebaseAvailable() || !auth) {
       console.warn("Firebase auth not available, proceeding without authentication")
       setLoading(false)
       return
     }
 
-    // Additional safety check - ensure auth is not null before calling onAuthStateChanged
     if (auth === null) {
       console.warn("Auth object is null, cannot set up auth state listener")
       setLoading(false)
       return
     }
 
-    // Listen for real authentication state changes
     try {
-      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         setUser(firebaseUser)
         setLoading(false)
+
+        // When auth state changes (e.g. page refresh with persisted session),
+        // ensure the session cookie is up to date
+        if (firebaseUser) {
+          await createSessionCookie(firebaseUser)
+        }
       })
 
       return () => unsubscribe()
@@ -280,18 +340,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const value = { 
-    user, 
-    loading, 
-    signUp, 
-    signIn, 
-    signInWithGoogle, 
-    signOut, 
-    resetPassword, 
-    updateUserProfile 
+  const value = {
+    user,
+    loading,
+    signUp,
+    signIn,
+    signInWithGoogle,
+    signOut,
+    resetPassword,
+    updateUserProfile
   }
 
-  // Display a full-page loader while checking auth state
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">

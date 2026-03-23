@@ -1,218 +1,244 @@
-import { Suspense } from "react"
+"use client"
+
+import { Suspense, useState, useEffect, useCallback } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import PersonalizedRecommendations from "@/components/personalized-recommendations"
+import { Progress } from "@/components/ui/progress"
 import CommunityEvents from "@/components/community-events"
 import CommunityGroups from "@/components/community-groups"
-import BoardsGrid from "@/components/boards-grid"
-import AICurriculumBuilder from "@/components/ai-curriculum-builder"
-import FirebaseUrlIntegration from "@/components/firebase-url-integration"
-import { BookOpen, Calendar, Users, TrendingUp, Clock, Target, Award, Plus } from "lucide-react"
+import { BookOpen, Calendar, Users, Clock, Target, Sparkles, Heart, Shield, ArrowRight, Loader2 } from "lucide-react"
+import { getDashboardStats, getFamilyBlueprint } from "@/app/actions/family-actions"
+import ProtectedRoute from "@/components/auth/protected-route"
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState<{
+    totalHours: number
+    totalLessons: number
+    childrenCount: number
+    complianceStatus: string
+    filings: any[]
+  } | null>(null)
+  const [stateName, setStateName] = useState<string | null>(null)
+  const [hasBlueprint, setHasBlueprint] = useState<boolean | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const loadStats = useCallback(async () => {
+    try {
+      const [dashStats, blueprint] = await Promise.all([
+        getDashboardStats(),
+        getFamilyBlueprint(),
+      ])
+      setStats(dashStats)
+      setHasBlueprint(!!blueprint)
+      setStateName(blueprint?.state_abbreviation || null)
+    } catch (error) {
+      console.error("Failed to load dashboard stats:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadStats()
+  }, [loadStats])
+
+  const nextDueFiling = stats?.filings?.find((f: any) =>
+    f.status === "pending" && f.due_date
+  )
+
+  const complianceColor = stats?.complianceStatus === "On Track" ? "text-green-600" : "text-amber-600"
+
   return (
+    <ProtectedRoute>
     <div className="container mx-auto px-4 py-8 space-y-8">
       {/* Welcome Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Welcome back!</h1>
-          <p className="text-muted-foreground mt-1">Here's what's happening with your homeschool journey today.</p>
+          <p className="text-muted-foreground mt-1">Here&apos;s your homeschool journey at a glance.</p>
         </div>
-        <Button 
-          className="w-fit"
-          onClick={() => {
-            console.log('Quick Add clicked')
-            alert('Quick Add menu would open here')
-          }}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Quick Add
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/plan">
+              <Target className="h-4 w-4 mr-2" />
+              View Plan
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/planner">
+              <Sparkles className="h-4 w-4 mr-2" />
+              Create Lesson
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Boards</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">+2 from last week</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">5</div>
-            <p className="text-xs text-muted-foreground">This week</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Community Groups</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">Active memberships</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Learning Streak</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">23</div>
-            <p className="text-xs text-muted-foreground">Days in a row</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* AI Curriculum Builder */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-foreground">AI Tools</h2>
-        <AICurriculumBuilder />
-      </div>
-
-      {/* Firebase Resources */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-foreground">External Resources</h2>
-        <FirebaseUrlIntegration />
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left Column */}
-        <div className="space-y-6">
-          {/* Recent Boards */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
-                Recent Boards
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Suspense fallback={<div className="animate-pulse h-32 bg-muted rounded" />}>
-                <BoardsGrid limit={4} />
-              </Suspense>
-            </CardContent>
-          </Card>
-
-          {/* Today's Schedule */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Today's Schedule
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="font-medium">Math - Algebra</p>
-                    <p className="text-sm text-muted-foreground">9:00 AM - 10:00 AM</p>
-                  </div>
-                  <Badge variant="outline">In Progress</Badge>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="font-medium">Science - Biology</p>
-                    <p className="text-sm text-muted-foreground">10:30 AM - 11:30 AM</p>
-                  </div>
-                  <Badge variant="secondary">Upcoming</Badge>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="font-medium">History - World War II</p>
-                    <p className="text-sm text-muted-foreground">2:00 PM - 3:00 PM</p>
-                  </div>
-                  <Badge variant="secondary">Upcoming</Badge>
-                </div>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-primary" />
               </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column */}
-        <div className="space-y-6">
-          {/* Personalized Recommendations */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Recommended for You
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Suspense fallback={<div className="animate-pulse h-32 bg-muted rounded" />}>
-                <PersonalizedRecommendations />
-              </Suspense>
-            </CardContent>
-          </Card>
-
-          {/* Recent Achievements */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Recent Achievements
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <Award className="h-4 w-4 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Math Milestone</p>
-                    <p className="text-sm text-muted-foreground">Completed 50 algebra problems</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <BookOpen className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Reading Goal</p>
-                    <p className="text-sm text-muted-foreground">Read 5 books this month</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Users className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Community Contributor</p>
-                    <p className="text-sm text-muted-foreground">Shared 10 resources</p>
-                  </div>
-                </div>
+              <div>
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <p className="text-2xl font-bold">{stats?.totalHours || 0}h</p>
+                )}
+                <p className="text-xs text-muted-foreground">This Year</p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <BookOpen className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <p className="text-2xl font-bold">{stats?.totalLessons || 0}</p>
+                )}
+                <p className="text-xs text-muted-foreground">Lessons</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                <Shield className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <p className={`text-2xl font-bold ${complianceColor}`}>
+                    {stats?.complianceStatus || "Set Up"}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">Compliance</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Users className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <p className="text-2xl font-bold">{stats?.childrenCount || 0}</p>
+                )}
+                <p className="text-xs text-muted-foreground">Children</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Community Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Today's Lessons */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Upcoming Events
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                Today&apos;s Lessons
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/planner">View All <ArrowRight className="h-3 w-3 ml-1" /></Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {stats?.totalLessons === 0 ? (
+              <div className="text-center py-6 text-sm text-muted-foreground">
+                <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No lessons logged yet.</p>
+                <p className="text-xs mt-1">Start by creating a lesson or logging hours.</p>
+              </div>
+            ) : (
+              <div className="text-center py-6 text-sm text-muted-foreground">
+                <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>View your planner for today&apos;s schedule.</p>
+                <Button variant="outline" size="sm" className="mt-2" asChild>
+                  <Link href="/planner">Open Planner</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Compliance Summary */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Compliance{stateName ? ` — ${stateName}` : ""}
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/plan?tab=compliance">Details <ArrowRight className="h-3 w-3 ml-1" /></Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!stateName ? (
+              <div className="text-center py-4 text-sm text-muted-foreground">
+                <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Set your state in Family Setup to track compliance.</p>
+                <Button variant="outline" size="sm" className="mt-2" asChild>
+                  <Link href="/family">Set Up</Link>
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Hours Logged</span>
+                    <span className="text-muted-foreground">{stats?.totalHours || 0}h this year</span>
+                  </div>
+                  <Progress value={stats?.totalHours ? Math.min((stats.totalHours / 875) * 100, 100) : 0} className="h-2" />
+                </div>
+                {nextDueFiling && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                      Due {new Date(nextDueFiling.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </Badge>
+                    <span className="text-muted-foreground">{nextDueFiling.filing_type}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Community Events */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Upcoming Events
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/community">View All <ArrowRight className="h-3 w-3 ml-1" /></Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Suspense fallback={<div className="animate-pulse h-32 bg-muted rounded" />}>
@@ -221,12 +247,18 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
+        {/* Your Groups */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Your Groups
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Your Groups
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/community">View All <ArrowRight className="h-3 w-3 ml-1" /></Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Suspense fallback={<div className="animate-pulse h-32 bg-muted rounded" />}>
@@ -235,6 +267,29 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Family Setup CTA (show if no blueprint) */}
+      {hasBlueprint === false && (
+        <Card className="border-dashed">
+          <CardContent className="py-6">
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Heart className="h-6 w-6 text-primary" />
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="font-semibold">Set Up Your Family Blueprint</h3>
+                <p className="text-sm text-muted-foreground">
+                  Define your values, add your children, and get AI lessons tailored to your family.
+                </p>
+              </div>
+              <Button asChild>
+                <Link href="/family">Get Started</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
+    </ProtectedRoute>
   )
 }

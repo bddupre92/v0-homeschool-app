@@ -111,3 +111,298 @@
   background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0.1) 100%);
   transition: opacity 0.3s ease;
 }
+
+/* ─── Print Styles for Lesson Packets ─────────────────────────────────────── */
+
+@media print {
+  /* Hide everything except the print view */
+  body > * {
+    visibility: hidden;
+  }
+
+  .print-packet,
+  .print-packet * {
+    visibility: visible;
+  }
+
+  .print-packet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Reset colors for printing */
+  * {
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: letter;
+    margin: 0.75in;
+  }
+
+  .print-page {
+    page-break-after: always;
+    padding: 0;
+  }
+
+  .print-page:last-child {
+    page-break-after: avoid;
+  }
+
+  /* Cover page */
+  .print-cover {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    text-align: center;
+  }
+
+  .print-cover-content {
+    padding: 2rem;
+  }
+
+  .print-cover-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    line-height: 1.2;
+  }
+
+  .print-cover-meta {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+    line-height: 2;
+  }
+
+  .print-cover-student {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .print-cover-topic {
+    font-style: italic;
+  }
+
+  .print-cover-date {
+    font-size: 0.875rem;
+    color: #666 !important;
+    margin-top: 2rem;
+  }
+
+  /* Section header bar */
+  .print-section-header {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0.25rem 0.5rem;
+    border: 2px solid #000;
+    display: inline-block;
+    margin-bottom: 1rem;
+  }
+
+  /* Headings */
+  .print-h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+  }
+
+  .print-h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .print-h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  /* Content */
+  .print-objective {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    font-style: italic;
+  }
+
+  .print-paragraph {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
+    text-align: justify;
+  }
+
+  .print-instructions {
+    font-size: 0.85rem;
+    font-style: italic;
+    margin-bottom: 0.75rem;
+  }
+
+  .print-time-estimate {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+
+  /* Subsections */
+  .print-subsection {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Vocabulary grid */
+  .print-vocab-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .print-vocab-item {
+    font-size: 0.85rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px dotted #ccc;
+  }
+
+  /* Lists */
+  .print-list {
+    list-style: disc;
+    padding-left: 1.5rem;
+    font-size: 0.9rem;
+    line-height: 1.8;
+  }
+
+  .print-list-numbered {
+    list-style: decimal;
+    padding-left: 1.5rem;
+    font-size: 0.9rem;
+    line-height: 1.8;
+  }
+
+  /* Highlight box */
+  .print-highlight-box {
+    border: 1px solid #000;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+
+  /* Safety box */
+  .print-safety-box {
+    border: 2px solid #000;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+
+  /* Worksheet items */
+  .print-worksheet-items {
+    margin-top: 0.5rem;
+  }
+
+  .print-worksheet-item {
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .print-answer-lines {
+    margin-top: 0.5rem;
+  }
+
+  .print-answer-line {
+    border-bottom: 1px solid #999;
+    height: 1.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  /* Tables */
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #ccc;
+    padding: 0.4rem 0.5rem;
+    text-align: left;
+  }
+
+  .print-table th {
+    font-weight: 600;
+    border-bottom: 2px solid #000;
+  }
+
+  .print-checkbox-col {
+    width: 1.5rem;
+    text-align: center;
+    font-size: 1rem;
+  }
+
+  /* Teaching steps */
+  .print-teaching-step {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px dotted #ccc;
+    font-size: 0.9rem;
+  }
+
+  .print-step-header {
+    margin-bottom: 0.25rem;
+  }
+
+  .print-step-duration {
+    font-size: 0.8rem;
+    font-weight: normal;
+    font-style: italic;
+  }
+
+  /* Experiment steps */
+  .print-experiment-step {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .print-step-number {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid #000;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+
+  .print-tip {
+    font-size: 0.8rem;
+    font-style: italic;
+    color: #666 !important;
+    margin-top: 0.25rem;
+  }
+
+  /* Field trip */
+  .print-field-trip {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px dotted #ccc;
+    font-size: 0.9rem;
+  }
+
+  /* Extension groups */
+  .print-extension-group {
+    margin-bottom: 1rem;
+  }
+}

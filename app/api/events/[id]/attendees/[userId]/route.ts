@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth-service"
-import { getPool } from "@/lib/db"
-
-const pool = getPool()
+import { sql } from "@/lib/db"
 
 export async function DELETE(
   request: NextRequest,
@@ -16,7 +14,7 @@ export async function DELETE(
 
     // Get current user's ID from database
     const userIdQuery = "SELECT id FROM users WHERE firebase_uid = $1"
-    const userIdResult = await pool.query(userIdQuery, [user.uid])
+    const userIdResult = await sql.query(userIdQuery, [user.userId])
 
     if (userIdResult.rows.length === 0) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
@@ -26,7 +24,7 @@ export async function DELETE(
 
     // Users can only remove themselves, unless they're the event creator
     const eventQuery = "SELECT created_by_id FROM events WHERE id = $1"
-    const eventResult = await pool.query(eventQuery, [params.id])
+    const eventResult = await sql.query(eventQuery, [params.id])
 
     if (eventResult.rows.length === 0) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
@@ -46,7 +44,7 @@ export async function DELETE(
       RETURNING *
     `
 
-    const result = await pool.query(query, [params.id, params.userId])
+    const result = await sql.query(query, [params.id, params.userId])
 
     if (result.rows.length === 0) {
       return NextResponse.json(

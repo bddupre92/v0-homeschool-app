@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Book, Search, Grid3X3, Calendar, MessageSquare, Settings, Menu, LogOut, User, Scroll } from "lucide-react"
+import { Book, Search, Grid3X3, Calendar, MessageSquare, Settings, Menu, LogOut, User, Target, Heart, Sparkles, SlidersHorizontal, FolderOpen } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -18,15 +18,25 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "../contexts/auth-context"
+import { useModulePreferences } from "@/contexts/module-preferences-context"
 import { NotificationsPopover } from "@/components/notifications"
+import type { ModulePreferences } from "@/app/actions/module-preferences-actions"
 
-const navItems = [
-  { name: "Resources", href: "/resources", icon: Book },
-  { name: "Search", href: "/search", icon: Search },
-  { name: "Boards", href: "/boards", icon: Grid3X3 },
-  { name: "Scroll", href: "/scroll", icon: Scroll },
-  { name: "Planner", href: "/planner", icon: Calendar },
-  { name: "Community", href: "/community", icon: MessageSquare },
+interface NavItem {
+  name: string
+  href: string
+  icon: any
+  moduleKey?: keyof ModulePreferences
+}
+
+const allNavItems: NavItem[] = [
+  { name: "Advisor", href: "/advisor", icon: Sparkles, moduleKey: "module_advisor" },
+  { name: "Plan", href: "/plan", icon: Target, moduleKey: "module_plan" },
+  { name: "Planner", href: "/planner", icon: Calendar, moduleKey: "module_planner" },
+  { name: "Community", href: "/community", icon: MessageSquare, moduleKey: "module_community" },
+  { name: "Resources", href: "/resources", icon: Book, moduleKey: "module_resources" },
+  { name: "Family", href: "/family", icon: Heart, moduleKey: "module_family" },
+  { name: "Portfolio", href: "/portfolio", icon: FolderOpen },
 ]
 
 export default function Navigation() {
@@ -34,6 +44,12 @@ export default function Navigation() {
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { user, signOut, loading } = useAuth()
+  const { isModuleEnabled } = useModulePreferences()
+
+  const navItems = useMemo(
+    () => allNavItems.filter((item) => !item.moduleKey || isModuleEnabled(item.moduleKey)),
+    [isModuleEnabled]
+  )
 
   const handleSignOut = async () => {
     try {
@@ -145,6 +161,12 @@ export default function Navigation() {
                         <Link href="/settings">
                           <Settings className="mr-2 h-4 w-4" />
                           <span>Settings</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/settings/modules">
+                          <SlidersHorizontal className="mr-2 h-4 w-4" />
+                          <span>Customize Modules</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />

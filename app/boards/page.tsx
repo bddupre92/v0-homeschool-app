@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { Plus, Grid3X3, List, Search } from "lucide-react"
+import { Plus, Grid3X3, List, Search, Loader2 } from "lucide-react"
 import ProtectedRoute from "@/components/auth/protected-route"
-import { createBoard } from "@/app/actions/board-actions"
+import { createBoard, getBoards } from "@/app/actions/board-actions"
 import { toast } from "@/hooks/use-toast"
 
 import { Button } from "@/components/ui/button"
@@ -22,67 +22,34 @@ import {
 import { Label } from "@/components/ui/label"
 import Navigation from "@/components/navigation"
 
-// Sample board data
-const sampleBoards = [
-  {
-    id: 1,
-    title: "Science Experiments",
-    description: "Collection of hands-on science activities",
-    itemCount: 24,
-    coverImage:
-      "https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-  },
-  {
-    id: 2,
-    title: "Math Games",
-    description: "Fun ways to practice math skills",
-    itemCount: 18,
-    coverImage:
-      "https://images.unsplash.com/photo-1509228627152-72ae9ae6848d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-  },
-  {
-    id: 3,
-    title: "History Timeline",
-    description: "Resources for creating a comprehensive history timeline",
-    itemCount: 32,
-    coverImage:
-      "https://images.unsplash.com/photo-1461360228754-6e81c478b882?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-  },
-  {
-    id: 4,
-    title: "Nature Study",
-    description: "Ideas for outdoor exploration and nature journaling",
-    itemCount: 15,
-    coverImage:
-      "https://images.unsplash.com/photo-1500829243541-74b677fecc30?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-  },
-  {
-    id: 5,
-    title: "Art Projects",
-    description: "Creative art activities for all ages",
-    itemCount: 27,
-    coverImage:
-      "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-  },
-  {
-    id: 6,
-    title: "Literature Selections",
-    description: "Book lists and reading activities",
-    itemCount: 42,
-    coverImage:
-      "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-  },
-]
-
 export default function BoardsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [formData, setFormData] = useState({ title: "", description: "" })
+  const [boards, setBoards] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const loadBoards = useCallback(async () => {
+    try {
+      const result = await getBoards()
+      if (result.success && result.boards) {
+        setBoards(result.boards)
+      }
+    } catch (error) {
+      console.error("Error loading boards:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadBoards()
+  }, [loadBoards])
 
   // Filter boards based on search query
-  const filteredBoards = sampleBoards.filter(
+  const filteredBoards = boards.filter(
     (board) =>
       board.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       board.description.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -222,6 +189,7 @@ export default function BoardsPage() {
                               })
                               setIsCreateDialogOpen(false)
                               setFormData({ title: "", description: "" })
+                              loadBoards()
                             } else {
                               toast({
                                 title: "Error",
@@ -250,7 +218,11 @@ export default function BoardsPage() {
               </div>
             </div>
 
-            {filteredBoards.length === 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredBoards.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="rounded-full bg-muted p-6 mb-4">
                   <Grid3X3 className="h-10 w-10 text-muted-foreground" />

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth-service"
-import { getPool } from "@/lib/db"
-
-const pool = getPool()
+import { sql } from "@/lib/db"
 
 export async function GET(
   request: NextRequest,
@@ -22,7 +20,7 @@ export async function GET(
       GROUP BY e.id, u.id
     `
 
-    const result = await pool.query(query, [params.id])
+    const result = await sql.query(query, [params.id])
 
     if (result.rows.length === 0) {
       return NextResponse.json(
@@ -56,7 +54,7 @@ export async function PUT(
 
     // Verify ownership
     const ownerQuery = "SELECT created_by_id FROM events WHERE id = $1"
-    const ownerResult = await pool.query(ownerQuery, [params.id])
+    const ownerResult = await sql.query(ownerQuery, [params.id])
 
     if (ownerResult.rows.length === 0) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
@@ -64,7 +62,7 @@ export async function PUT(
 
     // Get user ID
     const userQuery = "SELECT id FROM users WHERE firebase_uid = $1"
-    const userResult = await pool.query(userQuery, [user.uid])
+    const userResult = await sql.query(userQuery, [user.userId])
     const userId = userResult.rows[0]?.id
 
     if (!userId || ownerResult.rows[0].created_by_id !== userId) {
@@ -90,7 +88,7 @@ export async function PUT(
       RETURNING *
     `
 
-    const result = await pool.query(query, [
+    const result = await sql.query(query, [
       title,
       description,
       eventDateTime,
@@ -125,7 +123,7 @@ export async function DELETE(
 
     // Verify ownership
     const ownerQuery = "SELECT created_by_id FROM events WHERE id = $1"
-    const ownerResult = await pool.query(ownerQuery, [params.id])
+    const ownerResult = await sql.query(ownerQuery, [params.id])
 
     if (ownerResult.rows.length === 0) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
@@ -133,7 +131,7 @@ export async function DELETE(
 
     // Get user ID
     const userQuery = "SELECT id FROM users WHERE firebase_uid = $1"
-    const userResult = await pool.query(userQuery, [user.uid])
+    const userResult = await sql.query(userQuery, [user.userId])
     const userId = userResult.rows[0]?.id
 
     if (!userId || ownerResult.rows[0].created_by_id !== userId) {
@@ -142,7 +140,7 @@ export async function DELETE(
 
     // Delete event
     const query = "DELETE FROM events WHERE id = $1"
-    await pool.query(query, [params.id])
+    await sql.query(query, [params.id])
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -48,11 +48,11 @@ export default function SignInForm() {
     try {
       await signIn(data.email, data.password, data.rememberMe)
 
-      // Check if there's a callback URL in the query parameters
+      // Use hard navigation to ensure cookies are picked up properly
       const searchParams = new URLSearchParams(window.location.search)
       const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
 
-      router.push(callbackUrl)
+      window.location.href = callbackUrl
     } catch (err: any) {
       // Increment failed attempts
       setFailedAttempts((prev) => prev + 1)
@@ -67,7 +67,7 @@ export default function SignInForm() {
           "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
         )
       } else {
-        setError("Failed to sign in. Please check your credentials.")
+        setError(err.message || "Failed to sign in. Please check your credentials.")
       }
       console.error(err)
     } finally {
@@ -83,11 +83,11 @@ export default function SignInForm() {
       const rememberMe = form.getValues("rememberMe")
       await signInWithGoogle(rememberMe)
 
-      // Check if there's a callback URL in the query parameters
+      // Use hard navigation to ensure cookies are picked up properly
       const searchParams = new URLSearchParams(window.location.search)
       const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
 
-      router.push(callbackUrl)
+      window.location.href = callbackUrl
     } catch (err: any) {
       console.error("Google sign in error:", err)
 
@@ -100,7 +100,7 @@ export default function SignInForm() {
           "This domain is not authorized for authentication. Please add this domain to your Firebase project's authorized domains list.",
         )
       } else {
-        setError("Failed to sign in with Google.")
+        setError(err.message || "Failed to sign in with Google.")
       }
     } finally {
       setIsLoading(false)

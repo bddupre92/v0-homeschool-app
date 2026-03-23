@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
-import { ArrowLeft, Edit, Grid3X3, List, MoreHorizontal, Plus, Search, Share2, Trash2, Users } from "lucide-react"
+import { useParams, useRouter } from "next/navigation"
+import { ArrowLeft, Edit, Grid3X3, List, Loader2, MoreHorizontal, Plus, Search, Share2, Trash2, Users } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,132 +30,124 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import Navigation from "@/components/navigation"
-
-// Sample board data
-const boards = [
-  {
-    id: "1",
-    title: "Science Experiments",
-    description: "Collection of hands-on science activities",
-    coverImage:
-      "https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    isPrivate: false,
-    createdAt: "2025-03-15",
-    updatedAt: "2025-04-10",
-    owner: {
-      name: "Jane Smith",
-      avatar: "/placeholder.svg",
-    },
-    collaborators: [
-      {
-        name: "John Doe",
-        avatar: "/placeholder.svg",
-      },
-      {
-        name: "Sarah Johnson",
-        avatar: "/placeholder.svg",
-      },
-    ],
-    items: [
-      {
-        id: "i1",
-        title: "Water Cycle in a Bag",
-        description: "Easy demonstration of the water cycle using household items",
-        type: "activity",
-        tags: ["Science", "Elementary", "Hands-on"],
-        thumbnail: "/placeholder.svg?height=200&width=300",
-        source: "Science Explorers",
-        addedAt: "2025-03-20",
-      },
-      {
-        id: "i2",
-        title: "DIY Volcano Experiment",
-        description: "Create an erupting volcano with baking soda and vinegar",
-        type: "activity",
-        tags: ["Science", "Elementary", "Chemistry"],
-        thumbnail: "/placeholder.svg?height=200&width=300",
-        source: "Homeschool Science Club",
-        addedAt: "2025-03-22",
-      },
-      {
-        id: "i3",
-        title: "Plant Growth Observation Journal",
-        description: "Printable journal for tracking plant growth experiments",
-        type: "printable",
-        tags: ["Science", "Botany", "All Ages"],
-        thumbnail: "/placeholder.svg?height=200&width=300",
-        source: "Nature Study Collective",
-        addedAt: "2025-03-25",
-      },
-      {
-        id: "i4",
-        title: "Simple Machines Scavenger Hunt",
-        description: "Find examples of simple machines around your home",
-        type: "activity",
-        tags: ["Science", "Physics", "Elementary"],
-        thumbnail: "/placeholder.svg?height=200&width=300",
-        source: "STEM Activities for Kids",
-        addedAt: "2025-04-01",
-      },
-      {
-        id: "i5",
-        title: "States of Matter Experiments",
-        description: "Three easy experiments to demonstrate solids, liquids, and gases",
-        type: "activity",
-        tags: ["Science", "Chemistry", "Elementary"],
-        thumbnail: "/placeholder.svg?height=200&width=300",
-        source: "Chemistry for Kids",
-        addedAt: "2025-04-05",
-      },
-      {
-        id: "i6",
-        title: "Weather Observation Printables",
-        description: "Track weather patterns with these printable observation sheets",
-        type: "printable",
-        tags: ["Science", "Meteorology", "All Ages"],
-        thumbnail: "/placeholder.svg?height=200&width=300",
-        source: "Weather Watchers",
-        addedAt: "2025-04-08",
-      },
-    ],
-  },
-  {
-    id: "2",
-    title: "Math Games",
-    description: "Fun ways to practice math skills",
-    coverImage:
-      "https://images.unsplash.com/photo-1509228627152-72ae9ae6848d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    isPrivate: true,
-    createdAt: "2025-03-10",
-    updatedAt: "2025-04-05",
-    owner: {
-      name: "Jane Smith",
-      avatar: "/placeholder.svg",
-    },
-    collaborators: [],
-    items: [],
-  },
-]
+import { getBoardById, updateBoard, deleteBoard, addItemToBoard } from "@/app/actions/board-actions"
+import { toast } from "@/hooks/use-toast"
 
 export default function BoardDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const boardId = params.id as string
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [isAddingItem, setIsAddingItem] = useState(false)
   const [isEditingBoard, setIsEditingBoard] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [board, setBoard] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Find the board by ID
-  const board = boards.find((b) => b.id === boardId)
+  const loadBoard = useCallback(async () => {
+    try {
+      const result = await getBoardById(boardId)
+      if (result.success && result.board) {
+        setBoard(result.board)
+      }
+    } catch (error) {
+      console.error("Error loading board:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [boardId])
+
+  useEffect(() => {
+    loadBoard()
+  }, [loadBoard])
 
   // Filter items based on search query
-  const filteredItems = board?.items.filter(
-    (item) =>
+  const filteredItems = board?.items?.filter(
+    (item: any) =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())),
+      item.tags?.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase())),
   )
+
+  const handleAddItem = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    try {
+      const form = e.currentTarget
+      const formData = new FormData(form)
+      const result = await addItemToBoard(boardId, formData)
+
+      if (result.success) {
+        toast({ title: "Success", description: "Item added to board!" })
+        setIsAddingItem(false)
+        form.reset()
+        loadBoard()
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to add item", variant: "destructive" })
+      }
+    } catch (error) {
+      console.error("Error adding item:", error)
+      toast({ title: "Error", description: "An unexpected error occurred", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleUpdateBoard = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    try {
+      const form = e.currentTarget
+      const formData = new FormData(form)
+      const result = await updateBoard(boardId, formData)
+
+      if (result.success) {
+        toast({ title: "Success", description: "Board updated!" })
+        setIsEditingBoard(false)
+        loadBoard()
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to update board", variant: "destructive" })
+      }
+    } catch (error) {
+      console.error("Error updating board:", error)
+      toast({ title: "Error", description: "An unexpected error occurred", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteBoard = async () => {
+    setIsSubmitting(true)
+    try {
+      const result = await deleteBoard(boardId)
+      if (result.success) {
+        toast({ title: "Success", description: "Board deleted" })
+        router.push("/boards")
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to delete board", variant: "destructive" })
+      }
+    } catch (error) {
+      console.error("Error deleting board:", error)
+      toast({ title: "Error", description: "An unexpected error occurred", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navigation />
+        <main className="flex-1 container py-8 px-4 md:px-6 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </main>
+      </div>
+    )
+  }
 
   if (!board) {
     return (
@@ -176,21 +168,6 @@ export default function BoardDetailPage() {
     )
   }
 
-  const handleCreateBoard = async (formData) => {
-    try {
-      // Process form data
-      // ...
-
-      // Close the dialog after successful submission
-      setIsAddingItem(false)
-
-      // Show success message or refresh data
-    } catch (error) {
-      // Handle error
-      console.error("Error creating board:", error)
-    }
-  }
-
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
@@ -208,10 +185,12 @@ export default function BoardDetailPage() {
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div
-                className="w-16 h-16 rounded-md bg-cover bg-center shrink-0"
-                style={{ backgroundImage: `url(${board.coverImage})` }}
-              />
+              {board.coverImage && (
+                <div
+                  className="w-16 h-16 rounded-md bg-cover bg-center shrink-0"
+                  style={{ backgroundImage: `url(${board.coverImage})` }}
+                />
+              )}
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-3xl font-bold">{board.title}</h1>
@@ -226,29 +205,6 @@ export default function BoardDetailPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex -space-x-2">
-                <Avatar className="border-2 border-background">
-                  <AvatarImage src={board.owner.avatar || "/placeholder.svg"} alt={board.owner.name} />
-                  <AvatarFallback>
-                    {board.owner.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
-                {board.collaborators.slice(0, 2).map((collaborator, index) => (
-                  <Avatar key={index} className="border-2 border-background">
-                    <AvatarImage src={collaborator.avatar || "/placeholder.svg"} alt={collaborator.name} />
-                    <AvatarFallback>{collaborator.name.split(" ").map((n) => n[0])}</AvatarFallback>
-                  </Avatar>
-                ))}
-                {board.collaborators.length > 2 && (
-                  <Avatar className="border-2 border-background bg-muted">
-                    <AvatarFallback>+{board.collaborators.length - 2}</AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-
               <Button variant="outline" className="gap-1">
                 <Share2 className="h-4 w-4" />
                 Share
@@ -421,40 +377,44 @@ export default function BoardDetailPage() {
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
             <DialogTitle>Add Item to Board</DialogTitle>
-            <DialogDescription>Add a resource or activity to your "{board.title}" board.</DialogDescription>
+            <DialogDescription>Add a resource or activity to your &quot;{board.title}&quot; board.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="title">Title</Label>
-              <Input id="title" placeholder="Enter item title" />
+          <form onSubmit={handleAddItem}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="item-title">Title *</Label>
+                <Input id="item-title" name="title" placeholder="Enter item title" required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="item-description">Description</Label>
+                <Textarea id="item-description" name="description" placeholder="Enter item description" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="item-type">Type *</Label>
+                <Input id="item-type" name="type" placeholder="e.g., activity, printable, resource" required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="item-tags">Tags (comma separated) *</Label>
+                <Input id="item-tags" name="tags" placeholder="e.g., Science, Elementary, Hands-on" required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="item-source">Source</Label>
+                <Input id="item-source" name="source" placeholder="Where did you find this resource?" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="item-thumbnail">Thumbnail URL</Label>
+                <Input id="item-thumbnail" name="thumbnail" placeholder="Enter image URL" />
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea id="description" placeholder="Enter item description" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="type">Type</Label>
-              <Input id="type" placeholder="e.g., activity, printable, resource" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="tags">Tags (comma separated)</Label>
-              <Input id="tags" placeholder="e.g., Science, Elementary, Hands-on" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="source">Source</Label>
-              <Input id="source" placeholder="Where did you find this resource?" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="thumbnail">Thumbnail URL</Label>
-              <Input id="thumbnail" placeholder="Enter image URL" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddingItem(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setIsAddingItem(false)}>Add Item</Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsAddingItem(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Adding..." : "Add Item"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -465,30 +425,34 @@ export default function BoardDetailPage() {
             <DialogTitle>Edit Board</DialogTitle>
             <DialogDescription>Update your board details.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="board-title">Title</Label>
-              <Input id="board-title" defaultValue={board.title} />
+          <form onSubmit={handleUpdateBoard}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="board-title">Title</Label>
+                <Input id="board-title" name="title" defaultValue={board.title} required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="board-description">Description</Label>
+                <Textarea id="board-description" name="description" defaultValue={board.description} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="board-cover">Cover Image URL</Label>
+                <Input id="board-cover" name="coverImage" defaultValue={board.coverImage} />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="board-private" name="isPrivate" value="true" defaultChecked={board.isPrivate} />
+                <Label htmlFor="board-private">Make this board private</Label>
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="board-description">Description</Label>
-              <Textarea id="board-description" defaultValue={board.description} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="board-cover">Cover Image URL</Label>
-              <Input id="board-cover" defaultValue={board.coverImage} />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox id="board-private" defaultChecked={board.isPrivate} />
-              <Label htmlFor="board-private">Make this board private</Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditingBoard(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setIsEditingBoard(false)}>Save Changes</Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditingBoard(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -507,11 +471,11 @@ export default function BoardDetailPage() {
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(false)}>
-              Delete Board
+            <Button variant="destructive" onClick={handleDeleteBoard} disabled={isSubmitting}>
+              {isSubmitting ? "Deleting..." : "Delete Board"}
             </Button>
           </DialogFooter>
         </DialogContent>

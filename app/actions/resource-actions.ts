@@ -1,24 +1,124 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { adminDb, adminAuth } from "@/lib/firebase-admin-safe"
+import { adminDb } from "@/lib/firebase-admin-safe"
+import { requireAuth, getOptionalUser } from "@/lib/auth-middleware"
+import { AuthenticationError } from "@/lib/errors"
 
-// Get the current user from the session
+// Get the current user from the auth middleware
 async function getCurrentUser() {
-  const sessionCookie = cookies().get("session")?.value
-
-  if (!sessionCookie) {
-    return null
+  try {
+    const auth = await requireAuth()
+    return auth.userId
+  } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return null
+    }
+    throw error
   }
+}
+
+// Get all resources (public, no auth required)
+export async function getResources(filters?: {
+  search?: string
+  type?: string
+  tags?: string[]
+  sortBy?: string
+}) {
+  try {
+    let query: any = adminDb.collection("resources")
+
+    if (filters?.type) {
+      query = query.where("type", "==", filters.type)
+    }
+
+    const snapshot = await query.get()
+
+    const resources = snapshot.docs.map((doc: any) => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        title: data.title || "",
+        description: data.description || "",
+        type: data.type || "",
+        tags: data.tags || [],
+        author: data.author || "",
+        rating: data.rating || 0,
+        ratingCount: data.ratingCount || 0,
+        downloads: data.downloads || 0,
+        thumbnail: data.thumbnail || null,
+        isPremium: data.isPremium || false,
+        isFeatured: data.isFeatured || false,
+        dateAdded: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+      }
+    })
+
+    // Client-side search filtering (Firestore doesn't support full-text search)
+    let filtered = resources
+    if (filters?.search) {
+      const q = filters.search.toLowerCase()
+      filtered = filtered.filter(
+        (r: any) =>
+          r.title.toLowerCase().includes(q) ||
+          r.description.toLowerCase().includes(q)
+      )
+    }
+
+    // Sort
+    if (filters?.sortBy === "newest") {
+      filtered.sort((a: any, b: any) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
+    } else if (filters?.sortBy === "popular") {
+      filtered.sort((a: any, b: any) => b.downloads - a.downloads)
+    } else if (filters?.sortBy === "rating") {
+      filtered.sort((a: any, b: any) => b.rating - a.rating)
+    }
+
+    return { success: true, resources: filtered }
+  } catch (error) {
+    console.error("[v0] Error getting resources:", error)
+    return { success: false, error: "Failed to load resources", resources: [] }
+  }
+}
+
+// Get saved resources for the current user
+export async function getSavedResources() {
+  try {
+    const user = await getOptionalUser()
+    if (!user) return { success: true, resources: [] }
+
+    const snapshot = await adminDb
+      .collection("savedResources")
+      .where("userId", "==", user.userId)
+      .get()
+
+    const savedIds = snapshot.docs.map((doc: any) => doc.data().resourceId)
+    return { success: true, savedIds }
+  } catch (error) {
+    console.error("[v0] Error getting saved resources:", error)
+    return { success: false, savedIds: [] }
+  }
+}
+
+// Save/unsave a resource
+export async function toggleSaveResource(resourceId: string) {
+  const userId = await getCurrentUser()
+  if (!userId) redirect("/sign-in")
 
   try {
-    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true)
-    return decodedClaims.uid
+    const ref = adminDb.collection("savedResources").doc(`${userId}_${resourceId}`)
+    const doc = await ref.get()
+
+    if (doc.exists) {
+      await ref.delete()
+      return { success: true, saved: false }
+    } else {
+      await ref.set({ userId, resourceId, savedAt: new Date() })
+      return { success: true, saved: true }
+    }
   } catch (error) {
-    console.error("Error verifying session:", error)
-    return null
+    console.error("[v0] Error toggling save:", error)
+    return { success: false, error: "Failed to save resource" }
   }
 }
 
