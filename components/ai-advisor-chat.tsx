@@ -70,20 +70,29 @@ function normalizeCard(parsed: any): any {
 
   if (parsed.type === "lesson_build") {
     // Normalize top-level fields
-    parsed.childName = parsed.childName || parsed.child_name || parsed.studentName || parsed.student_name || ""
+    parsed.childName = parsed.childName || parsed.child_name || parsed.studentName || parsed.student_name ||
+      (Array.isArray(parsed.studentNames) ? parsed.studentNames.join(" & ") : "") || ""
     parsed.subject = parsed.subject || parsed.subjectName || parsed.subject_name || ""
-    parsed.summary = parsed.summary || parsed.description || ""
+    parsed.summary = parsed.summary || ""
 
     // Normalize lessons array
     if (!Array.isArray(parsed.lessons)) {
       parsed.lessons = parsed.lesson_plans || parsed.lessonPlans || []
     }
+
+    // Handle flat lesson format: AI returned a single lesson as top-level fields instead of a lessons array
+    if (parsed.lessons.length === 0 && (parsed.lessonTitle || parsed.lesson_title || parsed.objectiveTitle)) {
+      parsed.lessons = [parsed]
+    }
+
     parsed.lessons = parsed.lessons.map((l: any) => ({
       objectiveId: l.objectiveId || l.objective_id || undefined,
       objectiveTitle: l.objectiveTitle || l.objective_title || l.objective || l.topic || "",
       lessonTitle: l.lessonTitle || l.lesson_title || l.title || l.name || l.lesson_name || "",
       duration: l.duration || l.time || l.minutes || 0,
-      description: l.description || l.summary || l.overview || "",
+      description: l.description || l.summary || l.overview ||
+        (Array.isArray(l.learningObjectives) ? l.learningObjectives.join("; ") : "") ||
+        (Array.isArray(l.procedure) ? l.procedure.join("; ") : "") || "",
       materials: Array.isArray(l.materials) ? l.materials : [],
       packetDepth: l.packetDepth || l.packet_depth || "light",
     }))
@@ -156,19 +165,49 @@ function tryParseJson(raw: string): StructuredCard | null {
   }
 }
 
+/**
+ * Merge multiple lesson_build cards (from multiple JSON blocks) into one card with a combined lessons array.
+ */
+function mergeLessonBuildCards(cards: any[]): any {
+  const first = cards[0]
+  const allLessons = cards.flatMap((c) => c.lessons || [])
+  return {
+    ...first,
+    lessons: allLessons,
+    summary: first.summary || `${allLessons.length} lessons across ${cards.length} weeks`,
+  }
+}
+
 function parseStructuredData(text: string): { cleanText: string; card: StructuredCard | null } {
-  // Strategy 1: Standard ```json...``` code fence (case-insensitive)
-  const fenceMatch = text.match(/```(?:json|JSON|Json)?\s*\n?([\s\S]*?)```/)
-  if (fenceMatch) {
-    const card = tryParseJson(fenceMatch[1])
-    if (card) {
-      const cleanText = text.replace(/```(?:json|JSON|Json)?\s*\n?[\s\S]*?```/, "").trim()
-      return { cleanText, card }
+  // Strategy 1: Find ALL ```json...``` code fences (AI often returns multiple blocks)
+  const fenceRegex = /```(?:json|JSON|Json)?\s*\n?([\s\S]*?)```/g
+  const allFenceMatches: string[] = []
+  let match
+  while ((match = fenceRegex.exec(text)) !== null) {
+    allFenceMatches.push(match[1])
+  }
+
+  if (allFenceMatches.length > 0) {
+    // Parse all JSON blocks
+    const parsedCards = allFenceMatches
+      .map((raw) => tryParseJson(raw))
+      .filter(Boolean)
+
+    if (parsedCards.length > 0) {
+      const cleanText = text.replace(/```(?:json|JSON|Json)?\s*\n?[\s\S]*?```/g, "").trim()
+
+      // If multiple lesson_build cards, merge them into one
+      if (parsedCards.length > 1 && parsedCards.every((c: any) => c!.type === "lesson_build")) {
+        const merged = mergeLessonBuildCards(parsedCards)
+        return { cleanText, card: merged as StructuredCard }
+      }
+
+      // Otherwise return the first valid card
+      return { cleanText, card: parsedCards[0]! }
     }
   }
 
   // Strategy 2: Bare JSON extraction — find outermost { ... } containing a "type" field
-  // (proven pattern from lesson-packet-generator.tsx:100-107)
   const jsonStart = text.indexOf("{")
   const jsonEnd = text.lastIndexOf("}")
   if (jsonStart !== -1 && jsonEnd > jsonStart) {

@@ -168,10 +168,10 @@ Include a structured JSON block in \`\`\`json\`\`\` fences when starting a tutor
 2. For each lesson, generate an overview with title, duration, description, and materials.
 3. The parent will choose per-lesson whether to generate a full 7-section packet (worksheets, quizzes, experiments, materials lists) or keep it as a light outline.
 
-When you have enough context, include a structured JSON block in \`\`\`json\`\`\` fences:
+When you have enough context, include EXACTLY ONE structured JSON block in \`\`\`json\`\`\` fences with ALL lessons inside the "lessons" array:
 {
   "type": "lesson_build",
-  "childName": "...",
+  "childName": "Child Name",
   "subject": "Subject Name",
   "lessons": [
     {
@@ -189,7 +189,11 @@ When you have enough context, include a structured JSON block in \`\`\`json\`\`\
 
 Generate 3-5 lessons per subject unless the parent specifies otherwise. Make lesson titles engaging and aligned with the child's interests and learning style.
 
-CRITICAL: You MUST always provide a non-empty "lessonTitle" and "objectiveTitle" for EVERY lesson. Never leave these fields blank, null, or empty. Each lessonTitle should be specific and engaging (e.g., "Butterfly Life Cycle Adventure" not just "Science Lesson").`
+CRITICAL RULES:
+- Output exactly ONE \`\`\`json block containing ONE object with a "lessons" array. Do NOT output multiple separate JSON blocks — put ALL lessons inside the single "lessons" array.
+- You MUST always provide a non-empty "lessonTitle" and "objectiveTitle" for EVERY lesson in the array. Never leave these fields blank, null, or empty.
+- Each lessonTitle should be specific and engaging (e.g., "Butterfly Life Cycle Adventure" not just "Science Lesson").
+- If building for multiple children, use "childName": "Asher & Zuri" and put all lessons in one array.`
   } else if (intent === "schedule_lessons") {
     intentInstructions = `The parent wants to SCHEDULE LESSONS onto their planner. You should:
 1. Ask which week they want to schedule for.
@@ -219,15 +223,25 @@ Distribute lessons evenly across the week. Suggest reasonable times (morning for
   } else if (intent === "build_and_schedule") {
     intentInstructions = `The parent wants the FULL WORKFLOW: build lesson plans AND schedule them. This supports building up to a full semester of lessons. You should:
 1. Ask about subjects, grade, and scope (how many weeks/months of lessons they want).
-2. Build lessons in batches of 4-6 at a time (one lesson_build card per batch). Generate engaging, specific lesson titles — NEVER leave lessonTitle empty.
+2. Build lessons in batches of 4-6 at a time. Generate engaging, specific lesson titles — NEVER leave lessonTitle empty.
 3. After the parent approves a batch, offer to either:
    a) Schedule the approved batch onto their planner (generate a schedule_proposal card)
    b) Continue building more lessons for the next batch/week
 4. Repeat steps 2-3 until the requested scope is complete.
 
-IMPORTANT: When building semester-scale plans, organize lessons by week. Each lesson_build card should represent one week of lessons. Tell the parent which week number you're building (e.g., "Week 1 of 18").
+IMPORTANT: When building semester-scale plans, organize lessons by week. Tell the parent which week number you're building (e.g., "Week 1 of 18").
 
-For lesson_build cards, ALWAYS fill in EVERY field — especially lessonTitle and objectiveTitle. Never return empty or null values for these fields.
+CRITICAL: Output exactly ONE \`\`\`json block per response. Put ALL lessons inside a single "lessons" array — do NOT output separate JSON blocks for each lesson. Use this exact format:
+{
+  "type": "lesson_build",
+  "childName": "Child Name",
+  "subject": "Subject",
+  "lessons": [
+    { "lessonTitle": "Title 1", "objectiveTitle": "Objective 1", "duration": 45, "description": "...", "materials": ["..."], "packetDepth": "light" },
+    { "lessonTitle": "Title 2", "objectiveTitle": "Objective 2", "duration": 30, "description": "...", "materials": ["..."], "packetDepth": "light" }
+  ],
+  "summary": "Week X of Y — topic overview"
+}
 
 Start by asking about subjects/objectives and the desired scope (e.g., "a semester" = ~18 weeks, "a quarter" = ~9 weeks). Generate a lesson_build card first.
 After the parent approves, generate a schedule_proposal card for the approved lessons, then offer to build the next batch.
