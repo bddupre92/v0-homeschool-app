@@ -22,8 +22,9 @@ export function ScheduleProposalCardUI({
   const [scheduling, setScheduling] = useState(false)
 
   // Group lessons by day
-  const lessonsByDay = DAY_ORDER.reduce<Record<string, typeof card.lessons>>((acc, day) => {
-    const dayLessons = card.lessons.filter((l) => l.day === day)
+  const allLessons = card.lessons || []
+  const lessonsByDay = DAY_ORDER.reduce<Record<string, typeof allLessons>>((acc, day) => {
+    const dayLessons = allLessons.filter((l) => l.day === day)
     if (dayLessons.length > 0) acc[day] = dayLessons
     return acc
   }, {})
@@ -32,7 +33,7 @@ export function ScheduleProposalCardUI({
     if (!onSchedule) return
     setScheduling(true)
     try {
-      await onSchedule(card.lessons.map((l) => ({
+      await onSchedule(allLessons.map((l) => ({
         ...l,
         weekStart: card.weekStart,
         childName: card.childName,
@@ -101,7 +102,7 @@ export function ScheduleProposalCardUI({
               ) : (
                 <>
                   <CalendarDays className="h-4 w-4 mr-2" />
-                  Confirm & Schedule {card.lessons.length} Lessons
+                  Confirm & Schedule {allLessons.length} Lessons
                 </>
               )}
             </Button>
@@ -111,7 +112,7 @@ export function ScheduleProposalCardUI({
           <div className="text-center py-2">
             <div className="flex items-center justify-center gap-1.5 text-sm text-green-600 font-medium">
               <Check className="h-4 w-4" />
-              {card.lessons.length} lessons scheduled!
+              {allLessons.length} lessons scheduled!
             </div>
             <a href="/planner" className="text-xs text-primary underline mt-1 inline-block">
               View in Planner →

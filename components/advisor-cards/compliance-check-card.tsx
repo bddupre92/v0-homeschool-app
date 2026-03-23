@@ -19,7 +19,7 @@ export function ComplianceCheckCardUI({ card }: { card: ComplianceCheckCard }) {
         </div>
       </CardHeader>
       <CardContent className="pt-4 space-y-3">
-        {card.items.map((item, idx) => {
+        {(card.items || []).map((item, idx) => {
           const config = statusConfig[item.status]
           const Icon = config.icon
           return (

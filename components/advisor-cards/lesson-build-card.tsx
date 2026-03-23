@@ -17,9 +17,10 @@ export function LessonBuildCardUI({
   onSave?: (data: any) => void
   onGeneratePacket?: (lesson: LessonBuildCard["lessons"][0], context: { childName: string; subject: string }) => void
 }) {
+  const lessons = card.lessons || []
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
   const [packetDepths, setPacketDepths] = useState<Record<number, "light" | "full">>(
-    Object.fromEntries(card.lessons.map((l, i) => [i, l.packetDepth || "light"]))
+    Object.fromEntries(lessons.map((l, i) => [i, l.packetDepth || "light"]))
   )
   const [saved, setSaved] = useState(false)
   const [generatingIdx, setGeneratingIdx] = useState<number | null>(null)
@@ -34,7 +35,7 @@ export function LessonBuildCardUI({
 
   const handleSave = () => {
     if (onSave) {
-      const lessonsWithDepth = card.lessons.map((l, i) => ({
+      const lessonsWithDepth = lessons.map((l, i) => ({
         ...l,
         packetDepth: packetDepths[i],
       }))
@@ -60,15 +61,15 @@ export function LessonBuildCardUI({
         <div className="flex items-center justify-between">
           <div className="text-sm font-medium text-muted-foreground">
             <BookOpen className="h-4 w-4 inline mr-1.5" />
-            Lesson Plans — {card.childName} · {card.subject}
+            Lesson Plans{card.childName ? ` — ${card.childName}` : ""}{card.subject ? ` · ${card.subject}` : ""}
           </div>
           <Badge variant="outline" className="text-xs">
-            {card.lessons.length} {card.lessons.length === 1 ? "lesson" : "lessons"}
+            {lessons.length} {lessons.length === 1 ? "lesson" : "lessons"}
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="pt-4 space-y-2">
-        {card.lessons.map((lesson, idx) => {
+        {lessons.map((lesson, idx) => {
           const isExpanded = expandedIdx === idx
           const depth = packetDepths[idx]
           const isGenerating = generatingIdx === idx
@@ -81,8 +82,8 @@ export function LessonBuildCardUI({
               >
                 <BookOpen className="h-4 w-4 shrink-0 text-blue-500" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{lesson.lessonTitle}</p>
-                  <p className="text-xs text-muted-foreground">{lesson.objectiveTitle} · {lesson.duration}min</p>
+                  <p className="text-sm font-medium truncate">{lesson.lessonTitle || lesson.objectiveTitle || "Untitled Lesson"}</p>
+                  <p className="text-xs text-muted-foreground">{lesson.objectiveTitle || ""}{lesson.duration ? ` · ${lesson.duration}min` : ""}</p>
                 </div>
                 {isGenerated && (
                   <Badge variant="default" className="text-xs bg-green-600 shrink-0 mr-1">
@@ -94,7 +95,7 @@ export function LessonBuildCardUI({
               {isExpanded && (
                 <div className="px-3 pb-3 space-y-3 border-t bg-muted/20">
                   <p className="text-sm text-muted-foreground pt-2">{lesson.description}</p>
-                  {lesson.materials.length > 0 && (
+                  {lesson.materials?.length > 0 && (
                     <div>
                       <p className="text-xs font-medium mb-1 flex items-center gap-1">
                         <Package className="h-3 w-3" /> Materials

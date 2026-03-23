@@ -13,7 +13,7 @@ export function LessonSuggestionCardUI({ card }: { card: LessonSuggestionCard })
         </div>
       </CardHeader>
       <CardContent className="pt-4 space-y-2">
-        {card.items.map((item, idx) => (
+        {(card.items || []).map((item, idx) => (
           <div
             key={idx}
             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 ${

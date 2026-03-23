@@ -49,7 +49,7 @@ export function CurriculumPlanCardUI({ card, onSave }: Props) {
         </div>
       </CardHeader>
       <CardContent className="pt-4 space-y-3">
-        {card.subjects.map((subject) => {
+        {(card.subjects || []).map((subject) => {
           const isExpanded = expanded === subject.name
           const dotColor = getSubjectColor(subject.name)
 
