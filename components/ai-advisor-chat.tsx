@@ -536,8 +536,11 @@ export default function AIAdvisorChat({
       }
 
       // Parse structured data from the final text
+      if (!fullText.trim()) {
+        console.warn("[advisor] AI returned empty response — likely context too long or rate limited")
+      }
       const { cleanText, card } = parseStructuredData(fullText)
-      const displayText = cleanText || fullText || "I'm thinking about this — could you try asking again?"
+      const displayText = cleanText || fullText || "Sorry, I didn't get a response. The request may have been too large. Please try a simpler question or clear the chat and try again."
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMessage.id

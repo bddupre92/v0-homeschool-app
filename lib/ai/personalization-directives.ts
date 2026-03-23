@@ -51,8 +51,8 @@ export const PHILOSOPHY_DIRECTIVES: Record<string, string> = {
 }
 
 /**
- * Build personalization directives block for AI prompts.
- * Returns a formatted string to inject into the system prompt.
+ * Build compact personalization directives for AI prompts.
+ * Kept short to avoid exceeding Groq/Llama context limits.
  */
 export function buildPersonalizationDirectives(
   learningStyle?: string,
@@ -63,35 +63,29 @@ export function buildPersonalizationDirectives(
   const parts: string[] = []
 
   if (learningStyle && LEARNING_STYLE_DIRECTIVES[learningStyle]) {
-    parts.push(`LEARNING STYLE APPROACH — "${learningStyle}":
-${LEARNING_STYLE_DIRECTIVES[learningStyle]}`)
+    // Extract just the first sentence for brevity
+    const brief = LEARNING_STYLE_DIRECTIVES[learningStyle].split(". ").slice(0, 2).join(". ") + "."
+    parts.push(`Learning style (${learningStyle}): ${brief}`)
   }
 
   if (philosophy && philosophy.length > 0) {
-    const directives = philosophy
-      .filter((p) => PHILOSOPHY_DIRECTIVES[p])
-      .map((p) => `  - ${p}: ${PHILOSOPHY_DIRECTIVES[p]}`)
-    if (directives.length > 0) {
-      parts.push(`EDUCATIONAL PHILOSOPHY APPROACH:
-${directives.join("\n")}`)
+    // Only include the first philosophy's directive (condensed) to save tokens
+    const primary = philosophy[0]
+    if (PHILOSOPHY_DIRECTIVES[primary]) {
+      const brief = PHILOSOPHY_DIRECTIVES[primary].split(". ").slice(0, 2).join(". ") + "."
+      parts.push(`Philosophy (${philosophy.join(", ")}): ${brief}`)
     }
   }
 
   if (values && values.length > 0) {
-    parts.push(`VALUES INTEGRATION:
-Weave these family values naturally into discussion questions, character connections, reflection activities, and moral lessons: ${values.join(", ")}.
-Do not force values into every sentence — integrate them where they fit authentically.`)
+    parts.push(`Values: Weave ${values.join(", ")} into discussions and activities naturally.`)
   }
 
   if (interests && interests.length > 0) {
-    parts.push(`INTEREST HOOKS:
-The child is passionate about: ${interests.join(", ")}.
-Use these as entry points for engagement — reference them in examples, analogies, word problems, and activity themes to make learning personally relevant.`)
+    parts.push(`Interests: Use ${interests.join(", ")} as engagement hooks in examples and activities.`)
   }
 
   if (parts.length === 0) return ""
 
-  return `PERSONALIZATION DIRECTIVES (follow these closely when building lessons):
-
-${parts.join("\n\n")}`
+  return `PERSONALIZATION:\n${parts.join("\n")}`
 }
