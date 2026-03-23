@@ -18,6 +18,7 @@ export async function POST(req: Request) {
     childProfile,
     familyBlueprint,
     stateRequirements,
+    complianceData,
     intent,
   } = await req.json()
 
@@ -50,6 +51,22 @@ export async function POST(req: Request) {
 - Record Keeping: ${stateRequirements.recordKeepingRequirements || "Check state law"}
 - Filing Types: ${stateRequirements.filingTypes?.map((f: any) => `${f.filing_name} (${f.frequency})`).join("; ") || "Check state law"}`
     : ""
+
+  const complianceContext = complianceData
+    ? `ACTUAL COMPLIANCE STATUS (from the family's real records — use this data, do NOT guess or hallucinate):
+- Total Hours Logged This Year: ${complianceData.totalHoursLogged || 0}
+- Hours by Subject: ${complianceData.hoursBySubject?.length > 0
+        ? complianceData.hoursBySubject.map((s: any) => `${s.subject}: ${s.total_hours}h (${s.session_count} sessions)`).join(", ")
+        : "No hours logged yet"}
+- Subjects with Logged Hours: ${complianceData.subjectsWithHours?.length > 0
+        ? complianceData.subjectsWithHours.join(", ")
+        : "None yet"}
+- Filed Compliance Documents: ${complianceData.filings?.length > 0
+        ? complianceData.filings.map((f: any) => `${f.filing_type}: ${f.status}${f.filed_date ? ` (filed ${f.filed_date})` : " (NOT filed)"}${f.due_date ? `, due ${f.due_date}` : ""}`).join("; ")
+        : "No filings recorded yet — the parent has NOT filed anything"}
+
+CRITICAL: When discussing compliance, ONLY report what the actual data shows. If filings array is empty, the parent has NOT filed anything. Do NOT say filings are "Done" unless the data explicitly shows them as completed.`
+    : `ACTUAL COMPLIANCE STATUS: No compliance data available — the parent has not tracked any filings or hours yet.`
 
   // Intent-specific instructions
   let intentInstructions = ""
@@ -148,6 +165,8 @@ ${childContext}
 ${familyContext}
 
 ${stateContext}
+
+${complianceContext}
 
 ${intentInstructions}
 

@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
-import { getChildren, getFamilyBlueprint } from "@/app/actions/family-actions"
+import { getChildren, getFamilyBlueprint, getComplianceFilings, getHourSummary, getTotalHoursThisYear } from "@/app/actions/family-actions"
 import {
   saveRecommendation,
   getRecommendations,
@@ -65,6 +65,7 @@ export default function AdvisorPage() {
   const [familyBlueprint, setFamilyBlueprint] = useState<FamilyBlueprintData | null>(DEMO_BLUEPRINT)
   const [stateReqs, setStateReqs] = useState<any>(null)
   const [stateFilings, setStateFilings] = useState<any[]>([])
+  const [complianceData, setComplianceData] = useState<any>(null)
   const [recommendations, setRecommendations] = useState<any[]>([])
   const [selectedRec, setSelectedRec] = useState<any>(null)
   const [activeTab, setActiveTab] = useState("chat")
@@ -117,6 +118,23 @@ export default function AdvisorPage() {
             // State data not critical — continue without it
           }
         }
+      }
+
+      // Load real compliance data (hours, filings, subjects)
+      try {
+        const [totalHours, hoursBySubject, filings] = await Promise.all([
+          getTotalHoursThisYear(),
+          getHourSummary(),
+          getComplianceFilings(),
+        ])
+        setComplianceData({
+          totalHoursLogged: totalHours || 0,
+          hoursBySubject: hoursBySubject || [],
+          filings: filings || [],
+          subjectsWithHours: (hoursBySubject || []).map((s: any) => s.subject),
+        })
+      } catch {
+        // Compliance data not critical — AI will note it's unavailable
       }
 
       // Load recommendations
@@ -258,6 +276,7 @@ export default function AdvisorPage() {
               familyBlueprint={familyBlueprint}
               stateRequirements={stateReqs}
               stateFilingTypes={stateFilings}
+              complianceData={complianceData}
               onSaveRecommendation={handleSaveRecommendation}
             />
           </TabsContent>

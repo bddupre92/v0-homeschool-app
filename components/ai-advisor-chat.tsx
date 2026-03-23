@@ -20,11 +20,19 @@ import { ComplianceCheckCardUI } from "@/components/advisor-cards/compliance-che
 import { ProgressReportCardUI } from "@/components/advisor-cards/progress-report-card"
 import { LessonSuggestionCardUI } from "@/components/advisor-cards/lesson-suggestion-card"
 
+interface ComplianceData {
+  totalHoursLogged: number
+  hoursBySubject: { subject: string; total_hours: number; session_count: number }[]
+  filings: { filing_type: string; status: string; due_date?: string; filed_date?: string; notes?: string }[]
+  subjectsWithHours: string[]
+}
+
 interface AIAdvisorChatProps {
   children: ChildProfile[]
   familyBlueprint: FamilyBlueprintData | null
   stateRequirements: any | null
   stateFilingTypes: any[]
+  complianceData?: ComplianceData | null
   onSaveRecommendation?: (data: any) => Promise<void>
   initialMessages?: AdvisorMessage[]
 }
@@ -62,6 +70,7 @@ export default function AIAdvisorChat({
   familyBlueprint,
   stateRequirements,
   stateFilingTypes,
+  complianceData,
   onSaveRecommendation,
   initialMessages,
 }: AIAdvisorChatProps) {
@@ -145,6 +154,7 @@ export default function AIAdvisorChat({
           stateRequirements: stateRequirements
             ? { ...stateRequirements, filingTypes: stateFilingTypes }
             : null,
+          complianceData: complianceData || null,
           intent,
         }),
       })
