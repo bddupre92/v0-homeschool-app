@@ -14,6 +14,7 @@ import { ErrorTrackingProvider } from "@/lib/error-tracking"
 import { PerformanceMonitoringProvider } from "@/lib/performance-monitoring"
 import { SessionInitializer } from "@/components/session-initializer"
 import QueryProvider from "@/components/query-provider"
+import { ModulePreferencesProvider } from "@/contexts/module-preferences-context"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -88,6 +89,7 @@ export default function RootLayout({
             <ErrorTrackingProvider>
               <PerformanceMonitoringProvider>
                 <AuthProvider>
+                  <ModulePreferencesProvider>
                   <QueryProvider>
                     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
                       <Suspense>
@@ -100,6 +102,7 @@ export default function RootLayout({
                       <SessionInitializer />
                     </ThemeProvider>
                   </QueryProvider>
+                  </ModulePreferencesProvider>
                 </AuthProvider>
               </PerformanceMonitoringProvider>
             </ErrorTrackingProvider>

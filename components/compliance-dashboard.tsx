@@ -44,11 +44,22 @@ interface ComplianceFiling {
   filed_date: string | null
 }
 
+interface StateFilingType {
+  id: string
+  filing_name: string
+  description?: string
+  frequency?: string
+  typical_due_description?: string
+  is_required?: boolean
+  notes?: string
+}
+
 interface ComplianceDashboardProps {
   stateAbbreviation?: string
   hourSummary?: HourSummary[]
   totalHours?: number
   filings?: ComplianceFiling[]
+  stateFilingTypes?: StateFilingType[]
   onLogHours?: () => void
   onAddFiling?: (filing: { filingType: string; dueDate?: string }) => void
 }
@@ -58,6 +69,7 @@ export default function ComplianceDashboard({
   hourSummary = [],
   totalHours = 0,
   filings = [],
+  stateFilingTypes = [],
   onLogHours,
   onAddFiling,
 }: ComplianceDashboardProps) {
@@ -357,6 +369,76 @@ export default function ComplianceDashboard({
           )}
         </CardContent>
       </Card>
+
+      {/* State-Specific Filing Requirements */}
+      {stateFilingTypes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              {stateReqs?.state_name || stateAbbreviation} Filing Requirements
+            </CardTitle>
+            <CardDescription>
+              Required filings and deadlines for your state. Add these to your tracking above.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {stateFilingTypes.map((filing) => {
+                const isTracked = filings.some(
+                  (f) => f.filing_type.toLowerCase() === filing.filing_name.toLowerCase()
+                )
+                return (
+                  <div
+                    key={filing.id}
+                    className="border rounded-lg p-3 space-y-1"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{filing.filing_name}</span>
+                        {filing.is_required && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                            Required
+                          </Badge>
+                        )}
+                        {filing.frequency && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
+                            {filing.frequency}
+                          </Badge>
+                        )}
+                      </div>
+                      {isTracked ? (
+                        <Badge variant="secondary" className="text-xs">Tracking</Badge>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs"
+                          onClick={() => onAddFiling?.({ filingType: filing.filing_name })}
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Track
+                        </Button>
+                      )}
+                    </div>
+                    {filing.description && (
+                      <p className="text-xs text-muted-foreground">{filing.description}</p>
+                    )}
+                    {filing.typical_due_description && (
+                      <p className="text-xs text-amber-600 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {filing.typical_due_description}
+                      </p>
+                    )}
+                    {filing.notes && (
+                      <p className="text-xs text-muted-foreground italic">{filing.notes}</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

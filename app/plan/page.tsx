@@ -12,7 +12,7 @@ import LogHoursDialog from "@/components/log-hours-dialog"
 import { useAuth } from "@/contexts/auth-context"
 import {
   BarChart3, BookOpen, Calendar, Clock, GraduationCap,
-  Shield, Target, TrendingUp, Sparkles
+  Shield, Target, TrendingUp, Sparkles, Bot
 } from "lucide-react"
 import Link from "next/link"
 
@@ -67,6 +67,12 @@ export default function PlanPage() {
             <Button variant="outline" onClick={() => setShowLogHours(true)}>
               <Clock className="h-4 w-4 mr-2" />
               Log Hours
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/advisor">
+                <Bot className="h-4 w-4 mr-2" />
+                AI Advisor
+              </Link>
             </Button>
             <Button asChild>
               <Link href="/planner">
