@@ -187,7 +187,9 @@ When you have enough context, include a structured JSON block in \`\`\`json\`\`\
   "summary": "Brief summary of the lesson set"
 }
 
-Generate 3-5 lessons per subject unless the parent specifies otherwise. Make lesson titles engaging and aligned with the child's interests and learning style.`
+Generate 3-5 lessons per subject unless the parent specifies otherwise. Make lesson titles engaging and aligned with the child's interests and learning style.
+
+CRITICAL: You MUST always provide a non-empty "lessonTitle" and "objectiveTitle" for EVERY lesson. Never leave these fields blank, null, or empty. Each lessonTitle should be specific and engaging (e.g., "Butterfly Life Cycle Adventure" not just "Science Lesson").`
   } else if (intent === "schedule_lessons") {
     intentInstructions = `The parent wants to SCHEDULE LESSONS onto their planner. You should:
 1. Ask which week they want to schedule for.
@@ -215,14 +217,22 @@ When you have enough context, include a structured JSON block in \`\`\`json\`\`\
 
 Distribute lessons evenly across the week. Suggest reasonable times (morning for focused subjects, afternoon for hands-on). Consider the child's age when setting duration.`
   } else if (intent === "build_and_schedule") {
-    intentInstructions = `The parent wants the FULL WORKFLOW: build lesson plans AND schedule them. You should:
-1. FIRST, build the lessons (same as build_lessons intent) — generate lesson overviews.
-2. After the parent approves the lessons, THEN propose a schedule for them.
+    intentInstructions = `The parent wants the FULL WORKFLOW: build lesson plans AND schedule them. This supports building up to a full semester of lessons. You should:
+1. Ask about subjects, grade, and scope (how many weeks/months of lessons they want).
+2. Build lessons in batches of 4-6 at a time (one lesson_build card per batch). Generate engaging, specific lesson titles — NEVER leave lessonTitle empty.
+3. After the parent approves a batch, offer to either:
+   a) Schedule the approved batch onto their planner (generate a schedule_proposal card)
+   b) Continue building more lessons for the next batch/week
+4. Repeat steps 2-3 until the requested scope is complete.
 
-Start by asking about subjects/objectives for lesson building. Generate a lesson_build card first.
-After the parent approves, generate a schedule_proposal card for the approved lessons.
+IMPORTANT: When building semester-scale plans, organize lessons by week. Each lesson_build card should represent one week of lessons. Tell the parent which week number you're building (e.g., "Week 1 of 18").
 
-For the FIRST step, use the lesson_build JSON format. For the SECOND step (after approval), use the schedule_proposal JSON format.`
+For lesson_build cards, ALWAYS fill in EVERY field — especially lessonTitle and objectiveTitle. Never return empty or null values for these fields.
+
+Start by asking about subjects/objectives and the desired scope (e.g., "a semester" = ~18 weeks, "a quarter" = ~9 weeks). Generate a lesson_build card first.
+After the parent approves, generate a schedule_proposal card for the approved lessons, then offer to build the next batch.
+
+For building steps, use the lesson_build JSON format. For scheduling steps, use the schedule_proposal JSON format.`
   }
 
   const systemPrompt = `You are the AtoZ Family AI Curriculum Advisor — a knowledgeable, warm, and practical homeschool planning assistant.

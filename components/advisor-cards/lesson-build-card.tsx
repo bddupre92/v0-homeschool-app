@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { BookOpen, ChevronDown, ChevronUp, FileText, FlaskConical, Package, Loader2, Check } from "lucide-react"
+import { BookOpen, CalendarDays, ChevronDown, ChevronUp, FileText, FlaskConical, Package, Loader2, Check } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,10 +12,14 @@ export function LessonBuildCardUI({
   card,
   onSave,
   onGeneratePacket,
+  onScheduleRequest,
+  onContinueBuilding,
 }: {
   card: LessonBuildCard
   onSave?: (data: any) => void
   onGeneratePacket?: (lesson: LessonBuildCard["lessons"][0], context: { childName: string; subject: string }) => void
+  onScheduleRequest?: (card: LessonBuildCard) => void
+  onContinueBuilding?: (card: LessonBuildCard) => void
 }) {
   const lessons = card.lessons || []
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
@@ -179,8 +183,34 @@ export function LessonBuildCardUI({
           </Button>
         )}
         {saved && (
-          <div className="text-center text-sm text-green-600 font-medium py-2">
-            Lessons saved! You can now schedule them.
+          <div className="space-y-2 pt-1">
+            <div className="text-center text-sm text-green-600 font-medium">
+              Lessons saved! You can now schedule them.
+            </div>
+            <div className="flex gap-2">
+              {onScheduleRequest && (
+                <Button
+                  onClick={() => onScheduleRequest(card)}
+                  variant="outline"
+                  className="flex-1 border-green-500/30 text-green-700 hover:bg-green-500/10"
+                  size="sm"
+                >
+                  <CalendarDays className="h-4 w-4 mr-2" />
+                  Schedule to Planner
+                </Button>
+              )}
+              {onContinueBuilding && (
+                <Button
+                  onClick={() => onContinueBuilding(card)}
+                  variant="outline"
+                  className="flex-1 border-blue-500/30 text-blue-700 hover:bg-blue-500/10"
+                  size="sm"
+                >
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Build More Lessons
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </CardContent>

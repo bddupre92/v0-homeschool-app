@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import type {
   AdvisorMessage,
   StructuredCard,
+  LessonBuildCard,
   ChildProfile,
   FamilyBlueprintData,
   AdvisorIntent,
@@ -59,12 +60,95 @@ function cleanJsonString(raw: string): string {
     )
 }
 
+/**
+ * Normalize AI-generated card data to match expected field names.
+ * LLMs (especially Llama) often return variant field names like `title` instead of `lessonTitle`,
+ * snake_case instead of camelCase, or omit optional arrays.
+ */
+function normalizeCard(parsed: any): any {
+  if (!parsed || typeof parsed !== "object") return parsed
+
+  if (parsed.type === "lesson_build") {
+    // Normalize top-level fields
+    parsed.childName = parsed.childName || parsed.child_name || parsed.studentName || parsed.student_name || ""
+    parsed.subject = parsed.subject || parsed.subjectName || parsed.subject_name || ""
+    parsed.summary = parsed.summary || parsed.description || ""
+
+    // Normalize lessons array
+    if (!Array.isArray(parsed.lessons)) {
+      parsed.lessons = parsed.lesson_plans || parsed.lessonPlans || []
+    }
+    parsed.lessons = parsed.lessons.map((l: any) => ({
+      objectiveId: l.objectiveId || l.objective_id || undefined,
+      objectiveTitle: l.objectiveTitle || l.objective_title || l.objective || l.topic || "",
+      lessonTitle: l.lessonTitle || l.lesson_title || l.title || l.name || l.lesson_name || "",
+      duration: l.duration || l.time || l.minutes || 0,
+      description: l.description || l.summary || l.overview || "",
+      materials: Array.isArray(l.materials) ? l.materials : [],
+      packetDepth: l.packetDepth || l.packet_depth || "light",
+    }))
+  }
+
+  if (parsed.type === "schedule_proposal") {
+    parsed.lessons = (parsed.lessons || []).map((l: any) => ({
+      title: l.title || l.lessonTitle || l.lesson_title || l.name || "",
+      subject: l.subject || l.subjectName || "",
+      day: l.day || "",
+      time: l.time || l.startTime || l.start_time || "",
+      duration: l.duration || l.minutes || 45,
+      objectiveId: l.objectiveId || l.objective_id || undefined,
+      lessonPacketId: l.lessonPacketId || l.lesson_packet_id || undefined,
+    }))
+  }
+
+  if (parsed.type === "compliance_check") {
+    parsed.items = (parsed.items || parsed.requirements || []).map((i: any) => ({
+      name: i.name || i.title || i.requirement || "",
+      status: i.status || "needs_attention",
+      detail: i.detail || i.details || i.description || "",
+    }))
+  }
+
+  if (parsed.type === "progress_report") {
+    parsed.items = (parsed.items || parsed.subjects || []).map((i: any) => ({
+      subject: i.subject || i.name || "",
+      status: i.status || "on_track",
+      detail: i.detail || i.details || i.description || "",
+      percentComplete: i.percentComplete || i.percent_complete || i.percent || 0,
+    }))
+  }
+
+  if (parsed.type === "curriculum_plan") {
+    parsed.subjects = (parsed.subjects || []).map((s: any) => ({
+      name: s.name || s.subject || "",
+      color: s.color || "gray",
+      objectiveCount: s.objectiveCount || s.objective_count || (s.objectives || []).length || 0,
+      objectives: (s.objectives || []).map((o: any) => ({
+        title: o.title || o.name || "",
+        description: o.description || "",
+      })),
+    }))
+    parsed.tags = parsed.tags || []
+    parsed.totalObjectives = parsed.totalObjectives || parsed.total_objectives ||
+      parsed.subjects.reduce((sum: number, s: any) => sum + (s.objectiveCount || 0), 0)
+  }
+
+  if (parsed.type === "lesson_suggestion") {
+    parsed.items = (parsed.items || parsed.suggestions || []).map((i: any) => ({
+      label: i.label || i.title || i.name || i.suggestion || "",
+      status: i.status || "pending",
+    }))
+  }
+
+  return parsed
+}
+
 function tryParseJson(raw: string): StructuredCard | null {
   try {
     const cleaned = cleanJsonString(raw.trim())
     const parsed = JSON.parse(cleaned)
     if (parsed && typeof parsed === "object" && KNOWN_CARD_TYPES.includes(parsed.type)) {
-      return parsed as StructuredCard
+      return normalizeCard(parsed) as StructuredCard
     }
     return null
   } catch {
@@ -110,11 +194,14 @@ function StructuredCardRenderer({
   onSave,
   onSchedule,
   onGeneratePacket,
+  onScheduleRequest,
 }: {
   card: StructuredCard
   onSave?: (data: any) => void
   onSchedule?: (lessons: any[]) => void
   onGeneratePacket?: (lesson: any, context: { childName: string; subject: string }) => void
+  onScheduleRequest?: (card: LessonBuildCard) => void
+  onContinueBuilding?: (card: LessonBuildCard) => void
 }) {
   switch (card.type) {
     case "curriculum_plan":
@@ -126,7 +213,7 @@ function StructuredCardRenderer({
     case "lesson_suggestion":
       return <LessonSuggestionCardUI card={card} />
     case "lesson_build":
-      return <LessonBuildCardUI card={card} onSave={onSave} onGeneratePacket={onGeneratePacket} />
+      return <LessonBuildCardUI card={card} onSave={onSave} onGeneratePacket={onGeneratePacket} onScheduleRequest={onScheduleRequest} onContinueBuilding={onContinueBuilding} />
     case "schedule_proposal":
       return <ScheduleProposalCardUI card={card} onSchedule={onSchedule} />
     default:
@@ -479,6 +566,27 @@ export default function AIAdvisorChat({
     }
   }
 
+  const handleContinueBuilding = (buildCard: LessonBuildCard) => {
+    const childName = buildCard.childName || selectedChild?.name || "my child"
+    const subject = buildCard.subject || "the same subjects"
+    sendMessage(
+      `Great, those lessons for ${childName} are saved! Please build the next batch of ${subject} lessons — continue where we left off.`
+    )
+  }
+
+  const handleScheduleRequest = (buildCard: LessonBuildCard) => {
+    // Switch to schedule workflow and auto-send a scheduling request
+    setWorkflowMode("schedule_lessons")
+    const lessonTitles = (buildCard.lessons || [])
+      .map((l) => l.lessonTitle || l.objectiveTitle || "Untitled")
+      .join(", ")
+    const childName = buildCard.childName || selectedChild?.name || "my child"
+    const subject = buildCard.subject || "the lessons"
+    sendMessage(
+      `I've approved these ${subject} lessons for ${childName}: ${lessonTitles}. Please schedule them onto my planner for this week.`
+    )
+  }
+
   const clearChat = () => {
     setWorkflowMode(null)
     setMessages([
@@ -573,6 +681,8 @@ export default function AIAdvisorChat({
                   onSave={onSaveRecommendation}
                   onSchedule={onScheduleLessons}
                   onGeneratePacket={handleGeneratePacket}
+                  onScheduleRequest={handleScheduleRequest}
+                  onContinueBuilding={handleContinueBuilding}
                 />
               )}
               {msg.lessonPacket && (
