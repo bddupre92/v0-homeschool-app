@@ -174,10 +174,10 @@ function normalizeCard(parsed: any): any {
       parsed.weekStart = parsed.weekStart || parsed.week_start
     }
 
-    parsed.lessons = (parsed.lessons || []).map((l: any) => ({
+    parsed.lessons = (parsed.lessons || parsed.schedule || parsed.schedule_items || parsed.scheduledLessons || []).map((l: any) => ({
       title: l.title || l.lessonTitle || l.lesson_title || l.name || "",
       subject: l.subject || l.subjectName || "",
-      day: l.day || "",
+      day: l.day || l.dayOfWeek || l.day_of_week || "",
       time: l.time || l.startTime || l.start_time || "9:00 AM",
       duration: l.duration || l.minutes || 45,
       objectiveId: l.objectiveId || l.objective_id || undefined,
@@ -840,27 +840,26 @@ export default function AIAdvisorChat({
     })
   }, [messages.length, workflowPlan]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-detect multi-child intent and initialize workflow plan (run once)
+  // Auto-detect multi-child intent — ONLY when the AI responds with a lesson_build card
+  // for the first time and there are multiple children. Do NOT trigger on mode selection
+  // auto-messages or schedule_lessons mode.
   useEffect(() => {
     if (workflowInitializedRef.current) return
     if (workflowPlan) { workflowInitializedRef.current = true; return }
-    if (messages.length < 2) return
+    if (children.length < 2) return
+    // Only in build modes, never in schedule-only mode
     if (workflowMode !== "build_lessons" && workflowMode !== "build_and_schedule") return
 
-    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")
-    if (!lastUserMsg) return
-    if (!detectMultiChildIntent(lastUserMsg.content)) return
+    // Only trigger when the AI returns the FIRST lesson_build card
+    const latestMsg = messages[messages.length - 1]
+    if (!latestMsg || latestMsg.role !== "assistant") return
+    if (latestMsg.structuredData?.type !== "lesson_build") return
 
     workflowInitializedRef.current = true
-    const lower = lastUserMsg.content.toLowerCase()
-    const subjects: string[] = []
-    const subjectKeywords = ["math", "science", "reading", "language arts", "history", "social studies", "writing", "art", "music", "pe"]
-    for (const kw of subjectKeywords) {
-      if (lower.includes(kw)) subjects.push(kw.charAt(0).toUpperCase() + kw.slice(1))
-    }
-    if (subjects.length === 0) subjects.push("Lessons")
-    initializeWorkflowPlan(subjects)
-  }, [messages.length, workflowPlan, workflowMode, detectMultiChildIntent, initializeWorkflowPlan]) // eslint-disable-line react-hooks/exhaustive-deps
+    const card = latestMsg.structuredData as LessonBuildCard
+    const subject = card.subject || "Lessons"
+    initializeWorkflowPlan([subject])
+  }, [messages.length, workflowPlan, workflowMode, children.length, initializeWorkflowPlan]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const showModeSelector = messages.length <= 1 && !workflowMode
 

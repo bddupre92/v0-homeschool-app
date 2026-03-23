@@ -243,35 +243,47 @@ When you have enough context, include EXACTLY ONE structured JSON block in \`\`\
 
 CRITICAL: "weekStart" MUST be a valid ISO date string (YYYY-MM-DD format) representing the Monday of the target week. If the parent doesn't specify a week, use "${defaultWeekStart}" as the default. NEVER omit this field.
 
-Distribute lessons evenly across the week. Suggest reasonable times (morning for focused subjects, afternoon for hands-on). Consider the child's age when setting duration.`
+Distribute lessons evenly across the week. Suggest reasonable times (morning for focused subjects, afternoon for hands-on). Consider the child's age when setting duration.
+
+CRITICAL: The array key MUST be "lessons", NOT "schedule". Use "lessons" as the key name in the schedule_proposal JSON.`
   } else if (intent === "build_and_schedule") {
-    intentInstructions = `The parent wants the FULL WORKFLOW: build lesson plans AND schedule them. This supports building up to a full semester of lessons. You should:
-1. Ask about subjects, grade, and scope (how many weeks/months of lessons they want).
-2. Build lessons in batches of 4-6 at a time. Generate engaging, specific lesson titles — NEVER leave lessonTitle empty.
-3. After the parent approves a batch, offer to either:
-   a) Schedule the approved batch onto their planner (generate a schedule_proposal card)
-   b) Continue building more lessons for the next batch/week
-4. Repeat steps 2-3 until the requested scope is complete.
+    intentInstructions = `The parent wants the FULL WORKFLOW: build lesson plans AND schedule them.
 
-IMPORTANT: When building semester-scale plans, organize lessons by week. Tell the parent which week number you're building (e.g., "Week 1 of 18").
+STEP-BY-STEP PROCESS (follow this order STRICTLY):
+1. FIRST, ask about subjects, grade, and scope (how many weeks they want). Do NOT generate anything yet.
+2. THEN, generate a "lesson_build" card with 4-6 lessons. NEVER generate a "schedule_proposal" before the parent approves lessons first.
+3. WAIT for the parent to approve the lessons.
+4. ONLY AFTER approval, generate a "schedule_proposal" card for those approved lessons.
+5. Then offer to build the next batch and repeat.
 
-CRITICAL: Output exactly ONE \`\`\`json block per response. Put ALL lessons inside a single "lessons" array — do NOT output separate JSON blocks for each lesson. Use this exact format:
+CRITICAL: Your FIRST JSON output MUST be type "lesson_build", NEVER "schedule_proposal". You must build lessons before scheduling them. Do NOT skip the building step.
+
+Use this exact format for building lessons:
 {
   "type": "lesson_build",
   "childName": "Child Name",
   "subject": "Subject",
   "lessons": [
-    { "lessonTitle": "Title 1", "objectiveTitle": "Objective 1", "duration": 45, "description": "Description with citations [1]...", "materials": ["pencil", "notebook", "Book Title (book)"], "packetDepth": "light" },
+    { "lessonTitle": "Title 1", "objectiveTitle": "Objective 1", "duration": 45, "description": "Description...", "materials": ["pencil", "notebook", "Book Title (book)"], "packetDepth": "light" },
     { "lessonTitle": "Title 2", "objectiveTitle": "Objective 2", "duration": 30, "description": "...", "materials": ["colored pencils", "paper"], "packetDepth": "light" }
   ],
   "references": [{"id": 1, "title": "Source", "type": "article", "snippet": "Why this is relevant"}],
   "summary": "Week X of Y — topic overview"
 }
 
-Start by asking about subjects/objectives and the desired scope (e.g., "a semester" = ~18 weeks, "a quarter" = ~9 weeks). Generate a lesson_build card first.
-After the parent approves, generate a schedule_proposal card for the approved lessons, then offer to build the next batch.
+When building semester-scale plans, organize lessons by week. Tell the parent which week number you're building (e.g., "Week 1 of 18").
+Output exactly ONE \`\`\`json block per response. Put ALL lessons inside a single "lessons" array.
 
-For building steps, use the lesson_build JSON format. For scheduling steps, use the schedule_proposal JSON format.
+ONLY after the parent approves, use schedule_proposal format with "lessons" (NOT "schedule") as the array key:
+{
+  "type": "schedule_proposal",
+  "childName": "...",
+  "weekStart": "YYYY-MM-DD",
+  "lessons": [
+    { "title": "Lesson title", "subject": "Subject", "day": "Monday", "time": "9:00 AM", "duration": 45 }
+  ],
+  "summary": "..."
+}
 
 MULTI-CHILD WORKFLOW:
 When the parent asks to build for multiple children (e.g., "build for Asher and Zuri", "all my kids", "both children"):
