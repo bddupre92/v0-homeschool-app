@@ -47,17 +47,34 @@ const mockUser: User = {
 }
 
 /**
+ * Race a promise against a timeout. Resolves/rejects with the original
+ * promise if it settles first, otherwise rejects with a timeout error.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ])
+}
+
+/**
  * Creates a server-side session cookie by sending the Firebase ID token
  * to our session API route.
  */
 async function createSessionCookie(user: User): Promise<void> {
   try {
-    const idToken = await getIdToken(user, true)
-    const response = await fetch("/api/auth/session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken }),
-    })
+    const idToken = await withTimeout(getIdToken(user, true), 5000, "getIdToken")
+    const response = await withTimeout(
+      fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      }),
+      5000,
+      "session API"
+    )
     if (!response.ok) {
       console.error("Failed to create session cookie:", response.status)
     }
@@ -122,18 +139,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await updateProfile(user, { displayName: name })
 
-      // Fire-and-forget: session cookie and Firestore write should not block sign-up
-      createSessionCookie(user).catch(err => console.error("Session cookie error:", err))
+      // Await session cookie (needed for server-side auth on next navigation)
+      await createSessionCookie(user)
 
+      // Await Firestore user doc on sign-up (first-time record creation)
       if (db) {
-        setDoc(doc(db, "users", user.uid), {
-          uid: user.uid,
-          email: user.email,
-          displayName: name,
-          emailVerified: user.emailVerified,
-          createdAt: serverTimestamp(),
-          lastLoginAt: serverTimestamp(),
-        }).catch(err => console.error("Firestore user doc error:", err))
+        try {
+          await withTimeout(
+            setDoc(doc(db, "users", user.uid), {
+              uid: user.uid,
+              email: user.email,
+              displayName: name,
+              emailVerified: user.emailVerified,
+              createdAt: serverTimestamp(),
+              lastLoginAt: serverTimestamp(),
+            }),
+            5000,
+            "Firestore user create"
+          )
+        } catch (err) {
+          console.error("Firestore user doc error (non-fatal):", err)
+        }
       }
     } catch (error: any) {
       console.error("Sign up error:", error)
@@ -161,9 +187,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      // Fire-and-forget: don't block sign-in on session cookie or Firestore
-      createSessionCookie(user).catch(err => console.error("Session cookie error:", err))
+      // Await session cookie (needed for server-side auth on next navigation)
+      await createSessionCookie(user)
 
+      // Fire-and-forget: lastLoginAt update is non-critical
       if (db) {
         setDoc(doc(db, "users", user.uid), {
           lastLoginAt: serverTimestamp(),
@@ -195,9 +222,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userCredential = await signInWithPopup(auth, provider)
       const user = userCredential.user
 
-      // Fire-and-forget: don't block sign-in on session cookie or Firestore
-      createSessionCookie(user).catch(err => console.error("Session cookie error:", err))
+      // Await session cookie (needed for server-side auth on next navigation)
+      await createSessionCookie(user)
 
+      // Fire-and-forget: user doc update is non-critical
       if (db) {
         setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
