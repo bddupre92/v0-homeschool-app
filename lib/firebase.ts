@@ -56,9 +56,15 @@ if (missingVars.length > 0) {
 }
 
 if (app) {
-  auth = getAuth(app)
-  db = getFirestore(app)
-  storage = getStorage(app)
+  try {
+    auth = getAuth(app)
+    db = getFirestore(app)
+    storage = getStorage(app)
+  } catch (error: any) {
+    initError = (initError || '') + ' | Services error: ' + (error?.message || String(error))
+    console.error('Firebase services initialization failed:', error)
+    // Keep app non-null so isFirebaseAvailable still returns true for auth-only use
+  }
 }
 
 // Helper function to check if Firebase is available
