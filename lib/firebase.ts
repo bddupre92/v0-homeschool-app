@@ -18,22 +18,26 @@ let db: Firestore | null = null
 let storage: Storage | null = null
 let initError: string | null = null
 
-// Validate required environment variables
-const requiredEnvVars = [
-  'NEXT_PUBLIC_FIREBASE_API_KEY',
-  'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
-  'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
-  'NEXT_PUBLIC_FIREBASE_APP_ID'
-]
+// Validate using the already-resolved config values (process.env.NEXT_PUBLIC_* is
+// statically replaced by Next.js at build time, so dynamic access like
+// process.env[varName] does NOT work — we must use the config object instead)
+const configCheck = {
+  apiKey: firebaseConfig.apiKey,
+  projectId: firebaseConfig.projectId,
+  messagingSenderId: firebaseConfig.messagingSenderId,
+  appId: firebaseConfig.appId,
+}
 
-const missingVars = requiredEnvVars.filter(varName => !process.env[varName])
-const hasDemoValues = requiredEnvVars.some(varName => {
-  const value = process.env[varName]
-  return value && (value.includes('demo') || value.includes('your-') || value === '123456789')
-})
+const missingKeys = Object.entries(configCheck)
+  .filter(([, value]) => !value)
+  .map(([key]) => key)
 
-if (missingVars.length > 0) {
-  initError = `Missing env vars: ${missingVars.join(', ')}`
+const hasDemoValues = Object.values(configCheck).some(
+  value => value && (value.includes('demo') || value.includes('your-') || value === '123456789')
+)
+
+if (missingKeys.length > 0) {
+  initError = `Missing Firebase config: ${missingKeys.join(', ')}`
   console.warn(initError)
 } else if (hasDemoValues) {
   initError = 'Demo/placeholder Firebase values detected'
