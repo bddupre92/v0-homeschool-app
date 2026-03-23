@@ -437,3 +437,18 @@ export async function getDashboardStats() {
     }
   }
 }
+
+// ─── Hour Log Deletion ──────────────────────────────────────────────────────
+
+export async function deleteHourLog(logId: string) {
+  try {
+    await getAuthenticatedUserId()
+    await sql`DELETE FROM hour_logs WHERE id = ${logId}`
+    revalidatePath("/plan")
+    revalidatePath("/dashboard")
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to delete hour log:", error)
+    return { success: false, error: "Failed to delete hour log" }
+  }
+}

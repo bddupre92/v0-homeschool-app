@@ -8,8 +8,11 @@ import ComplianceDashboard from "@/components/compliance-dashboard"
 import LogHoursDialog from "@/components/log-hours-dialog"
 import PlanOverviewTab from "@/components/plan-overview-tab"
 import PlanChildrenTab from "@/components/plan-children-tab"
+import { TranscriptGenerator } from "@/components/transcript-generator"
+import { ComplianceReport } from "@/components/compliance-report"
+import { HourLogHistory } from "@/components/hour-log-history"
 import { useAuth } from "@/contexts/auth-context"
-import { Clock, Sparkles, Bot, Loader2 } from "lucide-react"
+import { Clock, Sparkles, Bot, Loader2, FileText, History } from "lucide-react"
 import Link from "next/link"
 import {
   getChildren,
@@ -26,6 +29,7 @@ export default function PlanPage() {
   const { user } = useAuth()
   const { toast } = useToast()
   const [showLogHours, setShowLogHours] = useState(false)
+  const [showHourHistory, setShowHourHistory] = useState(false)
   const [loading, setLoading] = useState(true)
 
   // Real data state
@@ -110,11 +114,17 @@ export default function PlanPage() {
             <h1 className="text-3xl font-bold">Plan</h1>
             <p className="text-muted-foreground">Track progress, stay compliant, and plan your lessons.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setShowLogHours(true)}>
               <Clock className="h-4 w-4 mr-2" />
               Log Hours
             </Button>
+            <Button variant="outline" onClick={() => setShowHourHistory(true)}>
+              <History className="h-4 w-4 mr-2" />
+              Hour History
+            </Button>
+            <TranscriptGenerator />
+            <ComplianceReport />
             <Button variant="outline" asChild>
               <Link href="/advisor">
                 <Bot className="h-4 w-4 mr-2" />
@@ -208,6 +218,20 @@ export default function PlanPage() {
           children={children.map((c) => ({ id: c.id, name: c.name }))}
           onSubmit={handleLogHours}
         />
+
+        {showHourHistory && (
+          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-background border rounded-lg shadow-lg max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h2 className="text-lg font-semibold">Hour Log History</h2>
+                <Button variant="ghost" size="sm" onClick={() => setShowHourHistory(false)}>Close</Button>
+              </div>
+              <div className="p-4">
+                <HourLogHistory />
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )

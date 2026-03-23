@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Book, Search, Grid3X3, Calendar, MessageSquare, Settings, Menu, LogOut, User, Target, Heart, Sparkles, SlidersHorizontal } from "lucide-react"
+import { Book, Search, Grid3X3, Calendar, MessageSquare, Settings, Menu, LogOut, User, Target, Heart, Sparkles, SlidersHorizontal, FolderOpen } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -36,6 +36,7 @@ const allNavItems: NavItem[] = [
   { name: "Community", href: "/community", icon: MessageSquare, moduleKey: "module_community" },
   { name: "Resources", href: "/resources", icon: Book, moduleKey: "module_resources" },
   { name: "Family", href: "/family", icon: Heart, moduleKey: "module_family" },
+  { name: "Portfolio", href: "/portfolio", icon: FolderOpen },
 ]
 
 export default function Navigation() {
