@@ -249,14 +249,13 @@ CRITICAL: The array key MUST be "lessons", NOT "schedule". Use "lessons" as the 
   } else if (intent === "build_and_schedule") {
     intentInstructions = `The parent wants the FULL WORKFLOW: build lesson plans AND schedule them.
 
-STEP-BY-STEP PROCESS (follow this order STRICTLY):
-1. FIRST, ask about subjects, grade, and scope (how many weeks they want). Do NOT generate anything yet.
-2. THEN, generate a "lesson_build" card with 4-6 lessons. NEVER generate a "schedule_proposal" before the parent approves lessons first.
-3. WAIT for the parent to approve the lessons.
-4. ONLY AFTER approval, generate a "schedule_proposal" card for those approved lessons.
-5. Then offer to build the next batch and repeat.
+PROCESS:
+1. If the parent hasn't specified subjects yet, ask ONE quick question about which subjects to cover. Otherwise, start building immediately.
+2. Generate a "lesson_build" card with 4-6 lessons. NEVER generate a "schedule_proposal" until the parent explicitly approves.
+3. After the parent approves the lessons, THEN generate a "schedule_proposal" card.
+4. Offer to build the next batch and repeat.
 
-CRITICAL: Your FIRST JSON output MUST be type "lesson_build", NEVER "schedule_proposal". You must build lessons before scheduling them. Do NOT skip the building step.
+CRITICAL: Your FIRST JSON output MUST be type "lesson_build", NEVER "schedule_proposal". You must build lessons BEFORE scheduling them. The parent must approve before you schedule.
 
 Use this exact format for building lessons:
 {

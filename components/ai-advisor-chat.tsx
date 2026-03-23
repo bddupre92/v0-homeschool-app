@@ -537,10 +537,11 @@ export default function AIAdvisorChat({
 
       // Parse structured data from the final text
       const { cleanText, card } = parseStructuredData(fullText)
+      const displayText = cleanText || fullText || "I'm thinking about this — could you try asking again?"
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMessage.id
-            ? { ...m, content: cleanText || fullText, structuredData: card }
+            ? { ...m, content: displayText, structuredData: card }
             : m
         )
       )
@@ -686,6 +687,7 @@ export default function AIAdvisorChat({
   }
 
   const handleContinueBuilding = (buildCard: LessonBuildCard) => {
+    if (isStreaming) return
     const childName = buildCard.childName || selectedChild?.name || "my child"
     const subject = buildCard.subject || "the same subjects"
     sendMessage(
@@ -694,6 +696,8 @@ export default function AIAdvisorChat({
   }
 
   const handleScheduleRequest = (buildCard: LessonBuildCard) => {
+    // Prevent duplicate sends if already streaming
+    if (isStreaming) return
     // Switch to schedule workflow and auto-send a scheduling request
     setWorkflowMode("schedule_lessons")
     const lessonTitles = (buildCard.lessons || [])
