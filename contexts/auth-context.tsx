@@ -122,19 +122,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await updateProfile(user, { displayName: name })
 
-      // Create session cookie for server-side auth
-      await createSessionCookie(user)
+      // Fire-and-forget: session cookie and Firestore write should not block sign-up
+      createSessionCookie(user).catch(err => console.error("Session cookie error:", err))
 
-      // Create user document in Firestore
       if (db) {
-        await setDoc(doc(db, "users", user.uid), {
+        setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
           email: user.email,
           displayName: name,
           emailVerified: user.emailVerified,
           createdAt: serverTimestamp(),
           lastLoginAt: serverTimestamp(),
-        })
+        }).catch(err => console.error("Firestore user doc error:", err))
       }
     } catch (error: any) {
       console.error("Sign up error:", error)
@@ -162,14 +161,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      // Create session cookie for server-side auth
-      await createSessionCookie(user)
+      // Fire-and-forget: don't block sign-in on session cookie or Firestore
+      createSessionCookie(user).catch(err => console.error("Session cookie error:", err))
 
-      // Update last login time
       if (db) {
-        await setDoc(doc(db, "users", user.uid), {
+        setDoc(doc(db, "users", user.uid), {
           lastLoginAt: serverTimestamp(),
-        }, { merge: true })
+        }, { merge: true }).catch(err => console.error("Firestore update error:", err))
       }
     } catch (error: any) {
       console.error("Sign in error:", error)
@@ -197,19 +195,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userCredential = await signInWithPopup(auth, provider)
       const user = userCredential.user
 
-      // Create session cookie for server-side auth
-      await createSessionCookie(user)
+      // Fire-and-forget: don't block sign-in on session cookie or Firestore
+      createSessionCookie(user).catch(err => console.error("Session cookie error:", err))
 
-      // Create or update user document in Firestore
       if (db) {
-        await setDoc(doc(db, "users", user.uid), {
+        setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
           email: user.email,
           displayName: user.displayName,
           photoURL: user.photoURL,
           emailVerified: user.emailVerified,
           lastLoginAt: serverTimestamp(),
-        }, { merge: true })
+        }, { merge: true }).catch(err => console.error("Firestore update error:", err))
       }
     } catch (error: any) {
       console.error("Google sign in error:", error)
