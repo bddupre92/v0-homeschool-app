@@ -1,14 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { CheckCircle2, AlertCircle, Clock, FileText, Plus, Shield } from "lucide-react"
+import {
+  CheckCircle2, AlertCircle, Clock, FileText, Plus, Shield,
+  Upload, Download, Trash2, Eye, Paperclip, Loader2, ExternalLink,
+} from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import {
+  updateComplianceFiling,
+  getFilingDocuments,
+  addFilingDocument,
+  deleteFilingDocument,
+} from "@/app/actions/family-actions"
 
 interface StateRequirements {
   state_abbreviation: string
@@ -44,6 +54,17 @@ interface ComplianceFiling {
   filed_date: string | null
 }
 
+interface FilingDocument {
+  id: string
+  file_name: string
+  file_type: string
+  file_size: number
+  file_url: string
+  upload_type: string
+  notes: string | null
+  created_at: string
+}
+
 interface StateFilingType {
   id: string
   filing_name: string
@@ -62,6 +83,7 @@ interface ComplianceDashboardProps {
   stateFilingTypes?: StateFilingType[]
   onLogHours?: () => void
   onAddFiling?: (filing: { filingType: string; dueDate?: string }) => void
+  onRefresh?: () => void
 }
 
 export default function ComplianceDashboard({
@@ -72,12 +94,22 @@ export default function ComplianceDashboard({
   stateFilingTypes = [],
   onLogHours,
   onAddFiling,
+  onRefresh,
 }: ComplianceDashboardProps) {
+  const { toast } = useToast()
   const [stateReqs, setStateReqs] = useState<StateRequirements | null>(null)
   const [loading, setLoading] = useState(false)
   const [showFilingDialog, setShowFilingDialog] = useState(false)
   const [newFilingType, setNewFilingType] = useState("")
   const [newFilingDate, setNewFilingDate] = useState("")
+
+  // Filing detail state
+  const [selectedFiling, setSelectedFiling] = useState<ComplianceFiling | null>(null)
+  const [filingDocuments, setFilingDocuments] = useState<FilingDocument[]>([])
+  const [loadingDocs, setLoadingDocs] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [filingNotes, setFilingNotes] = useState("")
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (stateAbbreviation) {
@@ -92,6 +124,94 @@ export default function ComplianceDashboard({
     }
   }, [stateAbbreviation])
 
+  const openFilingDetail = async (filing: ComplianceFiling) => {
+    setSelectedFiling(filing)
+    setFilingNotes("")
+    setLoadingDocs(true)
+    try {
+      const docs = await getFilingDocuments(filing.id)
+      setFilingDocuments(docs as FilingDocument[])
+    } catch {
+      setFilingDocuments([])
+    } finally {
+      setLoadingDocs(false)
+    }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || !selectedFiling) return
+
+    setUploading(true)
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData()
+        formData.append("file", file)
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        })
+
+        if (!uploadRes.ok) {
+          throw new Error("Upload failed")
+        }
+
+        const { url } = await uploadRes.json()
+
+        await addFilingDocument({
+          filingId: selectedFiling.id,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          fileUrl: url,
+          uploadType: file.type.includes("image") ? "photo" : "document",
+          notes: filingNotes || undefined,
+        })
+      }
+
+      toast({ title: "Uploaded", description: "Document attached to filing." })
+      setFilingNotes("")
+
+      // Refresh documents
+      const docs = await getFilingDocuments(selectedFiling.id)
+      setFilingDocuments(docs as FilingDocument[])
+    } catch (error) {
+      toast({ title: "Upload failed", description: "Could not upload file. Please try again.", variant: "destructive" })
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
+  const handleDeleteDocument = async (docId: string) => {
+    const result = await deleteFilingDocument(docId)
+    if (result.success && selectedFiling) {
+      setFilingDocuments(prev => prev.filter(d => d.id !== docId))
+      toast({ title: "Deleted", description: "Document removed." })
+    }
+  }
+
+  const handleMarkAsFiled = async () => {
+    if (!selectedFiling) return
+    const result = await updateComplianceFiling(selectedFiling.id, {
+      status: "filed",
+      filedDate: new Date().toISOString().split("T")[0],
+      notes: filingNotes || undefined,
+    })
+    if (result.success) {
+      toast({ title: "Filed", description: `${selectedFiling.filing_type} marked as filed.` })
+      setSelectedFiling(null)
+      onRefresh?.()
+    }
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
   if (!stateAbbreviation) {
     return (
       <Card>
@@ -99,7 +219,7 @@ export default function ComplianceDashboard({
           <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">Set Your State</h3>
           <p className="text-muted-foreground mb-4">
-            Go to Family Setup to select your home state. We'll automatically track your compliance requirements.
+            Go to Family Setup to select your home state. We&apos;ll automatically track your compliance requirements.
           </p>
           <Button variant="outline" asChild>
             <a href="/family">Set Up Family Profile</a>
@@ -130,12 +250,6 @@ export default function ComplianceDashboard({
   const subjectsCovered = requiredSubjects.filter(s =>
     coveredSubjects.some(cs => cs.includes(s.toLowerCase()) || s.toLowerCase().includes(cs))
   ).length
-
-  const filingsByStatus = {
-    filed: filings.filter(f => f.status === "filed"),
-    pending: filings.filter(f => f.status === "pending"),
-    overdue: filings.filter(f => f.status === "pending" && f.due_date && new Date(f.due_date) < new Date()),
-  }
 
   const handleAddFiling = () => {
     if (newFilingType && onAddFiling) {
@@ -310,7 +424,11 @@ export default function ComplianceDashboard({
           {filings.length > 0 ? (
             <div className="space-y-2">
               {filings.map((filing, idx) => (
-                <div key={filing.id || idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <button
+                  key={filing.id || idx}
+                  onClick={() => openFilingDetail(filing)}
+                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg w-full text-left hover:bg-muted/80 transition-colors cursor-pointer"
+                >
                   <div className="flex items-center gap-3">
                     {filing.status === "filed" ? (
                       <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -324,14 +442,18 @@ export default function ComplianceDashboard({
                       {filing.due_date && (
                         <p className="text-xs text-muted-foreground">
                           Due {new Date(filing.due_date).toLocaleDateString()}
+                          {filing.filed_date && ` · Filed ${new Date(filing.filed_date).toLocaleDateString()}`}
                         </p>
                       )}
                     </div>
                   </div>
-                  <Badge variant={filing.status === "filed" ? "default" : "secondary"}>
-                    {filing.status === "filed" ? "Filed" : filing.due_date && new Date(filing.due_date) < new Date() ? "Overdue" : "Pending"}
-                  </Badge>
-                </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={filing.status === "filed" ? "default" : "secondary"}>
+                      {filing.status === "filed" ? "Filed" : filing.due_date && new Date(filing.due_date) < new Date() ? "Overdue" : "Pending"}
+                    </Badge>
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </button>
               ))}
             </div>
           ) : (
@@ -369,6 +491,138 @@ export default function ComplianceDashboard({
           )}
         </CardContent>
       </Card>
+
+      {/* Filing Detail Dialog */}
+      <Dialog open={!!selectedFiling} onOpenChange={(open) => { if (!open) setSelectedFiling(null) }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {selectedFiling?.filing_type}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedFiling?.status === "filed"
+                ? `Filed on ${selectedFiling.filed_date ? new Date(selectedFiling.filed_date).toLocaleDateString() : "N/A"}`
+                : selectedFiling?.due_date
+                  ? `Due ${new Date(selectedFiling.due_date).toLocaleDateString()}`
+                  : "No due date set"
+              }
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Status */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Status:</span>
+              <Badge variant={selectedFiling?.status === "filed" ? "default" : "secondary"}>
+                {selectedFiling?.status === "filed" ? "Filed" : "Pending"}
+              </Badge>
+            </div>
+
+            {/* Documents */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-sm font-medium">Attached Documents</Label>
+                <span className="text-xs text-muted-foreground">{filingDocuments.length} file(s)</span>
+              </div>
+
+              {loadingDocs ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : filingDocuments.length > 0 ? (
+                <div className="space-y-2 mb-3">
+                  {filingDocuments.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between p-2 bg-muted/50 rounded border text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{doc.file_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatFileSize(doc.file_size)} · {new Date(doc.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" asChild>
+                          <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteDocument(doc.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-3 mb-3 bg-muted/30 rounded border border-dashed text-muted-foreground text-sm">
+                  No documents attached yet
+                </div>
+              )}
+
+              {/* Upload Area */}
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Notes for upload (optional)</Label>
+                  <Textarea
+                    placeholder="Add a note about this document..."
+                    value={filingNotes}
+                    onChange={(e) => setFilingNotes(e.target.value)}
+                    className="h-16 text-sm"
+                  />
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.eml,.txt"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4 mr-2" />
+                  )}
+                  {uploading ? "Uploading..." : "Upload Document"}
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  PDF, DOC, images, email exports (max 10MB)
+                </p>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Actions */}
+            <div className="flex gap-2">
+              {selectedFiling?.status !== "filed" && (
+                <Button onClick={handleMarkAsFiled} className="flex-1">
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Mark as Filed
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => setSelectedFiling(null)} className={selectedFiling?.status === "filed" ? "flex-1" : ""}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* State-Specific Filing Requirements */}
       {stateFilingTypes.length > 0 && (

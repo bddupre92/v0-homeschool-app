@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Navigation from "@/components/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/contexts/auth-context"
-import { Heart, Plus, X, User, Sparkles, GraduationCap, Trash2, Edit2, Save, BookOpen } from "lucide-react"
+import { Heart, Plus, X, User, GraduationCap, Trash2, Save, Loader2 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import {
+  getFamilyBlueprint,
+  saveFamilyBlueprint,
+  getChildren,
+  addChild,
+  updateChild,
+  deleteChild,
+} from "@/app/actions/family-actions"
 
 const FAMILY_VALUES = [
   "Faith", "Curiosity", "Resilience", "Kindness", "Independence",
@@ -74,6 +83,12 @@ interface TraitPillar {
 
 export default function FamilyPage() {
   const { user } = useAuth()
+  const { toast } = useToast()
+
+  // Loading state
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [savingChild, setSavingChild] = useState(false)
 
   // Blueprint state
   const [familyName, setFamilyName] = useState("")
@@ -83,19 +98,59 @@ export default function FamilyPage() {
   const [newPillarName, setNewPillarName] = useState("")
   const [newPillarDesc, setNewPillarDesc] = useState("")
   const [stateAbbr, setStateAbbr] = useState("")
-  const [blueprintSaved, setBlueprintSaved] = useState(false)
 
   // Children state
   const [children, setChildren] = useState<Child[]>([])
-  const [editingChild, setEditingChild] = useState<number | null>(null)
-  const [newInterest, setNewInterest] = useState("")
-  const [newStrength, setNewStrength] = useState("")
 
   // New child form
   const [showAddChild, setShowAddChild] = useState(false)
   const [newChild, setNewChild] = useState<Child>({
     name: "", interests: [], strengths: [], challenges: []
   })
+
+  // Load saved data on mount
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const [blueprint, childrenData] = await Promise.all([
+        getFamilyBlueprint(),
+        getChildren(),
+      ])
+
+      if (blueprint) {
+        setFamilyName(blueprint.family_name || "")
+        setSelectedValues(blueprint.values || [])
+        setSelectedPhilosophies(blueprint.philosophy || [])
+        setTraitPillars(
+          typeof blueprint.trait_pillars === "string"
+            ? JSON.parse(blueprint.trait_pillars)
+            : blueprint.trait_pillars || []
+        )
+        setStateAbbr(blueprint.state_abbreviation || "")
+      }
+
+      if (childrenData.length > 0) {
+        setChildren(childrenData.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          age: c.age || undefined,
+          grade: c.grade || undefined,
+          learningStyle: c.learning_style || undefined,
+          interests: c.interests || [],
+          strengths: c.strengths || [],
+          challenges: c.challenges || [],
+        })))
+      }
+    } catch (error) {
+      console.error("Failed to load family data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const toggleValue = (value: string) => {
     setSelectedValues(prev =>
@@ -121,29 +176,86 @@ export default function FamilyPage() {
     setTraitPillars(prev => prev.filter((_, i) => i !== idx))
   }
 
-  const addChildToList = () => {
-    if (newChild.name.trim()) {
-      setChildren(prev => [...prev, { ...newChild }])
-      setNewChild({ name: "", interests: [], strengths: [], challenges: [] })
-      setShowAddChild(false)
+  const handleSaveBlueprint = async () => {
+    setSaving(true)
+    try {
+      const result = await saveFamilyBlueprint({
+        familyName,
+        values: selectedValues,
+        philosophy: selectedPhilosophies,
+        traitPillars,
+        stateAbbreviation: stateAbbr || undefined,
+      })
+      if (result.success) {
+        toast({ title: "Blueprint saved", description: "Your family blueprint has been saved." })
+      } else {
+        toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" })
+    } finally {
+      setSaving(false)
     }
   }
 
-  const removeChild = (idx: number) => {
-    setChildren(prev => prev.filter((_, i) => i !== idx))
+  const handleAddChild = async () => {
+    if (!newChild.name.trim()) return
+    setSavingChild(true)
+    try {
+      const result = await addChild({
+        name: newChild.name,
+        age: newChild.age,
+        grade: newChild.grade,
+        learningStyle: newChild.learningStyle,
+        interests: newChild.interests,
+        strengths: newChild.strengths,
+        challenges: newChild.challenges,
+      })
+      if (result.success) {
+        toast({ title: "Child added", description: `${newChild.name} has been added to your family.` })
+        setNewChild({ name: "", interests: [], strengths: [], challenges: [] })
+        setShowAddChild(false)
+        loadData()
+      } else {
+        toast({ title: "Error", description: "Failed to add child.", variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to add child.", variant: "destructive" })
+    } finally {
+      setSavingChild(false)
+    }
+  }
+
+  const handleDeleteChild = async (child: Child) => {
+    if (!child.id) return
+    try {
+      const result = await deleteChild(child.id)
+      if (result.success) {
+        toast({ title: "Child removed", description: `${child.name} has been removed.` })
+        loadData()
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to remove child.", variant: "destructive" })
+    }
   }
 
   const addTagToChild = (childIdx: number, field: "interests" | "strengths" | "challenges", value: string) => {
     if (!value.trim()) return
-    setChildren(prev => prev.map((c, i) =>
-      i === childIdx ? { ...c, [field]: [...c[field], value.trim()] } : c
-    ))
+    const child = children[childIdx]
+    if (!child.id) return
+    const updated = { ...child, [field]: [...child[field], value.trim()] }
+    setChildren(prev => prev.map((c, i) => i === childIdx ? updated : c))
+    // Save in background
+    updateChild(child.id, { [field]: updated[field] })
   }
 
   const removeTagFromChild = (childIdx: number, field: "interests" | "strengths" | "challenges", tagIdx: number) => {
-    setChildren(prev => prev.map((c, i) =>
-      i === childIdx ? { ...c, [field]: c[field].filter((_, ti) => ti !== tagIdx) } : c
-    ))
+    const child = children[childIdx]
+    if (!child.id) return
+    const updated = { ...child, [field]: child[field].filter((_, ti) => ti !== tagIdx) }
+    setChildren(prev => prev.map((c, i) => i === childIdx ? updated : c))
+    // Save in background
+    updateChild(child.id, { [field]: updated[field] })
   }
 
   const addTagToNewChild = (field: "interests" | "strengths" | "challenges", value: string) => {
@@ -155,9 +267,17 @@ export default function FamilyPage() {
     setNewChild(prev => ({ ...prev, [field]: prev[field].filter((_, i) => i !== tagIdx) }))
   }
 
-  const handleSaveBlueprint = () => {
-    setBlueprintSaved(true)
-    setTimeout(() => setBlueprintSaved(false), 2000)
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navigation />
+        <main className="flex-1 container py-8 px-4 md:px-6 max-w-4xl">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (
@@ -167,7 +287,7 @@ export default function FamilyPage() {
         <div className="space-y-2 mb-8">
           <h1 className="text-3xl font-bold">Family Setup</h1>
           <p className="text-muted-foreground">
-            Define your family's values, add your children, and personalize your homeschool experience.
+            Define your family&apos;s values, add your children, and personalize your homeschool experience.
           </p>
         </div>
 
@@ -179,7 +299,7 @@ export default function FamilyPage() {
             </TabsTrigger>
             <TabsTrigger value="children" className="flex items-center gap-2">
               <User className="h-4 w-4" />
-              Children
+              Children ({children.length})
             </TabsTrigger>
           </TabsList>
 
@@ -210,7 +330,7 @@ export default function FamilyPage() {
                 {/* State */}
                 <div className="space-y-2">
                   <Label>Home State</Label>
-                  <p className="text-sm text-muted-foreground">We'll track your state's requirements automatically.</p>
+                  <p className="text-sm text-muted-foreground">We&apos;ll track your state&apos;s requirements automatically.</p>
                   <Select value={stateAbbr} onValueChange={setStateAbbr}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select your state" />
@@ -267,7 +387,7 @@ export default function FamilyPage() {
 
                 {/* Trait Pillars */}
                 <div className="space-y-3">
-                  <Label>Trait Pillars You're Cultivating</Label>
+                  <Label>Trait Pillars You&apos;re Cultivating</Label>
                   <p className="text-sm text-muted-foreground">
                     What character traits are you intentionally building in your children?
                   </p>
@@ -310,9 +430,13 @@ export default function FamilyPage() {
                   </div>
                 </div>
 
-                <Button onClick={handleSaveBlueprint} className="w-full">
-                  <Save className="h-4 w-4 mr-2" />
-                  {blueprintSaved ? "Saved!" : "Save Blueprint"}
+                <Button onClick={handleSaveBlueprint} disabled={saving} className="w-full">
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {saving ? "Saving..." : "Save Blueprint"}
                 </Button>
               </CardContent>
             </Card>
@@ -321,7 +445,7 @@ export default function FamilyPage() {
           {/* ─── Children Tab ──────────────────────────────────────────── */}
           <TabsContent value="children" className="space-y-6">
             {children.map((child, idx) => (
-              <Card key={idx}>
+              <Card key={child.id || idx}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-3">
@@ -337,7 +461,7 @@ export default function FamilyPage() {
                         </p>
                       </div>
                     </CardTitle>
-                    <Button variant="ghost" size="icon" onClick={() => removeChild(idx)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteChild(child)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
@@ -507,9 +631,13 @@ export default function FamilyPage() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button onClick={addChildToList} disabled={!newChild.name.trim()}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Child
+                    <Button onClick={handleAddChild} disabled={!newChild.name.trim() || savingChild}>
+                      {savingChild ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4 mr-2" />
+                      )}
+                      {savingChild ? "Adding..." : "Add Child"}
                     </Button>
                     <Button variant="outline" onClick={() => setShowAddChild(false)}>Cancel</Button>
                   </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense } from "react"
+import { Suspense, useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,16 +8,54 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import CommunityEvents from "@/components/community-events"
 import CommunityGroups from "@/components/community-groups"
-import { BookOpen, Calendar, Users, Clock, Target, Sparkles, Heart, Shield, ArrowRight } from "lucide-react"
+import { BookOpen, Calendar, Users, Clock, Target, Sparkles, Heart, Shield, ArrowRight, Loader2 } from "lucide-react"
+import { getDashboardStats, getFamilyBlueprint } from "@/app/actions/family-actions"
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState<{
+    totalHours: number
+    totalLessons: number
+    childrenCount: number
+    complianceStatus: string
+    filings: any[]
+  } | null>(null)
+  const [stateName, setStateName] = useState<string | null>(null)
+  const [hasBlueprint, setHasBlueprint] = useState<boolean | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const loadStats = useCallback(async () => {
+    try {
+      const [dashStats, blueprint] = await Promise.all([
+        getDashboardStats(),
+        getFamilyBlueprint(),
+      ])
+      setStats(dashStats)
+      setHasBlueprint(!!blueprint)
+      setStateName(blueprint?.state_abbreviation || null)
+    } catch (error) {
+      console.error("Failed to load dashboard stats:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadStats()
+  }, [loadStats])
+
+  const nextDueFiling = stats?.filings?.find((f: any) =>
+    f.status === "pending" && f.due_date
+  )
+
+  const complianceColor = stats?.complianceStatus === "On Track" ? "text-green-600" : "text-amber-600"
+
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
       {/* Welcome Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Welcome back!</h1>
-          <p className="text-muted-foreground mt-1">Here's your homeschool journey at a glance.</p>
+          <p className="text-muted-foreground mt-1">Here&apos;s your homeschool journey at a glance.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
@@ -44,7 +82,11 @@ export default function DashboardPage() {
                 <Clock className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">326h</p>
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <p className="text-2xl font-bold">{stats?.totalHours || 0}h</p>
+                )}
                 <p className="text-xs text-muted-foreground">This Year</p>
               </div>
             </div>
@@ -57,7 +99,11 @@ export default function DashboardPage() {
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">260</p>
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <p className="text-2xl font-bold">{stats?.totalLessons || 0}</p>
+                )}
                 <p className="text-xs text-muted-foreground">Lessons</p>
               </div>
             </div>
@@ -70,7 +116,13 @@ export default function DashboardPage() {
                 <Shield className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-green-600">On Track</p>
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <p className={`text-2xl font-bold ${complianceColor}`}>
+                    {stats?.complianceStatus || "Set Up"}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">Compliance</p>
               </div>
             </div>
@@ -83,8 +135,12 @@ export default function DashboardPage() {
                 <Users className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">3</p>
-                <p className="text-xs text-muted-foreground">Groups</p>
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <p className="text-2xl font-bold">{stats?.childrenCount || 0}</p>
+                )}
+                <p className="text-xs text-muted-foreground">Children</p>
               </div>
             </div>
           </CardContent>
@@ -99,7 +155,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
-                Today's Lessons
+                Today&apos;s Lessons
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/planner">View All <ArrowRight className="h-3 w-3 ml-1" /></Link>
@@ -107,32 +163,21 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Solar System Exploration</p>
-                  <p className="text-xs text-muted-foreground">Science · Emma · 45 min</p>
-                </div>
-                <Badge variant="outline" className="text-xs">Completed</Badge>
+            {stats?.totalLessons === 0 ? (
+              <div className="text-center py-6 text-sm text-muted-foreground">
+                <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No lessons logged yet.</p>
+                <p className="text-xs mt-1">Start by creating a lesson or logging hours.</p>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Fractions Through Baking</p>
-                  <p className="text-xs text-muted-foreground">Math · Emma · 30 min</p>
-                </div>
-                <Badge variant="secondary" className="text-xs">Up Next</Badge>
+            ) : (
+              <div className="text-center py-6 text-sm text-muted-foreground">
+                <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>View your planner for today&apos;s schedule.</p>
+                <Button variant="outline" size="sm" className="mt-2" asChild>
+                  <Link href="/planner">Open Planner</Link>
+                </Button>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Dinosaur Counting Adventure</p>
-                  <p className="text-xs text-muted-foreground">Math · Liam · 20 min</p>
-                </div>
-                <Badge variant="secondary" className="text-xs">Later</Badge>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -142,7 +187,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
                 <Shield className="h-4 w-4" />
-                Compliance — Wisconsin
+                Compliance{stateName ? ` — ${stateName}` : ""}
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/plan?tab=compliance">Details <ArrowRight className="h-3 w-3 ml-1" /></Link>
@@ -150,24 +195,33 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>Hours Progress</span>
-                <span className="text-muted-foreground">326 of 875h</span>
+            {!stateName ? (
+              <div className="text-center py-4 text-sm text-muted-foreground">
+                <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Set your state in Family Setup to track compliance.</p>
+                <Button variant="outline" size="sm" className="mt-2" asChild>
+                  <Link href="/family">Set Up</Link>
+                </Button>
               </div>
-              <Progress value={37} className="h-2" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>Required Subjects</span>
-                <span className="text-muted-foreground">6 of 6 covered</span>
-              </div>
-              <Progress value={100} className="h-2" />
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Due Mar 31</Badge>
-              <span className="text-muted-foreground">Q2 Quarterly Report</span>
-            </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Hours Logged</span>
+                    <span className="text-muted-foreground">{stats?.totalHours || 0}h this year</span>
+                  </div>
+                  <Progress value={stats?.totalHours ? Math.min((stats.totalHours / 875) * 100, 100) : 0} className="h-2" />
+                </div>
+                {nextDueFiling && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                      Due {new Date(nextDueFiling.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </Badge>
+                    <span className="text-muted-foreground">{nextDueFiling.filing_type}</span>
+                  </div>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -212,25 +266,27 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Family Setup CTA (if not set up) */}
-      <Card className="border-dashed">
-        <CardContent className="py-6">
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Heart className="h-6 w-6 text-primary" />
+      {/* Family Setup CTA (show if no blueprint) */}
+      {hasBlueprint === false && (
+        <Card className="border-dashed">
+          <CardContent className="py-6">
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Heart className="h-6 w-6 text-primary" />
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="font-semibold">Set Up Your Family Blueprint</h3>
+                <p className="text-sm text-muted-foreground">
+                  Define your values, add your children, and get AI lessons tailored to your family.
+                </p>
+              </div>
+              <Button asChild>
+                <Link href="/family">Get Started</Link>
+              </Button>
             </div>
-            <div className="flex-1 text-center md:text-left">
-              <h3 className="font-semibold">Set Up Your Family Blueprint</h3>
-              <p className="text-sm text-muted-foreground">
-                Define your values, add your children, and get AI lessons tailored to your family.
-              </p>
-            </div>
-            <Button asChild>
-              <Link href="/family">Get Started</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
