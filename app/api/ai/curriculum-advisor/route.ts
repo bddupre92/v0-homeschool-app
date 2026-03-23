@@ -4,6 +4,14 @@ import { groq } from "@ai-sdk/groq"
 export const maxDuration = 120
 
 export async function POST(req: Request) {
+  if (!process.env.GROQ_API_KEY) {
+    return new Response(
+      JSON.stringify({ error: "AI service is not configured. Please set the GROQ_API_KEY environment variable." }),
+      { status: 503, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  try {
   const {
     message,
     conversationHistory,
@@ -168,4 +176,12 @@ RESPONSE RULES:
   })
 
   return result.toDataStreamResponse()
+  } catch (error) {
+    console.error("[curriculum-advisor] Error:", error)
+    const message = error instanceof Error ? error.message : "An unexpected error occurred"
+    return new Response(
+      JSON.stringify({ error: message }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    )
+  }
 }

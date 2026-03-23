@@ -149,7 +149,22 @@ export default function AIAdvisorChat({
         }),
       })
 
-      if (!response.ok) throw new Error("Failed to get response")
+      if (!response.ok) {
+        let errorMessage = "Sorry, I ran into an issue. Please try again."
+        try {
+          const errorData = await response.json()
+          if (response.status === 503) {
+            errorMessage = "The AI service is temporarily unavailable. Please check that the API key is configured."
+          } else if (response.status === 429) {
+            errorMessage = "Too many requests. Please wait a moment and try again."
+          } else if (errorData.error) {
+            errorMessage = errorData.error
+          }
+        } catch {
+          // response wasn't JSON, use default
+        }
+        throw new Error(errorMessage)
+      }
 
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
@@ -192,10 +207,11 @@ export default function AIAdvisorChat({
       )
     } catch (error) {
       console.error("Advisor error:", error)
+      const errorText = error instanceof Error ? error.message : "Sorry, I ran into an issue. Please try again."
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMessage.id
-            ? { ...m, content: "Sorry, I ran into an issue. Please try again." }
+            ? { ...m, content: errorText }
             : m
         )
       )
