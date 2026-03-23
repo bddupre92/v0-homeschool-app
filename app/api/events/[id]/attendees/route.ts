@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth-service"
-import { getPool } from "@/lib/db"
-
-const pool = getPool()
+import { sql } from "@/lib/db"
 
 export async function GET(
   request: NextRequest,
@@ -21,7 +19,7 @@ export async function GET(
       ORDER BY ea.created_at ASC
     `
 
-    const result = await pool.query(query, [params.id])
+    const result = await sql.query(query, [params.id])
 
     return NextResponse.json({
       attendees: result.rows,
@@ -54,7 +52,7 @@ export async function POST(
       RETURNING id
     `
 
-    const userResult = await pool.query(userQuery, [
+    const userResult = await sql.query(userQuery, [
       user.userId,
       user.email,
       user.email || "User",
@@ -65,7 +63,7 @@ export async function POST(
     const existingQuery = `
       SELECT id FROM event_attendees WHERE event_id = $1 AND user_id = $2
     `
-    const existingResult = await pool.query(existingQuery, [params.id, userId])
+    const existingResult = await sql.query(existingQuery, [params.id, userId])
 
     if (existingResult.rows.length > 0) {
       return NextResponse.json(
@@ -82,7 +80,7 @@ export async function POST(
       FROM events
       WHERE id = $1
     `
-    const eventResult = await pool.query(eventQuery, [params.id])
+    const eventResult = await sql.query(eventQuery, [params.id])
 
     if (eventResult.rows.length === 0) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
@@ -103,7 +101,7 @@ export async function POST(
       RETURNING *
     `
 
-    const result = await pool.query(query, [params.id, userId])
+    const result = await sql.query(query, [params.id, userId])
 
     return NextResponse.json(result.rows[0], { status: 201 })
   } catch (error) {

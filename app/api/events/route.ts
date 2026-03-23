@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth-service"
-import { getPool } from "@/lib/db"
-
-const pool = getPool()
+import { sql } from "@/lib/db"
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +28,7 @@ export async function GET(request: NextRequest) {
       params.push(`%${location}%`)
     }
 
-    const result = await pool.query(query, params)
+    const result = await sql.query(query, params)
 
     return NextResponse.json({
       events: result.rows,
@@ -85,7 +83,7 @@ export async function POST(request: NextRequest) {
       RETURNING id
     `
 
-    const userResult = await pool.query(userQuery, [
+    const userResult = await sql.query(userQuery, [
       user.userId,
       user.email,
       user.email || "User",
@@ -110,7 +108,7 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `
 
-    const result = await pool.query(query, [
+    const result = await sql.query(query, [
       title,
       description || "",
       eventDateTime,
