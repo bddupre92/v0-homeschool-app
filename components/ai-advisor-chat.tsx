@@ -195,6 +195,7 @@ function StructuredCardRenderer({
   onSchedule,
   onGeneratePacket,
   onScheduleRequest,
+  onContinueBuilding,
 }: {
   card: StructuredCard
   onSave?: (data: any) => void

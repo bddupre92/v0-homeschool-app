@@ -8,19 +8,14 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import type { LessonBuildCard } from "@/lib/advisor-types"
 
-export function LessonBuildCardUI({
-  card,
-  onSave,
-  onGeneratePacket,
-  onScheduleRequest,
-  onContinueBuilding,
-}: {
+export function LessonBuildCardUI(props: {
   card: LessonBuildCard
   onSave?: (data: any) => void
   onGeneratePacket?: (lesson: LessonBuildCard["lessons"][0], context: { childName: string; subject: string }) => void
   onScheduleRequest?: (card: LessonBuildCard) => void
   onContinueBuilding?: (card: LessonBuildCard) => void
 }) {
+  const { card, onSave, onGeneratePacket, onScheduleRequest, onContinueBuilding } = props
   const lessons = card.lessons || []
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
   const [packetDepths, setPacketDepths] = useState<Record<number, "light" | "full">>(
