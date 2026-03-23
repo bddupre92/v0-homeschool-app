@@ -4,7 +4,7 @@ import { groq } from "@ai-sdk/groq"
 export const maxDuration = 120
 
 export async function POST(req: Request) {
-  const { childName, grade, subject, topic, learningStyle, interests, location } = await req.json()
+  const { childName, grade, subject, topic, learningStyle, interests, location, familyValues, philosophy, strengths } = await req.json()
 
   const systemPrompt = `You are a master homeschool curriculum designer who creates complete, ready-to-teach lesson packets.
 
@@ -123,8 +123,11 @@ TOPIC: ${topic}
 ${learningStyle ? `LEARNING STYLE: ${learningStyle}` : ""}
 ${interests ? `CHILD'S INTERESTS: ${interests} (weave these into examples and activities where natural)` : ""}
 ${location ? `LOCATION: ${location} (suggest relevant local field trips and exploration activities for this area)` : ""}
+${familyValues ? `FAMILY VALUES: ${familyValues} (subtly weave these values into discussion questions, reflection activities, and character connections)` : ""}
+${philosophy ? `EDUCATIONAL PHILOSOPHY: ${philosophy} (align the teaching approach with this philosophy)` : ""}
+${strengths ? `CHILD'S STRENGTHS: ${strengths} (leverage these strengths in activities)` : ""}
 
-Generate the complete lesson packet JSON now. Make it engaging, thorough, and practical. The parent should be able to print this out and teach an amazing lesson today.`
+Generate the complete lesson packet JSON now. Make it engaging, thorough, and practical. The parent should be able to print this out and teach an amazing lesson today. Every lesson should trace back to the family's values and the child's unique profile.`
 
   const result = await streamText({
     model: groq("llama-3.3-70b-versatile"),
