@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { BookOpen, ChevronDown, ChevronUp, FileText, FlaskConical, Package } from "lucide-react"
+import { BookOpen, ChevronDown, ChevronUp, FileText, FlaskConical, Package, Loader2, Check } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,15 +11,19 @@ import type { LessonBuildCard } from "@/lib/advisor-types"
 export function LessonBuildCardUI({
   card,
   onSave,
+  onGeneratePacket,
 }: {
   card: LessonBuildCard
   onSave?: (data: any) => void
+  onGeneratePacket?: (lesson: LessonBuildCard["lessons"][0], context: { childName: string; subject: string }) => void
 }) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
   const [packetDepths, setPacketDepths] = useState<Record<number, "light" | "full">>(
     Object.fromEntries(card.lessons.map((l, i) => [i, l.packetDepth || "light"]))
   )
   const [saved, setSaved] = useState(false)
+  const [generatingIdx, setGeneratingIdx] = useState<number | null>(null)
+  const [generatedIdxs, setGeneratedIdxs] = useState<Set<number>>(new Set())
 
   const toggleDepth = (idx: number) => {
     setPacketDepths((prev) => ({
@@ -36,6 +40,17 @@ export function LessonBuildCardUI({
       }))
       onSave({ ...card, lessons: lessonsWithDepth })
       setSaved(true)
+    }
+  }
+
+  const handleGeneratePacket = async (lesson: LessonBuildCard["lessons"][0], idx: number) => {
+    if (!onGeneratePacket || generatingIdx !== null) return
+    setGeneratingIdx(idx)
+    try {
+      await onGeneratePacket(lesson, { childName: card.childName, subject: card.subject })
+      setGeneratedIdxs((prev) => new Set(prev).add(idx))
+    } finally {
+      setGeneratingIdx(null)
     }
   }
 
@@ -56,6 +71,8 @@ export function LessonBuildCardUI({
         {card.lessons.map((lesson, idx) => {
           const isExpanded = expandedIdx === idx
           const depth = packetDepths[idx]
+          const isGenerating = generatingIdx === idx
+          const isGenerated = generatedIdxs.has(idx)
           return (
             <div key={idx} className="rounded-lg border overflow-hidden">
               <button
@@ -67,6 +84,11 @@ export function LessonBuildCardUI({
                   <p className="text-sm font-medium truncate">{lesson.lessonTitle}</p>
                   <p className="text-xs text-muted-foreground">{lesson.objectiveTitle} · {lesson.duration}min</p>
                 </div>
+                {isGenerated && (
+                  <Badge variant="default" className="text-xs bg-green-600 shrink-0 mr-1">
+                    <Check className="h-3 w-3 mr-0.5" /> Generated
+                  </Badge>
+                )}
                 {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
               {isExpanded && (
@@ -113,6 +135,32 @@ export function LessonBuildCardUI({
                       </button>
                     </div>
                   </div>
+                  {onGeneratePacket && !isGenerated && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleGeneratePacket(lesson, idx)}
+                      disabled={isGenerating || generatingIdx !== null}
+                      className="w-full mt-1"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <FlaskConical className="h-3.5 w-3.5 mr-1.5" />
+                          Generate Full Lesson Packet
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  {isGenerated && (
+                    <p className="text-xs text-green-600 font-medium text-center">
+                      Full packet generated and saved! See below in chat.
+                    </p>
+                  )}
                 </div>
               )}
             </div>

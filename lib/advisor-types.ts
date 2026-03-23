@@ -7,6 +7,8 @@ export interface AdvisorMessage {
   structuredData?: StructuredCard | null
   messageType?: string
   createdAt?: string
+  lessonPacket?: any | null
+  savedPacketId?: string | null
 }
 
 export type StructuredCard =

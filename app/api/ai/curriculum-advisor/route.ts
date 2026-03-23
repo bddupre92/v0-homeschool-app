@@ -265,7 +265,14 @@ RESPONSE RULES:
 6. For curriculum plans, generate comprehensive objectives organized by subject.
 7. For compliance, be specific about the family's state requirements and deadlines.
 8. NEVER reference children who are not in the family. Only use names from the ALL CHILDREN list.
-9. NEVER assume or hallucinate data about filings, hours, or progress. Only state what the actual records show.`
+9. NEVER assume or hallucinate data about filings, hours, or progress. Only state what the actual records show.
+10. CRITICAL JSON FORMATTING: When generating structured data cards, you MUST:
+    - Output the JSON directly inside \`\`\`json code fences — do NOT describe, announce, or narrate it
+    - Do NOT say "here is the JSON" or "here's a JSON block" — just output the fenced JSON block after your conversational text
+    - The JSON must be valid: no trailing commas, no single quotes, no JS comments
+    - Do NOT wrap string values across multiple lines inside the JSON
+    - Ensure all arrays and objects are properly closed with matching brackets
+    - The "type" field must exactly match one of: curriculum_plan, compliance_check, progress_report, lesson_suggestion, lesson_build, schedule_proposal`
 
   // Build messages array from conversation history
   const messages = [

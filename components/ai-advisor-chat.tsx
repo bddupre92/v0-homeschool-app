@@ -22,6 +22,9 @@ import { ProgressReportCardUI } from "@/components/advisor-cards/progress-report
 import { LessonSuggestionCardUI } from "@/components/advisor-cards/lesson-suggestion-card"
 import { LessonBuildCardUI } from "@/components/advisor-cards/lesson-build-card"
 import { ScheduleProposalCardUI } from "@/components/advisor-cards/schedule-proposal-card"
+import LessonPacketViewer from "@/components/lesson-packet-viewer"
+import { savePacket } from "@/app/actions/packet-actions"
+import type { LessonPacket } from "@/lib/types"
 
 interface ComplianceData {
   totalHoursLogged: number
@@ -42,27 +45,76 @@ interface AIAdvisorChatProps {
   initialMessages?: AdvisorMessage[]
 }
 
-function parseStructuredData(text: string): { cleanText: string; card: StructuredCard | null } {
-  const jsonMatch = text.match(/```json\s*([\s\S]*?)```/)
-  if (!jsonMatch) return { cleanText: text, card: null }
+const KNOWN_CARD_TYPES = [
+  "curriculum_plan", "compliance_check", "progress_report",
+  "lesson_suggestion", "lesson_build", "schedule_proposal",
+]
 
+function cleanJsonString(raw: string): string {
+  return raw
+    .replace(/,\s*([}\]])/g, "$1")       // trailing commas
+    .replace(/\/\/[^\n]*/g, "")           // JS-style comments
+    .replace(/[\x00-\x1F\x7F]/g, (c) =>  // control chars (except newline/tab)
+      c === "\n" || c === "\t" ? c : " "
+    )
+}
+
+function tryParseJson(raw: string): StructuredCard | null {
   try {
-    const card = JSON.parse(jsonMatch[1].trim()) as StructuredCard
-    const cleanText = text.replace(/```json\s*[\s\S]*?```/, "").trim()
-    return { cleanText, card }
+    const cleaned = cleanJsonString(raw.trim())
+    const parsed = JSON.parse(cleaned)
+    if (parsed && typeof parsed === "object" && KNOWN_CARD_TYPES.includes(parsed.type)) {
+      return parsed as StructuredCard
+    }
+    return null
   } catch {
-    return { cleanText: text, card: null }
+    return null
   }
+}
+
+function parseStructuredData(text: string): { cleanText: string; card: StructuredCard | null } {
+  // Strategy 1: Standard ```json...``` code fence (case-insensitive)
+  const fenceMatch = text.match(/```(?:json|JSON|Json)?\s*\n?([\s\S]*?)```/)
+  if (fenceMatch) {
+    const card = tryParseJson(fenceMatch[1])
+    if (card) {
+      const cleanText = text.replace(/```(?:json|JSON|Json)?\s*\n?[\s\S]*?```/, "").trim()
+      return { cleanText, card }
+    }
+  }
+
+  // Strategy 2: Bare JSON extraction — find outermost { ... } containing a "type" field
+  // (proven pattern from lesson-packet-generator.tsx:100-107)
+  const jsonStart = text.indexOf("{")
+  const jsonEnd = text.lastIndexOf("}")
+  if (jsonStart !== -1 && jsonEnd > jsonStart) {
+    const candidate = text.slice(jsonStart, jsonEnd + 1)
+    if (candidate.includes('"type"')) {
+      const card = tryParseJson(candidate)
+      if (card) {
+        const cleanText = (text.slice(0, jsonStart) + text.slice(jsonEnd + 1)).trim()
+        return { cleanText, card }
+      }
+    }
+  }
+
+  // No valid card found
+  if (text.includes('"type"') && (text.includes("{") || text.includes("```"))) {
+    console.warn("[parseStructuredData] Text appears to contain card JSON but failed to parse:", text.slice(0, 300))
+  }
+  return { cleanText: text, card: null }
 }
 
 function StructuredCardRenderer({
   card,
   onSave,
   onSchedule,
+  onGeneratePacket,
 }: {
   card: StructuredCard
   onSave?: (data: any) => void
   onSchedule?: (lessons: any[]) => void
+  onGeneratePacket?: (lesson: any, context: { childName: string; subject: string }) => void
 }) {
   switch (card.type) {
     case "curriculum_plan":
@@ -74,7 +126,7 @@ function StructuredCardRenderer({
     case "lesson_suggestion":
       return <LessonSuggestionCardUI card={card} />
     case "lesson_build":
-      return <LessonBuildCardUI card={card} onSave={onSave} />
+      return <LessonBuildCardUI card={card} onSave={onSave} onGeneratePacket={onGeneratePacket} />
     case "schedule_proposal":
       return <ScheduleProposalCardUI card={card} onSchedule={onSchedule} />
     default:
@@ -308,6 +360,125 @@ export default function AIAdvisorChat({
     }
   }
 
+  const handleGeneratePacket = async (
+    lesson: { objectiveTitle: string; lessonTitle: string; description: string; materials: string[] },
+    context: { childName: string; subject: string }
+  ) => {
+    const loadingMsgId = crypto.randomUUID()
+    const loadingMsg: AdvisorMessage = {
+      id: loadingMsgId,
+      role: "assistant",
+      content: "Generating full lesson packet...",
+    }
+    setMessages((prev) => [...prev, loadingMsg])
+
+    try {
+      const response = await fetch("/api/ai/generate-lesson-packet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          childName: context.childName,
+          grade: selectedChild?.grade || "",
+          subject: context.subject,
+          topic: lesson.lessonTitle,
+          learningStyle: selectedChild?.learningStyle || "",
+          interests: selectedChild?.interests?.join(", ") || "",
+          location: familyBlueprint?.stateAbbreviation || "",
+          familyValues: familyBlueprint?.values?.join(", ") || "",
+          philosophy: familyBlueprint?.philosophy?.join(", ") || "",
+          strengths: selectedChild?.strengths?.join(", ") || "",
+        }),
+      })
+
+      if (!response.ok) throw new Error("Failed to generate lesson packet")
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let fullResponse = ""
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          fullResponse += decoder.decode(value, { stream: true })
+          const chars = fullResponse.length
+          let progress = "Preparing..."
+          if (chars < 2000) progress = "Generating student lesson..."
+          else if (chars < 5000) progress = "Creating worksheet..."
+          else if (chars < 8000) progress = "Writing teacher guide..."
+          else if (chars < 11000) progress = "Building materials & experiment..."
+          else progress = "Adding exploration & extensions..."
+          setMessages((prev) =>
+            prev.map((m) => (m.id === loadingMsgId ? { ...m, content: progress } : m))
+          )
+        }
+      }
+
+      // Parse JSON using proven "find outermost braces" approach
+      let jsonStr = fullResponse.trim()
+      const jsonStart = jsonStr.indexOf("{")
+      const jsonEnd = jsonStr.lastIndexOf("}")
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        jsonStr = jsonStr.slice(jsonStart, jsonEnd + 1)
+      }
+      const packetData = JSON.parse(jsonStr)
+
+      const packet: LessonPacket = {
+        id: crypto.randomUUID(),
+        title: packetData.studentLesson?.title || lesson.lessonTitle,
+        subject: context.subject,
+        grade: selectedChild?.grade || "",
+        childName: context.childName,
+        topic: lesson.lessonTitle,
+        createdAt: new Date().toISOString(),
+        studentLesson: packetData.studentLesson,
+        worksheet: packetData.worksheet,
+        teacherGuide: packetData.teacherGuide,
+        materialsList: packetData.materialsList,
+        experiment: packetData.experiment,
+        localExploration: packetData.localExploration,
+        extensions: packetData.extensions,
+      }
+
+      // Auto-save to database
+      let savedId: string | null = null
+      try {
+        const saveResult = await savePacket(packet, {
+          learningStyle: selectedChild?.learningStyle || "",
+          interests: selectedChild?.interests?.join(", ") || "",
+        })
+        if (saveResult.success && saveResult.packet) {
+          savedId = saveResult.packet.id
+        }
+      } catch {
+        // Save is not critical — packet still shows inline
+      }
+
+      // Replace loading message with the full packet viewer
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === loadingMsgId
+            ? {
+                ...m,
+                content: `Here's the full lesson packet for "${lesson.lessonTitle}":`,
+                lessonPacket: packet,
+                savedPacketId: savedId,
+              }
+            : m
+        )
+      )
+    } catch (error) {
+      console.error("Error generating packet:", error)
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === loadingMsgId
+            ? { ...m, content: `Failed to generate packet for "${lesson.lessonTitle}". Please try again.` }
+            : m
+        )
+      )
+    }
+  }
+
   const clearChat = () => {
     setWorkflowMode(null)
     setMessages([
@@ -401,7 +572,13 @@ export default function AIAdvisorChat({
                   card={msg.structuredData}
                   onSave={onSaveRecommendation}
                   onSchedule={onScheduleLessons}
+                  onGeneratePacket={handleGeneratePacket}
                 />
+              )}
+              {msg.lessonPacket && (
+                <div className="w-full">
+                  <LessonPacketViewer packet={msg.lessonPacket} savedPacketId={msg.savedPacketId} />
+                </div>
               )}
             </div>
             {msg.role === "user" && (
