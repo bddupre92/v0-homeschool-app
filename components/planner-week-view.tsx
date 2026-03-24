@@ -66,6 +66,11 @@ export default function PlannerWeekView({ lessonsByDay, onSelectLesson, isLoadin
                       <div className={`w-3 h-3 rounded-full ${subject.color}`}></div>
                       <span className="font-medium text-sm truncate">{lesson.title}</span>
                     </div>
+                    {lesson.childName && (
+                      <div className="text-xs font-medium text-primary/80 mt-0.5 truncate">
+                        {lesson.childName}
+                      </div>
+                    )}
                     <div className="text-xs text-muted-foreground flex items-center mt-1">
                       <Clock className="h-3 w-3 mr-1" />
                       {format(lesson.date, "h:mm a")} ({lesson.duration} min)

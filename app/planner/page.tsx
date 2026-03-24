@@ -50,6 +50,7 @@ export default function PlannerPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeletingLesson, setIsDeletingLesson] = useState(false)
+  const [filteredChildren, setFilteredChildren] = useState<string[]>([]) // empty = show all
 
   const loadLessons = useCallback(async () => {
     try {
@@ -149,12 +150,33 @@ export default function PlannerPage() {
     return Array.from(ids)
   }, [lessons])
 
-  // Filter lessons by selected subjects and current week
+  // Collect unique child names from lessons
+  const childNames = useMemo(() => {
+    const names = new Set<string>()
+    lessons.forEach((l) => { if (l.childName) names.add(l.childName) })
+    return Array.from(names).sort()
+  }, [lessons])
+
+  // Initialize child filter to show all when new children appear
+  useEffect(() => {
+    if (childNames.length > 0 && filteredChildren.length === 0) {
+      setFilteredChildren(childNames)
+    }
+  }, [childNames])
+
+  const toggleChildFilter = (name: string) => {
+    setFilteredChildren((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+    )
+  }
+
+  // Filter lessons by selected subjects, children, and current week
   // If a lesson's subject isn't in the known subject list, always show it (don't filter it out)
   const knownSubjectIds = new Set(subjects.map((s) => s.id))
   const filteredLessons = lessons.filter(
     (lesson) =>
       (filteredSubjects.includes(lesson.subject) || !knownSubjectIds.has(lesson.subject)) &&
+      (!lesson.childName || filteredChildren.length === 0 || filteredChildren.includes(lesson.childName)) &&
       lesson.date >= startOfWeek(currentDate, { weekStartsOn: 0 }) &&
       lesson.date <= endOfWeek(currentDate, { weekStartsOn: 0 })
   )
@@ -217,6 +239,11 @@ export default function PlannerPage() {
                 onToggleSubject={toggleSubjectFilter}
                 onSelectAll={() => setFilteredSubjects(subjects.map((s) => s.id))}
                 onClearAll={() => setFilteredSubjects([])}
+                childNames={childNames}
+                filteredChildren={filteredChildren}
+                onToggleChild={toggleChildFilter}
+                onSelectAllChildren={() => setFilteredChildren(childNames)}
+                onClearAllChildren={() => setFilteredChildren([])}
               />
             </div>
           </div>

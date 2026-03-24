@@ -262,7 +262,14 @@ export async function scheduleLessonsToPlanner(lessons: {
 
     for (const lesson of lessons) {
       // Find the Monday of the target week
-      let weekRef = new Date(lesson.weekStart)
+      // Parse date-only strings as local time (not UTC) to avoid off-by-one day issues
+      let weekRef: Date
+      const wsMatch = lesson.weekStart?.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      if (wsMatch) {
+        weekRef = new Date(parseInt(wsMatch[1]), parseInt(wsMatch[2]) - 1, parseInt(wsMatch[3]))
+      } else {
+        weekRef = new Date(lesson.weekStart)
+      }
       if (isNaN(weekRef.getTime())) {
         // Default to next Monday
         const now = new Date()

@@ -52,6 +52,12 @@ export default function LessonDetailDialog({
             <h4 className="text-sm font-medium mb-1">Description</h4>
             <p className="text-sm">{lesson.description}</p>
           </div>
+          {lesson.childName && (
+            <div>
+              <h4 className="text-sm font-medium mb-1">Student</h4>
+              <Badge variant="secondary">{lesson.childName}</Badge>
+            </div>
+          )}
           <div>
             <h4 className="text-sm font-medium mb-1">Subject</h4>
             <Badge variant="outline">{subject.name}</Badge>

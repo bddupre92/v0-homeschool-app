@@ -64,7 +64,12 @@ export default function PlannerListView({
                     <div className={`w-1 self-stretch ${subject.color} rounded-full`}></div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <h3 className="font-medium">{lesson.title}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">{lesson.title}</h3>
+                          {lesson.childName && (
+                            <Badge variant="secondary" className="text-xs">{lesson.childName}</Badge>
+                          )}
+                        </div>
                         <Badge variant="outline">{subject.name}</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">{lesson.description}</p>

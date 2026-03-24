@@ -5,7 +5,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Filter } from "lucide-react"
+import { Filter, User } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
 import { subjects } from "@/lib/planner-data"
 
 interface PlannerFilterPopoverProps {
@@ -15,6 +16,11 @@ interface PlannerFilterPopoverProps {
   onToggleSubject: (subjectId: string) => void
   onSelectAll: () => void
   onClearAll: () => void
+  childNames?: string[]
+  filteredChildren?: string[]
+  onToggleChild?: (name: string) => void
+  onSelectAllChildren?: () => void
+  onClearAllChildren?: () => void
 }
 
 export default function PlannerFilterPopover({
@@ -24,6 +30,11 @@ export default function PlannerFilterPopover({
   onToggleSubject,
   onSelectAll,
   onClearAll,
+  childNames = [],
+  filteredChildren = [],
+  onToggleChild,
+  onSelectAllChildren,
+  onClearAllChildren,
 }: PlannerFilterPopoverProps) {
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
@@ -67,6 +78,38 @@ export default function PlannerFilterPopover({
               Clear All
             </Button>
           </div>
+          {childNames.length > 1 && (
+            <>
+              <Separator />
+              <h4 className="font-medium">Filter by Student</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {childNames.map((name) => (
+                  <div key={name} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`filter-child-${name}`}
+                      checked={filteredChildren.includes(name)}
+                      onCheckedChange={() => onToggleChild?.(name)}
+                    />
+                    <Label
+                      htmlFor={`filter-child-${name}`}
+                      className="flex items-center text-sm font-normal cursor-pointer"
+                    >
+                      <User className="h-3 w-3 mr-2 text-muted-foreground" />
+                      {name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between">
+                <Button variant="outline" size="sm" onClick={onSelectAllChildren}>
+                  Select All
+                </Button>
+                <Button variant="outline" size="sm" onClick={onClearAllChildren}>
+                  Clear All
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </PopoverContent>
     </Popover>
