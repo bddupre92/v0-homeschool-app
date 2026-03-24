@@ -244,6 +244,19 @@ export async function scheduleLessonsToPlanner(lessons: {
       Thursday: 4, Friday: 5, Saturday: 6,
     }
 
+    // Map common AI-generated subject names to planner subject IDs
+    const subjectMap: Record<string, string> = {
+      "math": "math", "mathematics": "math",
+      "science": "science", "stem": "science",
+      "language arts": "language", "english": "language", "ela": "language", "reading": "language", "writing": "language",
+      "history": "history", "social studies": "history",
+      "art": "art", "arts": "art", "visual arts": "art",
+      "music": "music",
+      "physical education": "pe", "p.e.": "pe", "gym": "pe",
+      "foreign language": "foreign", "spanish": "foreign", "french": "foreign",
+    }
+    const normalizeSubject = (s: string) => subjectMap[s.toLowerCase()] || s
+
     const batch = adminDb.batch()
     let count = 0
 
@@ -276,7 +289,7 @@ export async function scheduleLessonsToPlanner(lessons: {
       const ref = adminDb.collection("lessons").doc()
       batch.set(ref, {
         title: lesson.title,
-        subject: lesson.subject,
+        subject: normalizeSubject(lesson.subject),
         date: lessonDate,
         duration: lesson.duration || 45,
         description: lesson.description || "",

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks } from "date-fns"
 import {
   Calendar,
@@ -142,10 +142,19 @@ export default function PlannerPage() {
     )
   }
 
+  // Collect all unique subject IDs from actual lessons (handles AI-created subjects not in the default list)
+  const allSubjectIds = useMemo(() => {
+    const ids = new Set(subjects.map((s) => s.id))
+    lessons.forEach((l) => { if (l.subject) ids.add(l.subject) })
+    return Array.from(ids)
+  }, [lessons])
+
   // Filter lessons by selected subjects and current week
+  // If a lesson's subject isn't in the known subject list, always show it (don't filter it out)
+  const knownSubjectIds = new Set(subjects.map((s) => s.id))
   const filteredLessons = lessons.filter(
     (lesson) =>
-      filteredSubjects.includes(lesson.subject) &&
+      (filteredSubjects.includes(lesson.subject) || !knownSubjectIds.has(lesson.subject)) &&
       lesson.date >= startOfWeek(currentDate) &&
       lesson.date <= endOfWeek(currentDate)
   )
