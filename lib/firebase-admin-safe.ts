@@ -44,6 +44,12 @@ const createMockFirestore = () => {
       orderBy: () => mockQuery,
       limit: () => mockQuery,
     }),
+    batch: () => ({
+      set: () => {},
+      update: () => {},
+      delete: () => {},
+      commit: async () => {},
+    }),
     FieldValue: {
       arrayUnion: (...values: any[]) => ({ _methodName: "arrayUnion", _elements: values }),
       arrayRemove: (...values: any[]) => ({ _methodName: "arrayRemove", _elements: values }),

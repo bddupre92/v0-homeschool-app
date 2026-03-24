@@ -295,9 +295,10 @@ export async function scheduleLessonsToPlanner(lessons: {
     await batch.commit()
     revalidatePath("/planner")
     return { success: true, scheduledCount: count }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error scheduling lessons:", error)
-    return { success: false, error: "Failed to schedule lessons", scheduledCount: 0 }
+    const message = error?.message || "Failed to schedule lessons"
+    return { success: false, error: message, scheduledCount: 0 }
   }
 }
 

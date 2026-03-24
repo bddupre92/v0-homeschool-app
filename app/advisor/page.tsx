@@ -21,7 +21,7 @@ import {
   markObjectiveCompleted,
   getStateFilingTypes,
 } from "@/app/actions/advisor-actions"
-import { scheduleLessonsToPlanner } from "@/app/actions/planner-actions"
+import { scheduleLessonsToPlanner, saveScheduleTemplate } from "@/app/actions/planner-actions"
 import { Sparkles, ClipboardList, BookOpen, Loader2, Users } from "lucide-react"
 import Link from "next/link"
 import type { ChildProfile, FamilyBlueprintData, CurriculumPlanCard } from "@/lib/advisor-types"
@@ -207,6 +207,17 @@ export default function AdvisorPage() {
     const result = await scheduleLessonsToPlanner(lessons)
     if (!result.success) {
       throw new Error(result.error || "Failed to schedule lessons")
+    }
+
+    // Save template if requested
+    if (lessons[0]?.saveTemplate) {
+      const slots = lessons.map((l) => ({
+        subject: l.subject,
+        dayOfWeek: l.day,
+        time: l.time,
+        duration: l.duration || 45,
+      }))
+      await saveScheduleTemplate(slots)
     }
   }
 
