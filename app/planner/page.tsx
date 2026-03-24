@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks } from "date-fns"
 import {
   Calendar,
@@ -52,16 +52,19 @@ export default function PlannerPage() {
   const [isDeletingLesson, setIsDeletingLesson] = useState(false)
   const [filteredChildren, setFilteredChildren] = useState<string[]>([]) // empty = show all
 
+  const hasAutoNavigated = useRef(false)
+
   const loadLessons = useCallback(async () => {
     try {
       const result = await getLessons()
       if (result.success && result.lessons) {
-        setLessons(
-          result.lessons.map((lesson: any) => ({
+        const mapped = result.lessons
+          .map((lesson: any) => ({
             ...lesson,
             date: new Date(lesson.date),
           }))
-        )
+          .filter((lesson: any) => !isNaN(lesson.date.getTime()))
+        setLessons(mapped)
       }
     } catch (error) {
       console.error("Error loading lessons:", error)
@@ -73,6 +76,25 @@ export default function PlannerPage() {
   useEffect(() => {
     loadLessons()
   }, [loadLessons])
+
+  // Auto-navigate to the nearest week with lessons if current week is empty
+  useEffect(() => {
+    if (hasAutoNavigated.current || lessons.length === 0) return
+    const now = new Date()
+    const weekStart = startOfWeek(now, { weekStartsOn: 0 })
+    const weekEnd = endOfWeek(now, { weekStartsOn: 0 })
+    const hasCurrentWeekLessons = lessons.some(
+      (l) => l.date >= weekStart && l.date <= weekEnd
+    )
+    if (!hasCurrentWeekLessons) {
+      // Find the nearest future lesson
+      const futureLessons = lessons.filter((l) => l.date > now).sort((a, b) => a.date.getTime() - b.date.getTime())
+      if (futureLessons.length > 0) {
+        setCurrentDate(futureLessons[0].date)
+      }
+    }
+    hasAutoNavigated.current = true
+  }, [lessons])
 
   const handleCreateLesson = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -150,6 +172,14 @@ export default function PlannerPage() {
     return Array.from(ids)
   }, [lessons])
 
+  // Auto-add new subject IDs to the filter so AI-generated subjects aren't hidden
+  useEffect(() => {
+    const newSubjects = allSubjectIds.filter((id) => !filteredSubjects.includes(id))
+    if (newSubjects.length > 0) {
+      setFilteredSubjects((prev) => [...prev, ...newSubjects])
+    }
+  }, [allSubjectIds])
+
   // Collect unique child names from lessons
   const childNames = useMemo(() => {
     const names = new Set<string>()
@@ -180,6 +210,21 @@ export default function PlannerPage() {
       lesson.date >= startOfWeek(currentDate, { weekStartsOn: 0 }) &&
       lesson.date <= endOfWeek(currentDate, { weekStartsOn: 0 })
   )
+
+  // Find nearest week with lessons (for showing a navigation hint)
+  const nextWeekWithLessons = useMemo(() => {
+    if (filteredLessons.length > 0) return null // Current week has lessons
+    const ws = startOfWeek(currentDate, { weekStartsOn: 0 })
+    const futureLessons = lessons
+      .filter((l) => l.date > ws)
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+    if (futureLessons.length > 0) return futureLessons[0].date
+    const pastLessons = lessons
+      .filter((l) => l.date < ws)
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+    if (pastLessons.length > 0) return pastLessons[0].date
+    return null
+  }, [filteredLessons, lessons, currentDate])
 
   // Group lessons by day for week view
   const lessonsByDay = weekDays.map((day) => ({
@@ -293,6 +338,24 @@ export default function PlannerPage() {
                 </Button>
               </div>
             </div>
+
+            {nextWeekWithLessons && !isLoading && (
+              <div className="mb-4 p-3 bg-muted/50 border rounded-lg flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  No lessons this week. You have lessons scheduled for the week of{" "}
+                  <span className="font-medium text-foreground">
+                    {format(startOfWeek(nextWeekWithLessons, { weekStartsOn: 0 }), "MMM d, yyyy")}
+                  </span>.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentDate(nextWeekWithLessons)}
+                >
+                  Go to that week
+                </Button>
+              </div>
+            )}
 
             <TabsContent value="week" className="mt-0">
               <PlannerWeekView
