@@ -382,25 +382,45 @@ export default function AIAdvisorChat({
   onScheduleLessons,
   initialMessages,
 }: AIAdvisorChatProps) {
-  const [messages, setMessages] = useState<AdvisorMessage[]>(
-    initialMessages?.length
-      ? initialMessages
-      : [
-          {
-            id: "welcome",
-            role: "assistant",
-            content: children.length > 0
-              ? `Hi! I'm your AtoZ Family curriculum advisor. I see you have ${children.map(c => c.name).join(" and ")} — choose a workflow below or just ask me anything!`
-              : "Hi! I'm your AtoZ Family curriculum advisor. To give you the best recommendations, make sure to set up your family blueprint and add your children's profiles in the Family page. How can I help today?",
-            structuredData: null,
-            messageType: "text",
-          },
-        ]
-  )
+  const CHAT_STORAGE_KEY = "advisor-chat-messages"
+  const WORKFLOW_STORAGE_KEY = "advisor-workflow-mode"
+
+  const getDefaultMessages = useCallback((): AdvisorMessage[] => [
+    {
+      id: "welcome",
+      role: "assistant",
+      content: children.length > 0
+        ? `Hi! I'm your AtoZ Family curriculum advisor. I see you have ${children.map(c => c.name).join(" and ")} — choose a workflow below or just ask me anything!`
+        : "Hi! I'm your AtoZ Family curriculum advisor. To give you the best recommendations, make sure to set up your family blueprint and add your children's profiles in the Family page. How can I help today?",
+      structuredData: null,
+      messageType: "text",
+    },
+  ], [children])
+
+  const loadSavedMessages = (): AdvisorMessage[] | null => {
+    try {
+      const saved = localStorage.getItem(CHAT_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 1) return parsed
+      }
+    } catch {}
+    return null
+  }
+
+  const [messages, setMessages] = useState<AdvisorMessage[]>(() => {
+    if (initialMessages?.length) return initialMessages
+    return loadSavedMessages() || getDefaultMessages()
+  })
   const [input, setInput] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
   const [selectedChild, setSelectedChild] = useState<ChildProfile | null>(children[0] || null)
-  const [workflowMode, setWorkflowMode] = useState<AdvisorWorkflowMode | null>(null)
+  const [workflowMode, setWorkflowMode] = useState<AdvisorWorkflowMode | null>(() => {
+    try {
+      const saved = localStorage.getItem(WORKFLOW_STORAGE_KEY)
+      return saved ? (saved as AdvisorWorkflowMode) : null
+    } catch { return null }
+  })
   const [workflowPlan, setWorkflowPlan] = useState<WorkflowPlan | null>(null)
   const [showWorkflowSidebar, setShowWorkflowSidebar] = useState(false)
   const lastProcessedMsgIdRef = useRef<string | null>(null)
@@ -415,6 +435,25 @@ export default function AIAdvisorChat({
   useEffect(() => {
     scrollToBottom()
   }, [messages, scrollToBottom])
+
+  // Persist messages to localStorage (debounced to avoid excessive writes)
+  useEffect(() => {
+    if (isStreaming) return // Don't save mid-stream
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages))
+    } catch {}
+  }, [messages, isStreaming])
+
+  // Persist workflow mode
+  useEffect(() => {
+    try {
+      if (workflowMode) {
+        localStorage.setItem(WORKFLOW_STORAGE_KEY, workflowMode)
+      } else {
+        localStorage.removeItem(WORKFLOW_STORAGE_KEY)
+      }
+    } catch {}
+  }, [workflowMode])
 
   const detectIntent = (text: string): AdvisorIntent => {
     // If workflow mode is active, use it as the intent
@@ -440,17 +479,24 @@ export default function AIAdvisorChat({
 
   const selectWorkflowMode = (mode: AdvisorWorkflowMode) => {
     setWorkflowMode(mode)
-    const childName = selectedChild?.name || "my child"
     const childNames = children.map(c => c.name).join(" and ")
 
-    const modeMessages: Record<AdvisorWorkflowMode, string> = {
-      build_lessons: `I want to build lesson plans for ${childNames}. What subjects and objectives should we start with?`,
-      schedule_lessons: `I'd like to schedule lessons for ${childNames} on my planner. Let's set up the weekly schedule.`,
-      build_and_schedule: `Let's build lesson plans for ${childNames} and then schedule them on my planner.`,
-      chat: `I need to create a year curriculum for ${childName}.`,
+    // Instead of auto-sending to AI, show a prompt asking user for details
+    const promptMessages: Record<AdvisorWorkflowMode, string> = {
+      build_lessons: `Great! Let's build lesson plans for ${childNames}. What subjects would you like me to cover? (e.g., "Math and Science" or "all core subjects")`,
+      schedule_lessons: `Let's set up the weekly schedule for ${childNames}. What lessons would you like to schedule? You can also build lessons first and schedule them after.`,
+      build_and_schedule: `Let's build and schedule lessons for ${childNames}. Which subjects should I start with? (e.g., "Math, Science, and Language Arts")`,
+      chat: `I'm ready to help plan a year curriculum. What subjects or goals would you like to focus on?`,
     }
 
-    sendMessage(modeMessages[mode])
+    const promptMsg: AdvisorMessage = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: promptMessages[mode],
+      structuredData: null,
+      messageType: "text",
+    }
+    setMessages((prev) => [...prev, promptMsg])
   }
 
   const sendMessage = async (text?: string) => {
@@ -767,6 +813,10 @@ export default function AIAdvisorChat({
     setShowWorkflowSidebar(false)
     lastProcessedMsgIdRef.current = null
     workflowInitializedRef.current = false
+    try {
+      localStorage.removeItem(CHAT_STORAGE_KEY)
+      localStorage.removeItem(WORKFLOW_STORAGE_KEY)
+    } catch {}
     setMessages([
       {
         id: "welcome",

@@ -155,8 +155,8 @@ export default function PlannerPage() {
   const filteredLessons = lessons.filter(
     (lesson) =>
       (filteredSubjects.includes(lesson.subject) || !knownSubjectIds.has(lesson.subject)) &&
-      lesson.date >= startOfWeek(currentDate) &&
-      lesson.date <= endOfWeek(currentDate)
+      lesson.date >= startOfWeek(currentDate, { weekStartsOn: 0 }) &&
+      lesson.date <= endOfWeek(currentDate, { weekStartsOn: 0 })
   )
 
   // Group lessons by day for week view

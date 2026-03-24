@@ -261,19 +261,31 @@ export async function scheduleLessonsToPlanner(lessons: {
     let count = 0
 
     for (const lesson of lessons) {
-      // Default weekStart to next Monday if missing or invalid
-      let weekStart = new Date(lesson.weekStart)
-      if (isNaN(weekStart.getTime())) {
+      // Find the Monday of the target week
+      let weekRef = new Date(lesson.weekStart)
+      if (isNaN(weekRef.getTime())) {
+        // Default to next Monday
         const now = new Date()
         const dayOfWeek = now.getDay()
         const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7
-        weekStart = new Date(now)
-        weekStart.setDate(now.getDate() + daysUntilMonday)
-        weekStart.setHours(0, 0, 0, 0)
+        weekRef = new Date(now)
+        weekRef.setDate(now.getDate() + daysUntilMonday)
       }
-      const dayOffset = (dayMap[lesson.day] ?? 1) - weekStart.getDay()
-      const lessonDate = new Date(weekStart)
-      lessonDate.setDate(lessonDate.getDate() + ((dayOffset + 7) % 7))
+      weekRef.setHours(0, 0, 0, 0)
+
+      // Normalize to Monday of the given week (so "Monday" always maps correctly)
+      const refDay = weekRef.getDay() // 0=Sun ... 6=Sat
+      const mondayOffset = refDay === 0 ? -6 : 1 - refDay // shift to Monday
+      const monday = new Date(weekRef)
+      monday.setDate(weekRef.getDate() + mondayOffset)
+
+      // Calculate lesson date: Monday=0, Tuesday=1, ..., Friday=4, Saturday=5, Sunday=6
+      const lessonDayIndex: Record<string, number> = {
+        Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3,
+        Friday: 4, Saturday: 5, Sunday: 6,
+      }
+      const lessonDate = new Date(monday)
+      lessonDate.setDate(monday.getDate() + (lessonDayIndex[lesson.day] ?? 0))
 
       // Parse time like "9:00 AM"
       const timeParts = lesson.time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i)
