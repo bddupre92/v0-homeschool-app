@@ -133,13 +133,18 @@ export default function PlanPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
-      <main className="flex-1 container py-8 px-4 md:px-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+      <main className="flex-1 atoz-page">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Plan</h1>
-            <p className="text-muted-foreground">Track progress, stay compliant, and plan your lessons.</p>
+            <div className="atoz-eyebrow">Plan</div>
+            <h1 className="font-display text-4xl md:text-5xl font-light tracking-tighter mt-2">
+              Your weekly rhythm.
+            </h1>
+            <p className="text-[var(--ink-2)] mt-2 max-w-[520px]">
+              Track progress, stay compliant, and plan ahead — only when you want to.
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setShowLogHours(true)}>

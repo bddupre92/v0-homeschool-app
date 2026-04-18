@@ -227,14 +227,19 @@ export default function PortfolioPage() {
     filterEndDate !== ""
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
-      <main className="flex-1 container py-8 px-4 md:px-6">
+      <main className="flex-1 atoz-page">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Portfolio</h1>
-            <p className="text-muted-foreground">Collect and showcase your children&apos;s learning journey.</p>
+            <div className="atoz-eyebrow">Portfolio</div>
+            <h1 className="font-display text-4xl md:text-5xl font-light tracking-tighter mt-2">
+              What they&apos;ve made.
+            </h1>
+            <p className="text-[var(--ink-2)] mt-2 max-w-[520px]">
+              A quiet record of work, in your children&apos;s words and hands.
+            </p>
           </div>
           <Button onClick={() => { resetForm(); setShowAddDialog(true) }}>
             <Plus className="h-4 w-4 mr-2" />

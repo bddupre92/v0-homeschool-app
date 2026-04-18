@@ -56,7 +56,7 @@ export default function CreateEventPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
 
       <main className="flex-1 py-8">

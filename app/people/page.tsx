@@ -14,9 +14,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Pill, Topbar, PhoneBottomNav, FAB } from "@/components/primitives"
-import { TweaksPanel } from "@/components/tweaks-panel"
-import LogHoursDialog from "@/components/log-hours-dialog"
+import Navigation from "@/components/navigation"
+import { Pill } from "@/components/primitives"
 import InviteFlowDialog from "@/components/invite-flow-dialog"
 import {
   type Invite,
@@ -76,7 +75,6 @@ export default function PeoplePage() {
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [invites, setInvites] = useState<Invite[]>([])
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [logOpen, setLogOpen] = useState(false)
 
   const refresh = useCallback(() => {
     setMemberships(listMemberships())
@@ -153,7 +151,7 @@ export default function PeoplePage() {
 
   return (
     <div className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
-      <Topbar onLogHours={() => setLogOpen(true)} />
+      <Navigation />
       <main className="atoz-page max-w-4xl">
         <header className="mb-10 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -216,15 +214,6 @@ export default function PeoplePage() {
         />
       </main>
 
-      <LogHoursDialog
-        open={logOpen}
-        onOpenChange={setLogOpen}
-        children={DEMO_KIDS}
-        onSubmit={() => toast({ title: "Logged", description: "Entry saved." })}
-      />
-      <FAB onClick={() => setLogOpen(true)} />
-      <PhoneBottomNav />
-      <TweaksPanel />
     </div>
   )
 }

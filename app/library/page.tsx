@@ -8,19 +8,15 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import Navigation from "@/components/navigation"
 import {
   Chip,
   KidChip,
   KidDot,
   Pill,
-  Topbar,
-  PhoneBottomNav,
-  FAB,
 } from "@/components/primitives"
-import { TweaksPanel } from "@/components/tweaks-panel"
 import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
 import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
-import LogHoursDialog from "@/components/log-hours-dialog"
 import {
   type Lesson,
   type LessonStatus,
@@ -57,7 +53,6 @@ export default function LibraryPage() {
   const [authorOpen, setAuthorOpen] = useState(false)
   const [editing, setEditing] = useState<Lesson | undefined>(undefined)
   const [scheduleTarget, setScheduleTarget] = useState<Lesson | null>(null)
-  const [logOpen, setLogOpen] = useState(false)
 
   const refresh = useCallback(() => {
     setLessons(listLessons())
@@ -102,7 +97,7 @@ export default function LibraryPage() {
 
   return (
     <div className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
-      <Topbar onLogHours={() => setLogOpen(true)} />
+      <Navigation />
       <main className="atoz-page">
         <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -226,18 +221,6 @@ export default function LibraryPage() {
         onScheduled={() => refresh()}
       />
 
-      <LogHoursDialog
-        open={logOpen}
-        onOpenChange={setLogOpen}
-        children={DEMO_KIDS}
-        onSubmit={() => {
-          toast({ title: "Logged", description: "Entry saved." })
-        }}
-      />
-
-      <FAB onClick={() => setLogOpen(true)} />
-      <PhoneBottomNav />
-      <TweaksPanel />
     </div>
   )
 }

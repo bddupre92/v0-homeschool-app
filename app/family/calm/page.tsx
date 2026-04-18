@@ -7,16 +7,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import Navigation from "@/components/navigation"
 import {
   Pill,
   KidDot,
   ProgressRail,
-  Topbar,
-  PhoneBottomNav,
-  FAB,
 } from "@/components/primitives"
-import { TweaksPanel } from "@/components/tweaks-panel"
-import LogHoursDialog from "@/components/log-hours-dialog"
 import {
   listPortfolio,
   listMemberships,
@@ -44,8 +40,6 @@ function readWeeklyHours(): Record<string, number> {
 }
 
 export default function CalmFamilyPage() {
-  const { toast } = useToast()
-  const [logOpen, setLogOpen] = useState(false)
   const [portfolioCount, setPortfolioCount] = useState<Record<string, number>>({})
   const [membersCount, setMembersCount] = useState(1)
   const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => readWeeklyHours())
@@ -66,7 +60,7 @@ export default function CalmFamilyPage() {
 
   return (
     <div className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
-      <Topbar onLogHours={() => setLogOpen(true)} />
+      <Navigation />
       <main className="atoz-page">
         <header className="atoz-hero flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -137,15 +131,6 @@ export default function CalmFamilyPage() {
         </section>
       </main>
 
-      <LogHoursDialog
-        open={logOpen}
-        onOpenChange={setLogOpen}
-        children={DEMO_KIDS}
-        onSubmit={() => toast({ title: "Logged", description: "Entry saved." })}
-      />
-      <FAB onClick={() => setLogOpen(true)} />
-      <PhoneBottomNav />
-      <TweaksPanel />
     </div>
   )
 }

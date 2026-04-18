@@ -120,7 +120,7 @@ export default function GroupPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
         <Navigation />
         <main className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -136,7 +136,7 @@ export default function GroupPage() {
   const isAdmin = userRole === "admin"
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
 
       <main className="flex-1 py-8">

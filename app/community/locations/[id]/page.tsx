@@ -188,7 +188,7 @@ export default function LocationDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
         <Navigation />
         <main className="flex-1 container py-8 px-4 md:px-6">
           <div className="animate-pulse space-y-4">
@@ -204,7 +204,7 @@ export default function LocationDetailPage() {
 
   if (!location) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
         <Navigation />
         <main className="flex-1 container py-8 px-4 md:px-6 text-center">
           <h1 className="text-2xl font-bold mb-4">Location Not Found</h1>
@@ -216,7 +216,7 @@ export default function LocationDetailPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
 
       <main className="flex-1 container py-8 px-4 md:px-6">

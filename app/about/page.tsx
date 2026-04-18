@@ -8,7 +8,7 @@ import { Footer } from "@/components/footer"
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
 
       <main className="flex-1 flex items-center justify-center py-16">

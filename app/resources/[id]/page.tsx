@@ -135,7 +135,7 @@ export default function ResourceDetailPage() {
 
   if (!resource) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
         <Navigation />
         <main className="flex-1 container py-8 px-4 md:px-6 flex items-center justify-center">
           <div className="text-center">
@@ -153,7 +153,7 @@ export default function ResourceDetailPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
 
       <main className="flex-1 container py-8 px-4 md:px-6">

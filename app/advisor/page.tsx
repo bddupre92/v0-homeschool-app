@@ -211,7 +211,7 @@ export default function AdvisorPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
       <main className="flex-1">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">

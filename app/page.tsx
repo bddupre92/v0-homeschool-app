@@ -1,7 +1,7 @@
 import React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, BookOpen, Users, Calendar, Award, PlayCircle } from "lucide-react"
+import { ArrowRight, Presentation, FolderHeart, Leaf, Shield } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import Navigation from "@/components/navigation"
@@ -9,130 +9,158 @@ import { Footer } from "@/components/footer"
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative bg-background">
-          <div className="absolute inset-0 bg-[url('/plus-pattern.svg')] bg-repeat opacity-5"></div>
-          <div className="container relative px-4 md:px-6 py-16 md:py-24">
-            <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 items-center">
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="space-y-2">
-                  <h1 className="text-4xl font-bold font-display tracking-tighter sm:text-5xl xl:text-6xl/none">
-                    Inspire Your <span className="text-primary">Homeschool</span> Journey
-                  </h1>
-                  <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                    Discover, organize, and share homeschool resources. Connect with other homeschoolers and track your
-                    progress all in one place.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button size="lg" asChild>
+        <section className="relative">
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 -top-10 h-80 bg-[radial-gradient(ellipse_at_top,var(--honey-ll),transparent_60%)]"
+          />
+          <div className="container relative px-4 md:px-6 py-20 md:py-28">
+            <div className="grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-14 items-center">
+              <div className="flex flex-col gap-6">
+                <div className="atoz-eyebrow">AtoZ Family · calm homeschool</div>
+                <h1 className="font-display text-5xl font-light tracking-tighter leading-[1.02] md:text-6xl lg:text-[68px]">
+                  A calm home for{" "}
+                  <span className="italic font-normal text-[var(--sage-dd)]">homeschool.</span>
+                </h1>
+                <p className="max-w-[560px] text-lg md:text-xl text-[var(--ink-2)] leading-[1.55]">
+                  Plan, teach, capture, and rest. Five quiet rooms around the daily rhythm of a family&apos;s
+                  learning — <em className="atoz-hand text-[var(--terracotta-d)] text-2xl not-italic font-semibold">without the performance culture.</em>
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    size="lg"
+                    asChild
+                    className="bg-[var(--sage-dd)] hover:bg-[var(--ink)] text-white rounded-full px-6"
+                  >
                     <Link href="/sign-up">
-                      Get Started
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                      Get started <ArrowRight className="h-4 w-4 ml-2" />
                     </Link>
                   </Button>
-                  <Button size="lg" variant="outline" asChild>
-                    <Link href="/about">Learn More</Link>
-                  </Button>
-                </div>
-              </div>
-              <div className="mx-auto lg:mx-0 relative aspect-video w-full max-w-[600px] overflow-hidden rounded-xl shadow-2xl">
-                <Image
-                  src="/images/atozfamily-hero.jpg"
-                  alt="A child's desk with books, an apple, and learning blocks"
-                  fill
-                  className="object-cover"
-                  priority
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/30 to-transparent">
-                  <Button 
-                    variant="secondary" 
-                    size="lg" 
-                    className="gap-2"
-                    disabled
-                    aria-label="Video coming soon"
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    asChild
+                    className="rounded-full border-[var(--rule)] hover:bg-[var(--sage-ll)]"
                   >
-                    <PlayCircle className="h-6 w-6" />
-                    Watch Video
+                    <Link href="/today">See the rooms</Link>
                   </Button>
                 </div>
+                <p className="text-sm text-[var(--ink-3)]">
+                  Free to try · No credit card · Local-first (your data stays on your device)
+                </p>
+              </div>
+              <div className="relative">
+                <div className="relative aspect-[4/3] w-full max-w-[600px] rounded-[var(--atoz-radius-l)] overflow-hidden shadow-[var(--shadow-hover)]">
+                  <Image
+                    src="/images/atozfamily-hero.jpg"
+                    alt="A child's desk with books, an apple, and learning blocks"
+                    fill
+                    className="object-cover"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink)]/25 via-transparent to-transparent" />
+                </div>
+                <div className="absolute -top-6 -right-6 hidden sm:block">
+                  <div className="atoz-hand text-[var(--terracotta-d)] text-xl -rotate-6 bg-[var(--linen-2)] border border-[var(--rule)] rounded-xl px-4 py-2 shadow-sm">
+                    rest is learning too.
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Features Section */}
-        <section className="py-12 md:py-24 bg-muted/50">
+        {/* Features */}
+        <section className="py-20 md:py-24 bg-[var(--linen-2)]/60 border-y border-[var(--rule)]">
           <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm font-medium">Key Features</div>
-                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">Everything You Need</h2>
-                <p className="max-w-[700px] text-muted-foreground md:text-xl/relaxed">
-                  Our platform provides all the tools you need to create an engaging and effective homeschool
-                  experience.
-                </p>
-              </div>
+            <div className="max-w-[760px] mx-auto text-center">
+              <div className="atoz-eyebrow">Principles</div>
+              <h2 className="font-display text-4xl md:text-5xl font-light tracking-tighter mt-3 mb-4">
+                Serene, not performative.
+              </h2>
+              <p className="text-[var(--ink-2)] md:text-lg leading-[1.6]">
+                No streaks. No badges. No leaderboards. The calm in this product comes from what we
+                refuse to build.
+              </p>
             </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 sm:grid-cols-2 md:grid-cols-4">
-              <div className="flex flex-col items-center space-y-3 text-center">
-                <div className="rounded-full bg-primary/10 p-4">
-                  <BookOpen className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold">Curated Resources</h3>
-                <p className="text-muted-foreground">
-                  Access thousands of educational materials tailored to your curriculum.
-                </p>
-              </div>
-              <div className="flex flex-col items-center space-y-3 text-center">
-                <div className="rounded-full bg-primary/10 p-4">
-                  <Users className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold">Community</h3>
-                <p className="text-muted-foreground">
-                  Connect with other homeschooling families to share ideas and support.
-                </p>
-              </div>
-              <div className="flex flex-col items-center space-y-3 text-center">
-                <div className="rounded-full bg-primary/10 p-4">
-                  <Calendar className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold">Planner</h3>
-                <p className="text-muted-foreground">
-                  Organize your schedule and track progress with our intuitive planner.
-                </p>
-              </div>
-              <div className="flex flex-col items-center space-y-3 text-center">
-                <div className="rounded-full bg-primary/10 p-4">
-                  <Award className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold">Achievement</h3>
-                <p className="text-muted-foreground">Track and celebrate your child's progress and milestones.</p>
-              </div>
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-14 sm:grid-cols-2 lg:grid-cols-4">
+              <Feature
+                icon={<Presentation className="h-6 w-6" />}
+                title="Teach at your pace"
+                body="Author a lesson, schedule it, teach it, capture what happened. One calm loop."
+              />
+              <Feature
+                icon={<FolderHeart className="h-6 w-6" />}
+                title="Portfolio that captures itself"
+                body="Photos, quotes, reflections saved from every session. No extra data entry."
+              />
+              <Feature
+                icon={<Leaf className="h-6 w-6" />}
+                title="Compliance — if you want it"
+                body="Hours tracking is off by default. Turn it on for weekly totals. Off for quiet seasons."
+              />
+              <Feature
+                icon={<Shield className="h-6 w-6" />}
+                title="Kid-safe by default"
+                body="Kid mode hides admin chrome. Flip it on and only the lesson remains."
+              />
             </div>
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-12 md:py-24 bg-primary text-primary-foreground">
+        {/* Rooms preview */}
+        <section className="py-20 md:py-24">
           <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">Ready to Transform Your Homeschool?</h2>
-                <p className="max-w-[700px] md:text-xl/relaxed">
-                  Join thousands of families who are creating engaging and effective homeschool experiences.
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                <Button size="lg" variant="secondary" asChild>
-                  <Link href="/sign-up">
-                    Get Started for Free
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Link>
+            <div className="max-w-[720px] mx-auto text-center mb-12">
+              <div className="atoz-eyebrow">Five rooms</div>
+              <h2 className="font-display text-4xl md:text-5xl font-light tracking-tighter mt-3 mb-4">
+                Each room does one thing well.
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 max-w-5xl mx-auto">
+              <RoomCard title="Today" body="The daily landing. Hero greeting, today's lessons, quick log." href="/today" />
+              <RoomCard title="Teach" body="Author, schedule, and run a lesson. Dark full-screen mode when it starts." href="/teach" />
+              <RoomCard title="Family" body="Kids, portfolios, hours. Simple, per-child." href="/family/calm" />
+              <RoomCard title="Community" body="Co-parents, tutors, grandparents. Scoped access." href="/people" />
+              <RoomCard title="Library" body="Every lesson across statuses. Filter and search." href="/library" />
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="relative py-20 md:py-28">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--sage-ll),transparent_70%)] opacity-60"
+          />
+          <div className="container relative px-4 md:px-6">
+            <div className="max-w-[720px] mx-auto text-center">
+              <h2 className="font-display text-4xl md:text-5xl font-light tracking-tighter mb-4">
+                Ready to slow down?
+              </h2>
+              <p className="text-[var(--ink-2)] md:text-lg mb-8">
+                Your family&apos;s learning — calm, captured, and on your terms.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button
+                  size="lg"
+                  asChild
+                  className="bg-[var(--sage-dd)] hover:bg-[var(--ink)] text-white rounded-full px-6"
+                >
+                  <Link href="/sign-up">Get started free <ArrowRight className="h-4 w-4 ml-2" /></Link>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  asChild
+                  className="rounded-full border-[var(--rule)]"
+                >
+                  <Link href="/design-system">See the design system</Link>
                 </Button>
               </div>
             </div>
@@ -142,5 +170,32 @@ export default function HomePage() {
 
       <Footer />
     </div>
+  )
+}
+
+function Feature({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
+  return (
+    <div className="rounded-2xl bg-white/80 border border-[var(--rule)] p-5 flex flex-col gap-3 shadow-[var(--shadow-soft)]">
+      <div className="w-12 h-12 rounded-xl bg-[var(--sage-ll)] text-[var(--sage-dd)] grid place-items-center">
+        {icon}
+      </div>
+      <h3 className="font-display text-xl font-medium">{title}</h3>
+      <p className="text-sm text-[var(--ink-2)] leading-[1.55]">{body}</p>
+    </div>
+  )
+}
+
+function RoomCard({ title, body, href }: { title: string; body: string; href: string }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-2xl border border-[var(--rule)] bg-white p-5 hover:bg-[var(--sage-ll)] hover:border-[var(--sage-l)] transition flex flex-col gap-2"
+    >
+      <div className="font-display text-xl font-medium">{title}</div>
+      <p className="text-sm text-[var(--ink-2)] leading-[1.5] flex-1">{body}</p>
+      <span className="text-xs text-[var(--sage-dd)] font-medium inline-flex items-center gap-1">
+        Open <ArrowRight className="h-3 w-3" />
+      </span>
+    </Link>
   )
 }

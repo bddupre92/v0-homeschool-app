@@ -9,16 +9,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import Navigation from "@/components/navigation"
 import {
   Pill,
   KidDot,
   ProgressRail,
-  Topbar,
-  PhoneBottomNav,
-  FAB,
 } from "@/components/primitives"
-import { TweaksPanel } from "@/components/tweaks-panel"
-import LogHoursDialog from "@/components/log-hours-dialog"
 import {
   type PortfolioItem,
   listPortfolio,
@@ -46,8 +42,6 @@ function readWeeklyHours(): Record<string, number> {
 
 export default function KidPage() {
   const params = useParams<{ kidId: string }>()
-  const { toast } = useToast()
-  const [logOpen, setLogOpen] = useState(false)
   const [items, setItems] = useState<PortfolioItem[]>([])
   const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => readWeeklyHours())
 
@@ -70,7 +64,7 @@ export default function KidPage() {
   if (!kid) {
     return (
       <div className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
-        <Topbar onLogHours={() => setLogOpen(true)} />
+        <Navigation />
         <main className="atoz-page">
           <h1 className="font-display text-3xl font-light">That kid isn&apos;t here.</h1>
           <p className="mt-2 text-[var(--ink-3)]">
@@ -236,16 +230,6 @@ export default function KidPage() {
         </section>
       </main>
 
-      <LogHoursDialog
-        open={logOpen}
-        onOpenChange={setLogOpen}
-        children={DEMO_KIDS}
-        defaultKidId={kid.id}
-        onSubmit={() => toast({ title: "Logged", description: "Entry saved." })}
-      />
-      <FAB onClick={() => setLogOpen(true)} />
-      <PhoneBottomNav />
-      <TweaksPanel />
     </div>
   )
 }

@@ -269,7 +269,7 @@ export default function FamilyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
         <Navigation />
         <main className="flex-1 container py-8 px-4 md:px-6 max-w-4xl">
           <div className="flex items-center justify-center py-20">
@@ -281,7 +281,7 @@ export default function FamilyPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
       <main className="flex-1 container py-8 px-4 md:px-6 max-w-4xl">
         <div className="space-y-2 mb-8">

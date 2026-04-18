@@ -10,9 +10,8 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Pill, KidDot, Topbar, PhoneBottomNav, FAB } from "@/components/primitives"
-import { TweaksPanel } from "@/components/tweaks-panel"
-import LogHoursDialog from "@/components/log-hours-dialog"
+import Navigation from "@/components/navigation"
+import { Pill, KidDot } from "@/components/primitives"
 import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
 import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
 import {
@@ -40,7 +39,6 @@ export default function TeachRoomPage() {
   const [authorOpen, setAuthorOpen] = useState(false)
   const [editing, setEditing] = useState<Lesson | undefined>(undefined)
   const [scheduleTarget, setScheduleTarget] = useState<Lesson | null>(null)
-  const [logOpen, setLogOpen] = useState(false)
 
   const refresh = useCallback(() => {
     setLessons(listLessons())
@@ -93,7 +91,7 @@ export default function TeachRoomPage() {
 
   return (
     <div className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
-      <Topbar onLogHours={() => setLogOpen(true)} />
+      <Navigation />
       <main className="atoz-page">
         <header className="mb-10 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -189,15 +187,6 @@ export default function TeachRoomPage() {
         />
       </main>
 
-      <LogHoursDialog
-        open={logOpen}
-        onOpenChange={setLogOpen}
-        children={DEMO_KIDS}
-        onSubmit={() => toast({ title: "Logged", description: "Entry saved." })}
-      />
-      <FAB onClick={() => setLogOpen(true)} />
-      <PhoneBottomNav />
-      <TweaksPanel />
     </div>
   )
 }

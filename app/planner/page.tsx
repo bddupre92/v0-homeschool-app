@@ -157,10 +157,10 @@ export default function PlannerPage() {
   }))
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
 
-      <main className="flex-1 container py-8 px-4 md:px-6">
+      <main className="flex-1 atoz-page">
         <div className="flex flex-col gap-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>

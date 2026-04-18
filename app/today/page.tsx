@@ -8,17 +8,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import Navigation from "@/components/navigation"
 import {
   Pill,
   KidDot,
   ProgressRail,
-  Topbar,
-  PhoneBottomNav,
-  FAB,
   ComplianceStrip,
 } from "@/components/primitives"
-import LogHoursDialog from "@/components/log-hours-dialog"
-import { TweaksPanel } from "@/components/tweaks-panel"
 import {
   type Lesson,
   type LessonSession,
@@ -31,8 +27,7 @@ import {
 } from "@/lib/atoz-store"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { ToastAction } from "@/components/ui/toast"
-import { Check, Play, Sparkle } from "lucide-react"
+import { Play, Sparkle } from "lucide-react"
 
 const DEMO_KIDS = [
   { id: "emma", name: "Emma", color: "#d46e4d", weeklyTarget: 17.5 },
@@ -81,7 +76,6 @@ function sameLocalDay(iso: string, day: Date): boolean {
 export default function TodayPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const [logOpen, setLogOpen] = useState(false)
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [sessions, setSessions] = useState<LessonSession[]>([])
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([])
@@ -140,35 +134,6 @@ export default function TodayPage() {
     })
   }
 
-  const handleQuickLog = (data: { childId: string; subject: string; hours: number; date: string; notes?: string }) => {
-    // Update the demo weekly total so the progress rail moves.
-    const prev = demoWeeklyHours()
-    const added = { ...prev, [data.childId]: (prev[data.childId] ?? 0) + data.hours }
-    saveWeeklyHours(added)
-    setWeeklyHours(added)
-    const kid = DEMO_KIDS.find((k) => k.id === data.childId)
-    const mins = Math.round(data.hours * 60)
-    const durationLabel =
-      mins < 60 ? `${mins} min` : `${(mins / 60).toFixed(2).replace(/\.?0+$/, "")} hr`
-    toast({
-      title: "Logged",
-      description: `${durationLabel} of ${data.subject} for ${kid?.name ?? "learner"}.`,
-      duration: 5000,
-      action: (
-        <ToastAction
-          altText="Undo log"
-          onClick={() => {
-            saveWeeklyHours(prev)
-            setWeeklyHours(prev)
-            toast({ title: "Undone", description: "Log removed.", duration: 2000 })
-          }}
-        >
-          Undo
-        </ToastAction>
-      ),
-    })
-  }
-
   const startTeach = (lesson: Lesson) => {
     const session = startSession(lesson.id)
     router.push(`/teach/${session.id}`)
@@ -178,7 +143,7 @@ export default function TodayPage() {
 
   return (
     <div className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
-      <Topbar onLogHours={() => setLogOpen(true)} />
+      <Navigation />
       <main className="atoz-page">
         <section className="atoz-hero">
           <div className="atoz-eyebrow">{dateEyebrow}</div>
@@ -380,10 +345,6 @@ export default function TodayPage() {
         defaultMinutes={30}
         onSubmit={handleQuickLog}
       />
-
-      <FAB onClick={() => setLogOpen(true)} />
-      <PhoneBottomNav />
-      <TweaksPanel />
     </div>
   )
 }

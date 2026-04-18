@@ -60,14 +60,19 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
 
-      <main className="flex-1 container py-8 px-4 md:px-6">
+      <main className="flex-1 atoz-page">
         <div className="flex flex-col gap-6">
           <div>
-            <h1 className="text-3xl font-bold">Settings</h1>
-            <p className="text-muted-foreground">Manage your account settings and preferences</p>
+            <div className="atoz-eyebrow">Settings</div>
+            <h1 className="font-display text-4xl md:text-5xl font-light tracking-tighter mt-2">
+              Your preferences.
+            </h1>
+            <p className="text-[var(--ink-2)] mt-2">
+              Account, appearance, notifications, and security — all in one place.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-[250px_1fr] gap-6">

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Navigation from "@/components/navigation"
 import {
   Pill,
   Chip,
@@ -13,11 +14,7 @@ import {
   TeachCard,
   TeachBtn,
   TeachProgress,
-  Topbar,
-  PhoneBottomNav,
-  FAB,
 } from "@/components/primitives"
-import { TweaksPanel } from "@/components/tweaks-panel"
 import LogHoursDialog from "@/components/log-hours-dialog"
 import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
 import InviteFlowDialog from "@/components/invite-flow-dialog"
@@ -43,7 +40,7 @@ export default function DesignSystemPage() {
 
   return (
     <div className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
-      <Topbar onLogHours={() => setShowDialog(true)} />
+      <Navigation />
       <main className="atoz-page">
         <header className="mt-2 mb-14 pb-10 border-b border-[var(--rule)]">
           <div className="atoz-eyebrow">AtoZ Family · Design System</div>
@@ -292,9 +289,6 @@ export default function DesignSystemPage() {
           <div>Read docs/CLAUDE.md before editing.</div>
         </footer>
       </main>
-      <FAB onClick={() => setShowDialog(true)} />
-      <PhoneBottomNav />
-      <TweaksPanel />
     </div>
   )
 }

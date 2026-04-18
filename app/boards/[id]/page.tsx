@@ -140,7 +140,7 @@ export default function BoardDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
         <Navigation />
         <main className="flex-1 container py-8 px-4 md:px-6 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -151,7 +151,7 @@ export default function BoardDetailPage() {
 
   if (!board) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
         <Navigation />
         <main className="flex-1 container py-8 px-4 md:px-6 flex items-center justify-center">
           <div className="text-center">
@@ -169,7 +169,7 @@ export default function BoardDetailPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
       <Navigation />
 
       <main className="flex-1 container py-8 px-4 md:px-6">
