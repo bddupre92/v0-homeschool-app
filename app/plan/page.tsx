@@ -21,9 +21,11 @@ import {
   getComplianceFilings,
   getFamilyBlueprint,
   logHours,
+  deleteHourLog,
   saveComplianceFiling,
 } from "@/app/actions/family-actions"
 import { useToast } from "@/hooks/use-toast"
+import { ToastAction } from "@/components/ui/toast"
 
 export default function PlanPage() {
   const { user } = useAuth()
@@ -76,7 +78,32 @@ export default function PlanPage() {
   }) => {
     const result = await logHours(data)
     if (result.success) {
-      toast({ title: "Hours logged", description: `${data.hours}h of ${data.subject} recorded.` })
+      const child = children.find((c) => c.id === data.childId)
+      const kidName = child?.name ?? "learner"
+      const minutes = Math.round(data.hours * 60)
+      const durationLabel =
+        minutes < 60 ? `${minutes} min` : `${(minutes / 60).toFixed(2).replace(/\.?0+$/, "")} hr`
+      const loggedId: string | undefined = result.data?.id
+
+      toast({
+        title: "Logged",
+        description: `${durationLabel} of ${data.subject} for ${kidName}.`,
+        duration: 5000,
+        action: loggedId ? (
+          <ToastAction
+            altText="Undo log"
+            onClick={async () => {
+              const undo = await deleteHourLog(loggedId)
+              if (undo.success) {
+                toast({ title: "Undone", description: "Log removed.", duration: 2500 })
+                loadData()
+              }
+            }}
+          >
+            Undo
+          </ToastAction>
+        ) : undefined,
+      })
       loadData()
     } else {
       toast({ title: "Error", description: "Failed to log hours. Please try again.", variant: "destructive" })

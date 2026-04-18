@@ -33,6 +33,84 @@
     --ring: 142 30% 44%;
 
     --radius: 0.75rem;
+
+    /* AtoZ Family — serene palette (design handoff tokens) */
+    --linen: #faf6ee;
+    --linen-2: #f3ecdb;
+    --linen-3: #ebe3cd;
+    --ink: #1f2a22;
+    --ink-2: #3a453c;
+    --ink-3: #6b6357;
+    --ink-4: #8c8472;
+    --rule: #e3dcc5;
+    --rule-2: #d8cfb2;
+    --sage: #7d9e7d;
+    --sage-d: #5e825e;
+    --sage-dd: #3d543d;
+    --sage-l: #cad8ca;
+    --sage-ll: #e4ebe4;
+    --terracotta: #d46e4d;
+    --terracotta-d: #a44830;
+    --terracotta-l: #f2d3c7;
+    --terracotta-ll: #fcf5f2;
+    --honey: #df8a27;
+    --honey-d: #a8501c;
+    --honey-l: #f3d8a3;
+    --honey-ll: #fdf8ed;
+    --atoz-card: #ffffff;
+    --atoz-bg: var(--linen);
+    --atoz-bg-alt: var(--linen-2);
+    --atoz-fg: var(--ink);
+    --atoz-fg-2: var(--ink-2);
+    --atoz-fg-3: var(--ink-3);
+    --atoz-fg-4: var(--ink-4);
+    --shadow-soft: 0 1px 0 rgba(45, 58, 45, 0.02), 0 8px 24px -12px rgba(45, 58, 45, 0.12);
+    --shadow-hover: 0 1px 0 rgba(45, 58, 45, 0.04), 0 14px 36px -14px rgba(45, 58, 45, 0.22);
+    --atoz-radius: 14px;
+    --atoz-radius-s: 8px;
+    --atoz-radius-l: 22px;
+    --atoz-pad: 20px;
+    --atoz-gap: 16px;
+    --f-display: var(--font-fraunces, "Fraunces"), ui-serif, Georgia, serif;
+    --f-sans: var(--font-inter, "Inter"), ui-sans-serif, system-ui, sans-serif;
+    --f-hand: var(--font-caveat, "Caveat"), "Bradley Hand", cursive;
+  }
+
+  /* Density modifiers (data-density on <html> or any container) */
+  [data-density="compact"] {
+    --atoz-pad: 14px;
+    --atoz-gap: 10px;
+    --atoz-radius: 12px;
+  }
+  [data-density="comfortable"] {
+    --atoz-pad: 20px;
+    --atoz-gap: 16px;
+    --atoz-radius: 14px;
+  }
+  [data-density="spacious"] {
+    --atoz-pad: 28px;
+    --atoz-gap: 22px;
+    --atoz-radius: 18px;
+  }
+
+  /* Palette intensity modifiers */
+  [data-palette="soft"] {
+    --sage: #a6bea6;
+    --sage-d: #7d9e7d;
+    --sage-dd: #5e825e;
+    --terracotta: #de8c71;
+    --terracotta-d: #c55a3a;
+    --honey: #ecbe6c;
+    --honey-d: #cb6d1e;
+  }
+  [data-palette="rich"] {
+    --sage: #5e825e;
+    --sage-d: #4a684a;
+    --sage-dd: #2d3a2d;
+    --terracotta: #c55a3a;
+    --terracotta-d: #863c2c;
+    --honey: #cb6d1e;
+    --honey-d: #88401d;
   }
 
   .dark {
@@ -404,5 +482,207 @@
   /* Extension groups */
   .print-extension-group {
     margin-bottom: 1rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AtoZ Family — primitives
+   Ported from design handoff (docs/components.md, styles.css)
+   ═══════════════════════════════════════════════════════════════ */
+
+.atoz-hand {
+  font-family: var(--f-hand);
+  font-weight: 500;
+}
+.atoz-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--sage-d);
+  font-family: var(--f-sans);
+}
+
+/* Pill — rounded status tag, not interactive */
+.atoz-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: var(--linen-2);
+  color: var(--ink-3);
+}
+.atoz-pill--sage { background: var(--sage-ll); color: var(--sage-dd); }
+.atoz-pill--honey { background: var(--honey-ll); color: var(--honey-d); }
+.atoz-pill--terracotta { background: var(--terracotta-ll); color: var(--terracotta-d); }
+
+/* Chip — tappable filter/selector */
+.atoz-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--sage-ll);
+  color: var(--sage-dd);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  min-height: 32px;
+}
+.atoz-chip--outline {
+  background: transparent;
+  border-color: var(--rule);
+  color: var(--ink-2);
+}
+.atoz-chip--outline:hover {
+  background: var(--sage-ll);
+  color: var(--sage-dd);
+}
+.atoz-chip--active {
+  background: var(--sage-dd);
+  color: #fff;
+  border-color: var(--sage-dd);
+}
+.atoz-chip--terracotta.atoz-chip--active {
+  background: var(--terracotta);
+  border-color: var(--terracotta);
+  color: #fff;
+}
+.atoz-chip--honey.atoz-chip--active {
+  background: var(--honey);
+  border-color: var(--honey);
+  color: #fff;
+}
+.atoz-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Kid dot — round initial avatar, 4 sizes */
+.atoz-kid-dot {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  font-family: var(--f-display);
+  font-weight: 500;
+  color: #fff;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.atoz-kid-dot--xs { width: 18px; height: 18px; font-size: 10px; }
+.atoz-kid-dot--sm { width: 22px; height: 22px; font-size: 11px; }
+.atoz-kid-dot--md { width: 28px; height: 28px; font-size: 13px; }
+.atoz-kid-dot--lg { width: 40px; height: 40px; font-size: 16px; }
+
+/* Kid chip — kid avatar + name, tappable */
+.atoz-kid-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  background: var(--linen-2);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+  min-height: 32px;
+}
+.atoz-kid-chip:hover { background: var(--sage-ll); }
+.atoz-kid-chip--active {
+  background: var(--sage-dd);
+  color: #fff;
+  border-color: var(--sage-dd);
+}
+.atoz-kid-chip--active:hover {
+  background: var(--sage-dd);
+}
+.atoz-kid-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Progress rail — linear */
+.atoz-progress-rail {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background: var(--linen-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.atoz-progress-rail__fill {
+  height: 100%;
+  background: var(--sage-d);
+  border-radius: 999px;
+  transition: width 0.5s ease-out;
+}
+.atoz-progress-rail__fill--sage { background: var(--sage-d); }
+.atoz-progress-rail__fill--honey { background: var(--honey); }
+.atoz-progress-rail__fill--terracotta { background: var(--terracotta); }
+
+/* Backlink — ← + label */
+.atoz-backlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-3);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+.atoz-backlink:hover { color: var(--ink); }
+
+/* Compliance strip — sage confirmation bar */
+.atoz-compliance-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--sage-ll);
+  border: 1px solid var(--sage-l);
+  color: var(--sage-dd);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.atoz-compliance-strip--honey {
+  background: var(--honey-ll);
+  border-color: var(--honey-l);
+  color: var(--honey-d);
+}
+
+/* Mini-card utility used in review screens */
+.atoz-mini-card {
+  background: var(--atoz-card);
+  border: 1px solid var(--rule);
+  border-radius: var(--atoz-radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atoz-progress-rail__fill,
+  .atoz-chip,
+  .atoz-kid-chip,
+  .atoz-backlink {
+    transition: none;
   }
 }

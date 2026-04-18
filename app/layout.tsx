@@ -1,5 +1,5 @@
 import type React from "react"
-import { Inter, Fraunces } from "next/font/google"
+import { Inter, Fraunces, Caveat } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { AnalyticsProvider } from "@/lib/analytics"
@@ -25,6 +25,12 @@ const inter = Inter({
 const fraunces = Fraunces({
   subsets: ["latin"],
   variable: "--font-fraunces",
+})
+
+const caveat = Caveat({
+  subsets: ["latin"],
+  variable: "--font-caveat",
+  weight: ["400", "600"],
 })
 
 export const viewport = {
@@ -84,7 +90,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="theme-color" content="#ffffff" />
       </head>
-      <body className={`${inter.variable} ${fraunces.variable} font-sans`}>
+      <body className={`${inter.variable} ${fraunces.variable} ${caveat.variable} font-sans`}>
         <CacheProvider>
           <AnalyticsProvider>
             <ErrorTrackingProvider>
