@@ -7,11 +7,11 @@ import { cn } from "@/lib/utils"
 import { Home, Presentation, Heart, Users, BookMarked, Plus } from "lucide-react"
 
 export const ATOZ_ROOMS = [
-  { href: "/today", label: "Today", icon: Home },
-  { href: "/teach", label: "Teach", icon: Presentation },
-  { href: "/family", label: "Family", icon: Heart },
-  { href: "/people", label: "Community", icon: Users },
-  { href: "/library", label: "Library", icon: BookMarked },
+  { href: "/today", label: "Today", icon: Home, matchPrefix: "/today" },
+  { href: "/teach", label: "Teach", icon: Presentation, matchPrefix: "/teach" },
+  { href: "/family/calm", label: "Family", icon: Heart, matchPrefix: "/family" },
+  { href: "/people", label: "Community", icon: Users, matchPrefix: "/people" },
+  { href: "/library", label: "Library", icon: BookMarked, matchPrefix: "/library" },
 ] as const
 
 interface TopbarProps {
@@ -33,7 +33,7 @@ export function Topbar({ onLogHours, children }: TopbarProps) {
             <Link
               key={room.href}
               href={room.href}
-              aria-current={pathname.startsWith(room.href) ? "page" : undefined}
+              aria-current={pathname.startsWith(room.matchPrefix) ? "page" : undefined}
             >
               {room.label}
             </Link>
@@ -62,7 +62,7 @@ export function PhoneBottomNav() {
     <nav className="atoz-phone-bottom-nav" aria-label="Rooms">
       {ATOZ_ROOMS.map((room) => {
         const Icon = room.icon
-        const active = pathname.startsWith(room.href)
+        const active = pathname.startsWith(room.matchPrefix)
         return (
           <Link
             key={room.href}
