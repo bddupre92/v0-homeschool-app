@@ -13,3 +13,4 @@ export {
   TeachProgress,
   CaptureBar,
 } from "./teach"
+export { Topbar, PhoneBottomNav, FAB, ComplianceStrip, ATOZ_ROOMS } from "./shell"

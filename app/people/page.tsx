@@ -14,7 +14,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Pill, Backlink } from "@/components/primitives"
+import { Pill, Topbar, PhoneBottomNav, FAB } from "@/components/primitives"
+import { TweaksPanel } from "@/components/tweaks-panel"
+import LogHoursDialog from "@/components/log-hours-dialog"
 import InviteFlowDialog from "@/components/invite-flow-dialog"
 import {
   type Invite,
@@ -74,6 +76,7 @@ export default function PeoplePage() {
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [invites, setInvites] = useState<Invite[]>([])
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [logOpen, setLogOpen] = useState(false)
 
   const refresh = useCallback(() => {
     setMemberships(listMemberships())
@@ -149,11 +152,10 @@ export default function PeoplePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
-      <div className="max-w-4xl mx-auto px-6 md:px-10 py-10">
-        <Backlink href="/">Back to app</Backlink>
-
-        <header className="mt-4 mb-10 flex flex-wrap items-end justify-between gap-4">
+    <div className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
+      <Topbar onLogHours={() => setLogOpen(true)} />
+      <main className="atoz-page max-w-4xl">
+        <header className="mb-10 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="atoz-eyebrow">Family · People</div>
             <h1 className="font-display text-5xl font-light tracking-tighter leading-[1.05] mt-2">
@@ -212,8 +214,18 @@ export default function PeoplePage() {
           kids={DEMO_KIDS}
           onSent={() => refresh()}
         />
-      </div>
-    </main>
+      </main>
+
+      <LogHoursDialog
+        open={logOpen}
+        onOpenChange={setLogOpen}
+        children={DEMO_KIDS}
+        onSubmit={() => toast({ title: "Logged", description: "Entry saved." })}
+      />
+      <FAB onClick={() => setLogOpen(true)} />
+      <PhoneBottomNav />
+      <TweaksPanel />
+    </div>
   )
 }
 

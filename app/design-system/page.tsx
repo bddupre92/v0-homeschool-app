@@ -8,14 +8,16 @@ import {
   KidDot,
   KidChip,
   ProgressRail,
-  Backlink,
-  TeachScreen,
   TeachTimer,
   TeachSubjectChip,
   TeachCard,
   TeachBtn,
   TeachProgress,
+  Topbar,
+  PhoneBottomNav,
+  FAB,
 } from "@/components/primitives"
+import { TweaksPanel } from "@/components/tweaks-panel"
 import LogHoursDialog from "@/components/log-hours-dialog"
 import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
 import InviteFlowDialog from "@/components/invite-flow-dialog"
@@ -40,14 +42,10 @@ export default function DesignSystemPage() {
   const [reflection, setReflection] = useState<ReflectionRating | undefined>(undefined)
 
   return (
-    <main
-      className="min-h-screen bg-[var(--linen)] text-[var(--ink)]"
-      style={{ fontFamily: "var(--f-sans)" }}
-    >
-      <div className="max-w-[1120px] mx-auto px-11 pt-16 pb-32">
-        <Backlink href="/">Back to app</Backlink>
-
-        <header className="mt-6 mb-14 pb-10 border-b border-[var(--rule)]">
+    <div className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
+      <Topbar onLogHours={() => setShowDialog(true)} />
+      <main className="atoz-page">
+        <header className="mt-2 mb-14 pb-10 border-b border-[var(--rule)]">
           <div className="atoz-eyebrow">AtoZ Family · Design System</div>
           <h1 className="font-display text-6xl font-light tracking-tighter leading-[1.02] mt-4 mb-4 text-[var(--ink)]">
             Primitives &amp; tokens.
@@ -278,11 +276,13 @@ export default function DesignSystemPage() {
           />
         </Section>
 
-        <Section title="All flows" sub="Direct links.">
+        <Section title="All rooms &amp; flows" sub="Direct links.">
           <ul className="grid sm:grid-cols-2 gap-3 text-sm">
+            <li><Link className="underline text-[var(--sage-dd)]" href="/today">Today (the calm home)</Link></li>
+            <li><Link className="underline text-[var(--sage-dd)]" href="/teach">Teach (Flow 02 · lesson loop)</Link></li>
+            <li><Link className="underline text-[var(--sage-dd)]" href="/library">Library (all lessons)</Link></li>
+            <li><Link className="underline text-[var(--sage-dd)]" href="/people">People (Flow 03 · invite)</Link></li>
             <li><Link className="underline text-[var(--sage-dd)]" href="/plan">Plan (Flow 01 · real data)</Link></li>
-            <li><Link className="underline text-[var(--sage-dd)]" href="/teach">Teach (Flow 02)</Link></li>
-            <li><Link className="underline text-[var(--sage-dd)]" href="/people">People (Flow 03)</Link></li>
             <li><Link className="underline text-[var(--sage-dd)]" href="/invite/accept?token=missing">Invite landing (error state)</Link></li>
           </ul>
         </Section>
@@ -291,8 +291,11 @@ export default function DesignSystemPage() {
           <div>AtoZ Family · ported from handoff · <span className="atoz-hand text-[var(--terracotta-d)] text-base">built with care</span></div>
           <div>Read docs/CLAUDE.md before editing.</div>
         </footer>
-      </div>
-    </main>
+      </main>
+      <FAB onClick={() => setShowDialog(true)} />
+      <PhoneBottomNav />
+      <TweaksPanel />
+    </div>
   )
 }
 

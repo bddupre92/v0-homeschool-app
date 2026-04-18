@@ -10,7 +10,9 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Pill, KidDot, Backlink } from "@/components/primitives"
+import { Pill, KidDot, Topbar, PhoneBottomNav, FAB } from "@/components/primitives"
+import { TweaksPanel } from "@/components/tweaks-panel"
+import LogHoursDialog from "@/components/log-hours-dialog"
 import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
 import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
 import {
@@ -38,6 +40,7 @@ export default function TeachRoomPage() {
   const [authorOpen, setAuthorOpen] = useState(false)
   const [editing, setEditing] = useState<Lesson | undefined>(undefined)
   const [scheduleTarget, setScheduleTarget] = useState<Lesson | null>(null)
+  const [logOpen, setLogOpen] = useState(false)
 
   const refresh = useCallback(() => {
     setLessons(listLessons())
@@ -89,11 +92,10 @@ export default function TeachRoomPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
-      <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
-        <Backlink href="/">Back to app</Backlink>
-
-        <header className="mt-4 mb-10 flex flex-wrap items-end justify-between gap-4">
+    <div className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
+      <Topbar onLogHours={() => setLogOpen(true)} />
+      <main className="atoz-page">
+        <header className="mb-10 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="atoz-eyebrow">Teach</div>
             <h1 className="font-display text-5xl font-light tracking-tighter leading-[1.05] mt-2">
@@ -185,8 +187,18 @@ export default function TeachRoomPage() {
           lesson={scheduleTarget}
           onScheduled={() => refresh()}
         />
-      </div>
-    </main>
+      </main>
+
+      <LogHoursDialog
+        open={logOpen}
+        onOpenChange={setLogOpen}
+        children={DEMO_KIDS}
+        onSubmit={() => toast({ title: "Logged", description: "Entry saved." })}
+      />
+      <FAB onClick={() => setLogOpen(true)} />
+      <PhoneBottomNav />
+      <TweaksPanel />
+    </div>
   )
 }
 
