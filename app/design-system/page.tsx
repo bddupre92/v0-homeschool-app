@@ -2,9 +2,27 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Pill, Chip, KidDot, KidChip, ProgressRail, Backlink } from "@/components/primitives"
+import {
+  Pill,
+  Chip,
+  KidDot,
+  KidChip,
+  ProgressRail,
+  Backlink,
+  TeachScreen,
+  TeachTimer,
+  TeachSubjectChip,
+  TeachCard,
+  TeachBtn,
+  TeachProgress,
+} from "@/components/primitives"
 import LogHoursDialog from "@/components/log-hours-dialog"
+import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
+import InviteFlowDialog from "@/components/invite-flow-dialog"
+import { ReflectionPicker } from "@/components/reflection-picker"
+import type { ReflectionRating } from "@/lib/atoz-store"
 import { Button } from "@/components/ui/button"
+import { Pause, Camera, MessageSquare, Square } from "lucide-react"
 
 const SEED_KIDS = [
   { id: "emma", name: "Emma", color: "#d46e4d" },
@@ -17,6 +35,9 @@ export default function DesignSystemPage() {
   const [subject, setSubject] = useState("Mathematics")
   const [duration, setDuration] = useState(30)
   const [showDialog, setShowDialog] = useState(false)
+  const [showAuthor, setShowAuthor] = useState(false)
+  const [showInvite, setShowInvite] = useState(false)
+  const [reflection, setReflection] = useState<ReflectionRating | undefined>(undefined)
 
   return (
     <main
@@ -151,7 +172,7 @@ export default function DesignSystemPage() {
         </Section>
 
         <Section title="Flow 01 · Log hours" sub="Four taps to save. Smart defaults. Undo within 5s.">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => setShowDialog(true)}
               className="bg-[var(--sage-dd)] hover:bg-[var(--ink)] text-white"
@@ -170,10 +191,100 @@ export default function DesignSystemPage() {
             defaultSubject="Mathematics"
             defaultMinutes={30}
             onSubmit={(data) => {
-              // Demo only — no persistence on this page.
               console.log("Demo log:", data)
             }}
           />
+        </Section>
+
+        <Section title="Teach mode primitives" sub="Dark full-screen. Terracotta primary. No room chrome.">
+          <div className="rounded-2xl overflow-hidden">
+            <div
+              className="teach-screen teach-screen--desktop"
+              style={{ minHeight: "auto", padding: "32px" }}
+            >
+              <div className="flex items-center justify-between mb-5">
+                <span className="text-white/60 text-sm">← Exit</span>
+                <TeachSubjectChip>Math · Emma · 45 min</TeachSubjectChip>
+              </div>
+              <div className="text-center mb-5">
+                <TeachTimer ms={12 * 60_000 + 34_000} size="lg" />
+                <div className="text-xs text-white/50 mt-2">of 45:00 · 28%</div>
+                <div className="flex justify-center mt-2">
+                  <TeachProgress value={28} />
+                </div>
+              </div>
+              <TeachCard className="mb-4">
+                <div className="text-xs uppercase tracking-[0.14em] text-white/50 font-semibold mb-2">
+                  Step 2 of 4 · current
+                </div>
+                <div className="text-white text-sm font-medium">
+                  Roll a pair of paper pizzas and name the fraction.
+                </div>
+              </TeachCard>
+              <div className="flex gap-2 flex-wrap">
+                <TeachBtn><Pause size={12} /> Pause</TeachBtn>
+                <TeachBtn><MessageSquare size={12} /> Note</TeachBtn>
+                <TeachBtn><Camera size={12} /> Photo</TeachBtn>
+                <TeachBtn variant="primary"><Square size={12} /> End</TeachBtn>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              onClick={() => setShowAuthor(true)}
+              className="bg-[var(--sage-dd)] hover:bg-[var(--ink)] text-white"
+            >
+              Open lesson authoring
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/teach">Go to Teach room</Link>
+            </Button>
+          </div>
+          <LessonAuthoringDialog
+            open={showAuthor}
+            onOpenChange={setShowAuthor}
+            kids={SEED_KIDS}
+          />
+        </Section>
+
+        <Section title="Reflection picker" sub="4-point + skip. Emojis, but no gamification.">
+          <div className="atoz-mini-card">
+            <div className="atoz-eyebrow mb-3">How did it go?</div>
+            <ReflectionPicker value={reflection} onChange={setReflection} />
+            {reflection && (
+              <p className="mt-3 text-sm text-[var(--ink-3)]">
+                You picked <strong>{reflection}</strong>. (Optional — skippable.)
+              </p>
+            )}
+          </div>
+        </Section>
+
+        <Section title="Flow 03 · Invite co-teacher" sub="Role → scope → send. Magic link valid 7 days.">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => setShowInvite(true)}
+              className="bg-[var(--sage-dd)] hover:bg-[var(--ink)] text-white"
+            >
+              Open invite wizard
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/people">Go to People</Link>
+            </Button>
+          </div>
+          <InviteFlowDialog
+            open={showInvite}
+            onOpenChange={setShowInvite}
+            kids={SEED_KIDS}
+          />
+        </Section>
+
+        <Section title="All flows" sub="Direct links.">
+          <ul className="grid sm:grid-cols-2 gap-3 text-sm">
+            <li><Link className="underline text-[var(--sage-dd)]" href="/plan">Plan (Flow 01 · real data)</Link></li>
+            <li><Link className="underline text-[var(--sage-dd)]" href="/teach">Teach (Flow 02)</Link></li>
+            <li><Link className="underline text-[var(--sage-dd)]" href="/people">People (Flow 03)</Link></li>
+            <li><Link className="underline text-[var(--sage-dd)]" href="/invite/accept?token=missing">Invite landing (error state)</Link></li>
+          </ul>
         </Section>
 
         <footer className="mt-16 pt-8 border-t border-[var(--rule)] text-xs text-[var(--ink-4)] flex justify-between">

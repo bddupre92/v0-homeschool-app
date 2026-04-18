@@ -686,3 +686,379 @@
     transition: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Teach mode (Flow 02) — dark, full-screen, calm
+   Ported from flow-2-lesson-loop.html inline styles
+   ═══════════════════════════════════════════════════════════════ */
+
+.teach-screen {
+  background: #14170f;
+  color: #e8e4d9;
+  padding: 16px 18px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--f-sans);
+}
+.teach-screen.teach-screen--desktop {
+  padding: 24px 32px;
+}
+.teach-timer {
+  font-family: var(--f-display);
+  font-size: 64px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.teach-timer--lg {
+  font-size: 96px;
+}
+.teach-timer--paused {
+  color: rgba(255, 255, 255, 0.35);
+}
+.teach-subject-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(212, 110, 77, 0.22);
+  color: #f0b89e;
+  font-size: 12px;
+  font-weight: 500;
+}
+.teach-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+}
+.teach-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px;
+  color: #e8e4d9;
+}
+.teach-card small,
+.teach-card .teach-card__muted {
+  color: rgba(232, 228, 217, 0.55);
+}
+.teach-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.teach-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.teach-btn.teach-btn--primary {
+  background: var(--terracotta);
+  border-color: var(--terracotta);
+  color: #fff;
+}
+.teach-btn.teach-btn--primary:hover {
+  background: var(--terracotta-d);
+  border-color: var(--terracotta-d);
+}
+.teach-btn.teach-btn--secondary {
+  background: transparent;
+}
+.teach-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Plan step list inside teach mode */
+.teach-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.teach-step--done {
+  background: rgba(125, 158, 125, 0.18);
+  color: rgba(232, 228, 217, 0.7);
+}
+.teach-step--done .teach-step__title {
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 255, 255, 0.35);
+}
+.teach-step--current {
+  background: rgba(212, 110, 77, 0.15);
+  border-color: rgba(212, 110, 77, 0.35);
+}
+.teach-step--future {
+  color: rgba(232, 228, 217, 0.55);
+}
+.teach-step__check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  margin-top: 1px;
+  background: transparent;
+}
+.teach-step__check.teach-step__check--done {
+  background: var(--sage-d);
+  border-color: var(--sage-d);
+  color: #fff;
+}
+
+/* Capture bar — floating bottom action row */
+.teach-capture-bar {
+  position: fixed;
+  bottom: 16px;
+  left: 18px;
+  right: 18px;
+  background: rgba(20, 23, 15, 0.9);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 40;
+  max-width: 520px;
+  margin: 0 auto;
+}
+@media (min-width: 640px) {
+  .teach-capture-bar {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+}
+.teach-capture-bar .teach-btn {
+  flex: 1;
+  justify-content: center;
+}
+
+/* Progress rail variant on dark */
+.teach-progress {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+  max-width: 380px;
+}
+.teach-progress__fill {
+  height: 100%;
+  background: var(--terracotta);
+  transition: width 0.5s ease-out;
+}
+
+/* Quote block — kid's own words */
+.atoz-quote {
+  background: var(--linen);
+  border-left: 2px solid var(--terracotta);
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-family: var(--f-hand);
+  color: var(--terracotta-d);
+  font-size: 18px;
+  line-height: 1.3;
+}
+.teach-screen .atoz-quote {
+  background: rgba(255, 255, 255, 0.03);
+  color: #f0b89e;
+}
+
+/* Portfolio primitives */
+.atoz-portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.atoz-portfolio-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--atoz-card);
+  border: 1px solid var(--rule);
+  transition: background 0.15s, border-color 0.15s;
+}
+.atoz-portfolio-item:hover {
+  background: var(--sage-ll);
+}
+.atoz-portfolio-thumb {
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: #fff;
+  font-family: var(--f-display);
+  font-weight: 500;
+}
+
+/* Reflection picker — used on wrap screen */
+.atoz-reflect-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.atoz-reflect-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: background 0.15s, opacity 0.15s, border-color 0.15s;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.atoz-reflect-btn:hover {
+  opacity: 0.85;
+}
+.atoz-reflect-btn.atoz-reflect-btn--active {
+  opacity: 1;
+  background: rgba(125, 158, 125, 0.2);
+  border-color: var(--sage);
+}
+.atoz-reflect-btn__label {
+  font-size: 12px;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.teach-screen .atoz-reflect-btn__label {
+  color: rgba(232, 228, 217, 0.7);
+}
+.teach-screen .atoz-reflect-btn {
+  color: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Flow 03 — role cards, permissions matrix, people row
+   ═══════════════════════════════════════════════════════════════ */
+
+.atoz-role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.atoz-role-card {
+  background: var(--atoz-card);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.atoz-role-card:hover {
+  background: var(--sage-ll);
+  border-color: var(--sage-l);
+}
+.atoz-role-card.atoz-role-card--featured,
+.atoz-role-card[aria-pressed="true"] {
+  background: var(--sage-ll);
+  border: 1.5px solid var(--sage-dd);
+}
+.atoz-role-card__name {
+  font-family: var(--f-display);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.atoz-role-card__sub {
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.atoz-role-card ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+.atoz-role-card ul li {
+  margin: 2px 0;
+}
+
+.atoz-perm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.atoz-perm-table th,
+.atoz-perm-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--rule);
+}
+.atoz-perm-table th {
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+.atoz-perm-table td.yes { color: var(--sage-dd); font-weight: 500; }
+.atoz-perm-table td.no { color: var(--ink-4); }
+.atoz-perm-table td.partial { color: var(--honey-d); font-weight: 500; }
+
+.atoz-people-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--rule);
+  background: var(--atoz-card);
+}
+.atoz-people-row--pending {
+  border-style: dashed;
+}
+.atoz-people-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--f-display);
+  font-weight: 500;
+  color: #fff;
+  background: var(--terracotta);
+}
+.atoz-people-avatar--pending {
+  background: var(--linen-2);
+  color: var(--ink-3);
+  border: 1px dashed var(--rule-2);
+}
