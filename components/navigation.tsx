@@ -276,7 +276,7 @@ export default function Navigation() {
               aria-current={active ? "page" : undefined}
               className={active ? "is-active" : undefined}
             >
-              <Icon size={20} />
+              <Icon size={20} aria-hidden="true" />
               <span>{room.name}</span>
             </Link>
           )
@@ -304,7 +304,7 @@ function MobileLink({
         active ? "bg-[var(--sage-ll)] text-[var(--sage-dd)]" : "text-[var(--ink-2)] hover:bg-[var(--linen-d)]"
       }`}
     >
-      <Icon size={18} />
+      <Icon size={18} aria-hidden="true" />
       {room.name}
     </Link>
   )
