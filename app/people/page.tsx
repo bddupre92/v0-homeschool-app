@@ -31,12 +31,7 @@ import {
 } from "@/lib/atoz-store"
 import { useToast } from "@/hooks/use-toast"
 import { MoreVertical, Plus } from "lucide-react"
-
-const DEMO_KIDS = [
-  { id: "emma", name: "Emma", color: "#d46e4d" },
-  { id: "noah", name: "Noah", color: "#7d9e7d" },
-  { id: "lily", name: "Lily", color: "#df8a27" },
-]
+import { DEMO_KIDS } from "@/lib/demo-kids"
 
 const DEMO_PRIMARY: Membership = {
   id: "mem_primary",

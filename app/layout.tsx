@@ -4,7 +4,6 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { AnalyticsProvider } from "@/lib/analytics"
 import { CacheProvider } from "@/lib/cache"
-import AIAssistant from "@/components/ai-assistant"
 import ServiceWorkerRegister from "./sw-register"
 import { Suspense } from "react"
 import "./globals.css"
@@ -15,7 +14,6 @@ import { PerformanceMonitoringProvider } from "@/lib/performance-monitoring"
 import { SessionInitializer } from "@/components/session-initializer"
 import { DbInitializer } from "@/components/db-initializer"
 import QueryProvider from "@/components/query-provider"
-import { ModulePreferencesProvider } from "@/contexts/module-preferences-context"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -96,12 +94,10 @@ export default function RootLayout({
             <ErrorTrackingProvider>
               <PerformanceMonitoringProvider>
                 <AuthProvider>
-                  <ModulePreferencesProvider>
                   <QueryProvider>
                     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
                       <Suspense>
                         {children}
-                        <AIAssistant />
                       </Suspense>
                       <ServiceWorkerRegister />
                       <Footer />
@@ -110,7 +106,6 @@ export default function RootLayout({
                       <DbInitializer />
                     </ThemeProvider>
                   </QueryProvider>
-                  </ModulePreferencesProvider>
                 </AuthProvider>
               </PerformanceMonitoringProvider>
             </ErrorTrackingProvider>

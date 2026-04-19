@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { BookOpen, Calendar, Edit, Grid3X3, Mail, MapPin, UserIcon, Users, Loader2 } from "lucide-react"
+import { Calendar, Edit, Mail, MapPin, UserIcon, Loader2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -179,72 +178,31 @@ export default function ProfilePage() {
             </div>
 
             <div className="md:w-2/3">
-              <Tabs defaultValue="overview">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="overview" className="flex items-center gap-1">
-                    <Grid3X3 className="h-4 w-4" />
-                    Overview
-                  </TabsTrigger>
-                  <TabsTrigger value="boards" className="flex items-center gap-1">
-                    <BookOpen className="h-4 w-4" />
-                    Boards
-                  </TabsTrigger>
-                  <TabsTrigger value="resources" className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    Resources
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="overview" className="mt-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Card>
-                      <CardContent className="pt-6 text-center">
-                        <p className="text-3xl font-bold text-primary">{totalHours}h</p>
-                        <p className="text-sm text-muted-foreground">Total Hours This Year</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-6 text-center">
-                        <p className="text-3xl font-bold">{subjectCount}</p>
-                        <p className="text-sm text-muted-foreground">Active Subjects</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-6 text-center">
-                        <p className="text-3xl font-bold">{childrenCount}</p>
-                        <p className="text-sm text-muted-foreground">Children</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="flex items-center justify-center">
-                      <CardContent className="pt-6 text-center">
-                        <Button variant="outline" asChild>
-                          <Link href="/plan">View Full Plan</Link>
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="boards" className="mt-6">
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Grid3X3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Your boards will appear here.</p>
-                    <Button variant="outline" className="mt-4" asChild>
-                      <Link href="/boards">View Boards</Link>
-                    </Button>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="resources" className="mt-6">
-                  <div className="text-center py-12 text-muted-foreground">
-                    <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Your saved resources will appear here.</p>
-                    <Button variant="outline" className="mt-4" asChild>
-                      <Link href="/resources">Browse Resources</Link>
-                    </Button>
-                  </div>
-                </TabsContent>
-              </Tabs>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="pt-6 text-center">
+                    <p className="text-3xl font-bold text-primary">{totalHours}h</p>
+                    <p className="text-sm text-muted-foreground">Hours this year</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6 text-center">
+                    <p className="text-3xl font-bold">{subjectCount}</p>
+                    <p className="text-sm text-muted-foreground">Active subjects</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6 text-center">
+                    <p className="text-3xl font-bold">{childrenCount}</p>
+                    <p className="text-sm text-muted-foreground">Children</p>
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="mt-6 flex justify-center">
+                <Button variant="outline" asChild>
+                  <Link href="/family/calm">Open Family</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>

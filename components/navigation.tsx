@@ -2,12 +2,12 @@
 
 /**
  * App navigation — unified calm shell.
- * Renders the AtoZ Topbar + PhoneBottomNav across every page that
- * imports <Navigation />. Preserves auth, notifications, and
- * module-preference filtering from the legacy implementation.
+ * Renders the AtoZ Topbar + PhoneBottomNav + Log-hours FAB on every
+ * authenticated calm room. Returns null on chromeless routes (public
+ * landing, auth pages, full-screen teach mode).
  */
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
@@ -15,18 +15,12 @@ import {
   LogOut,
   User as UserIcon,
   Settings,
-  SlidersHorizontal,
   Plus,
   Home,
   Presentation,
   Heart,
   Users,
   BookMarked,
-  Sparkles,
-  Target,
-  Calendar,
-  Book,
-  FolderOpen,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -41,12 +35,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAuth } from "../contexts/auth-context"
-import { useModulePreferences } from "@/contexts/module-preferences-context"
 import { NotificationsPopover } from "@/components/notifications"
-import type { ModulePreferences } from "@/app/actions/module-preferences-actions"
 import LogHoursDialog from "@/components/log-hours-dialog"
-import { TweaksPanel } from "@/components/tweaks-panel"
-import { cn } from "@/lib/utils"
+import { DEMO_KIDS, readDemoHours, writeDemoHours } from "@/lib/demo-kids"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 
@@ -66,18 +57,7 @@ const PRIMARY_ROOMS: RoomLink[] = [
   { name: "Library", href: "/library", matchPrefix: "/library", icon: BookMarked },
 ]
 
-// Legacy / optional routes filtered by module preferences.
-type ModuleLink = RoomLink & { moduleKey?: keyof ModulePreferences }
-const MODULE_LINKS: ModuleLink[] = [
-  { name: "Advisor", href: "/advisor", matchPrefix: "/advisor", icon: Sparkles, moduleKey: "module_advisor" },
-  { name: "Plan", href: "/plan", matchPrefix: "/plan", icon: Target, moduleKey: "module_plan" },
-  { name: "Planner", href: "/planner", matchPrefix: "/planner", icon: Calendar, moduleKey: "module_planner" },
-  { name: "Resources", href: "/resources", matchPrefix: "/resources", icon: Book, moduleKey: "module_resources" },
-  { name: "Portfolio", href: "/portfolio", matchPrefix: "/portfolio", icon: FolderOpen },
-]
-
-// Routes that should NOT show the FAB or PhoneBottomNav (auth, landing,
-// full-screen mode, etc.)
+// Routes that render no calm-shell chrome (landing, auth, fullscreen teach mode).
 function isChromelessRoute(pathname: string): boolean {
   return (
     pathname === "/" ||
@@ -90,44 +70,15 @@ function isChromelessRoute(pathname: string): boolean {
   )
 }
 
-// Demo kid roster for the global Log-hours FAB. Replace with real data
-// once the /today page is wired to the server.
-const DEMO_KIDS = [
-  { id: "emma", name: "Emma", color: "#d46e4d" },
-  { id: "noah", name: "Noah", color: "#7d9e7d" },
-  { id: "lily", name: "Lily", color: "#df8a27" },
-]
-
-const DEMO_HOURS_KEY = "atoz.demoWeeklyHours"
-
-function readDemoHours(): Record<string, number> {
-  if (typeof window === "undefined") return { emma: 14.5, noah: 12, lily: 9.5 }
-  try {
-    const raw = localStorage.getItem(DEMO_HOURS_KEY)
-    return raw ? JSON.parse(raw) : { emma: 14.5, noah: 12, lily: 9.5 }
-  } catch {
-    return { emma: 14.5, noah: 12, lily: 9.5 }
-  }
-}
-
-function writeDemoHours(next: Record<string, number>): void {
-  if (typeof window === "undefined") return
-  try {
-    localStorage.setItem(DEMO_HOURS_KEY, JSON.stringify(next))
-    window.dispatchEvent(new CustomEvent("atoz:change", { detail: { key: DEMO_HOURS_KEY } }))
-  } catch {}
-}
-
 export default function Navigation() {
   const pathname = usePathname() ?? "/"
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
   const { user, signOut, loading } = useAuth()
-  const { isModuleEnabled } = useModulePreferences()
   const { toast } = useToast()
 
-  const chromeless = isChromelessRoute(pathname)
+  if (isChromelessRoute(pathname)) return null
 
   const handleLog = (data: { childId: string; subject: string; hours: number; date: string; notes?: string }) => {
     const prev = readDemoHours()
@@ -153,11 +104,6 @@ export default function Navigation() {
       ),
     })
   }
-
-  const moduleLinks = useMemo(
-    () => MODULE_LINKS.filter((item) => !item.moduleKey || isModuleEnabled(item.moduleKey)),
-    [isModuleEnabled],
-  )
 
   const handleSignOut = async () => {
     try {
@@ -204,21 +150,6 @@ export default function Navigation() {
                       />
                     ))}
                   </nav>
-                  {moduleLinks.length > 0 && (
-                    <>
-                      <div className="atoz-eyebrow px-3">More</div>
-                      <nav className="flex flex-col gap-1">
-                        {moduleLinks.map((item) => (
-                          <MobileLink
-                            key={item.href}
-                            room={item}
-                            active={pathname.startsWith(item.matchPrefix)}
-                            onClick={() => setMobileOpen(false)}
-                          />
-                        ))}
-                      </nav>
-                    </>
-                  )}
                 </div>
               </SheetContent>
             </Sheet>
@@ -242,7 +173,7 @@ export default function Navigation() {
           </nav>
 
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
-            {!chromeless && user && (
+            {user && (
               <button
                 type="button"
                 onClick={() => setLogOpen(true)}
@@ -288,29 +219,6 @@ export default function Navigation() {
                           <Settings className="mr-2 h-4 w-4" /> Settings
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/settings/modules">
-                          <SlidersHorizontal className="mr-2 h-4 w-4" /> Customize modules
-                        </Link>
-                      </DropdownMenuItem>
-                      {moduleLinks.length > 0 && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuLabel className="text-[11px] uppercase tracking-[0.08em] text-[var(--ink-3)]">
-                            More rooms
-                          </DropdownMenuLabel>
-                          {moduleLinks.map((item) => {
-                            const Icon = item.icon
-                            return (
-                              <DropdownMenuItem asChild key={item.href}>
-                                <Link href={item.href}>
-                                  <Icon className="mr-2 h-4 w-4" /> {item.name}
-                                </Link>
-                              </DropdownMenuItem>
-                            )
-                          })}
-                        </>
-                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={handleSignOut}>
                         <LogOut className="mr-2 h-4 w-4" /> Sign out
@@ -335,7 +243,7 @@ export default function Navigation() {
         </div>
       </header>
 
-      {!chromeless && user && (
+      {user && (
         <>
           <button
             type="button"
@@ -357,26 +265,23 @@ export default function Navigation() {
         </>
       )}
 
-      {!chromeless && (
-        <nav className="atoz-phone-bottom-nav" aria-label="Rooms">
-          {PRIMARY_ROOMS.map((room) => {
-            const Icon = room.icon
-            const active = pathname.startsWith(room.matchPrefix)
-            return (
-              <Link
-                key={room.href}
-                href={room.href}
-                aria-current={active ? "page" : undefined}
-              >
-                <Icon size={18} aria-hidden="true" />
-                {room.name}
-              </Link>
-            )
-          })}
-        </nav>
-      )}
-
-      {!chromeless && <TweaksPanel />}
+      <nav className="atoz-phone-bottom-nav" aria-label="Rooms">
+        {PRIMARY_ROOMS.map((room) => {
+          const Icon = room.icon
+          const active = pathname.startsWith(room.matchPrefix)
+          return (
+            <Link
+              key={room.href}
+              href={room.href}
+              aria-current={active ? "page" : undefined}
+              className={active ? "is-active" : undefined}
+            >
+              <Icon size={20} />
+              <span>{room.name}</span>
+            </Link>
+          )
+        })}
+      </nav>
     </>
   )
 }
@@ -395,14 +300,11 @@ function MobileLink({
     <Link
       href={room.href}
       onClick={onClick}
-      className={cn(
-        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-        active
-          ? "bg-[var(--sage-dd)] text-white"
-          : "text-[var(--ink-2)] hover:bg-[var(--sage-ll)] hover:text-[var(--ink)]",
-      )}
+      className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium ${
+        active ? "bg-[var(--sage-ll)] text-[var(--sage-dd)]" : "text-[var(--ink-2)] hover:bg-[var(--linen-d)]"
+      }`}
     >
-      <Icon className="h-4 w-4" />
+      <Icon size={18} />
       {room.name}
     </Link>
   )

@@ -18,31 +18,14 @@ import {
   listMemberships,
   onStorageChange,
 } from "@/lib/atoz-store"
+import { DEMO_KIDS, readDemoHours } from "@/lib/demo-kids"
 import { useToast } from "@/hooks/use-toast"
 import { Users, ArrowRight } from "lucide-react"
-
-const DEMO_KIDS = [
-  { id: "emma", name: "Emma", color: "#d46e4d", weeklyTarget: 17.5, age: 9 },
-  { id: "noah", name: "Noah", color: "#7d9e7d", weeklyTarget: 17.5, age: 7 },
-  { id: "lily", name: "Lily", color: "#df8a27", weeklyTarget: 17.5, age: 5 },
-]
-
-const WEEKLY_HOURS_LOCAL_KEY = "atoz.demoWeeklyHours"
-
-function readWeeklyHours(): Record<string, number> {
-  if (typeof window === "undefined") return { emma: 14.5, noah: 12, lily: 9.5 }
-  try {
-    const raw = localStorage.getItem(WEEKLY_HOURS_LOCAL_KEY)
-    return raw ? JSON.parse(raw) : { emma: 14.5, noah: 12, lily: 9.5 }
-  } catch {
-    return { emma: 14.5, noah: 12, lily: 9.5 }
-  }
-}
 
 export default function CalmFamilyPage() {
   const [portfolioCount, setPortfolioCount] = useState<Record<string, number>>({})
   const [membersCount, setMembersCount] = useState(1)
-  const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => readWeeklyHours())
+  const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => readDemoHours())
 
   const refresh = useCallback(() => {
     const items = listPortfolio()
@@ -50,7 +33,7 @@ export default function CalmFamilyPage() {
     for (const item of items) counts[item.kidId] = (counts[item.kidId] ?? 0) + 1
     setPortfolioCount(counts)
     setMembersCount(1 + listMemberships().length)
-    setWeeklyHours(readWeeklyHours())
+    setWeeklyHours(readDemoHours())
   }, [])
 
   useEffect(() => {

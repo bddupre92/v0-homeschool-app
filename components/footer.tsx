@@ -1,111 +1,37 @@
 "use client"
 
 import Link from "next/link"
-import { Facebook, Twitter, Instagram, Youtube } from "lucide-react"
 
 export function Footer() {
   return (
-    <footer className="bg-muted py-12 mt-auto">
+    <footer className="bg-muted py-10 mt-auto border-t">
       <div className="container">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="font-bold text-lg mb-4">AtoZ Family</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Your all-in-one platform for homeschool resources, planning, and community.
-            </p>
-            <div className="flex space-x-4">
-              <Link href="#" className="text-muted-foreground hover:text-foreground">
-                <Facebook className="h-5 w-5" />
-                <span className="sr-only">Facebook</span>
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-foreground">
-                <Twitter className="h-5 w-5" />
-                <span className="sr-only">Twitter</span>
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-foreground">
-                <Instagram className="h-5 w-5" />
-                <span className="sr-only">Instagram</span>
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-foreground">
-                <Youtube className="h-5 w-5" />
-                <span className="sr-only">YouTube</span>
-              </Link>
-            </div>
+            <h3 className="font-display text-lg">AtoZ Family</h3>
+            <p className="text-sm text-muted-foreground mt-1">A calm home for homeschool.</p>
           </div>
 
-          <div>
-            <h3 className="font-bold text-lg mb-4">Resources</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/resources" className="text-muted-foreground hover:text-foreground">
-                  Browse Resources
-                </Link>
-              </li>
-              <li>
-                <Link href="/boards" className="text-muted-foreground hover:text-foreground">
-                  Boards
-                </Link>
-              </li>
-              <li>
-                <Link href="/planner" className="text-muted-foreground hover:text-foreground">
-                  Planner
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="font-bold text-lg mb-4">Community</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/community" className="text-muted-foreground hover:text-foreground">
-                  Community Hub
-                </Link>
-              </li>
-              <li>
-                <Link href="/community/locations" className="text-muted-foreground hover:text-foreground">
-                  Locations
-                </Link>
-              </li>
-              <li>
-                <Link href="/community/events" className="text-muted-foreground hover:text-foreground">
-                  Events
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="font-bold text-lg mb-4">Legal</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/terms-of-service" className="text-muted-foreground hover:text-foreground">
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link href="/privacy-policy" className="text-muted-foreground hover:text-foreground">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <button
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    // Open cookie preferences dialog
-                    // This would need to be connected to your cookie consent component
-                    window.dispatchEvent(new CustomEvent("open-cookie-preferences"))
-                  }}
-                >
-                  Cookie Preferences
-                </button>
-              </li>
-            </ul>
-          </div>
+          <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            <Link href="/terms-of-service" className="hover:text-foreground">
+              Terms
+            </Link>
+            <Link href="/privacy-policy" className="hover:text-foreground">
+              Privacy
+            </Link>
+            <button
+              className="hover:text-foreground"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("open-cookie-preferences"))
+              }}
+            >
+              Cookie preferences
+            </button>
+          </nav>
         </div>
 
-        <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} AtoZ Family. All rights reserved.</p>
+        <div className="mt-6 pt-6 border-t text-xs text-muted-foreground">
+          &copy; {new Date().getFullYear()} AtoZ Family. All rights reserved.
         </div>
       </div>
     </footer>

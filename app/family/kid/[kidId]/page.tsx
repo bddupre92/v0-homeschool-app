@@ -20,34 +20,17 @@ import {
   listPortfolio,
   onStorageChange,
 } from "@/lib/atoz-store"
+import { DEMO_KIDS, readDemoHours } from "@/lib/demo-kids"
 import { useToast } from "@/hooks/use-toast"
-
-const DEMO_KIDS = [
-  { id: "emma", name: "Emma", color: "#d46e4d", weeklyTarget: 17.5 },
-  { id: "noah", name: "Noah", color: "#7d9e7d", weeklyTarget: 17.5 },
-  { id: "lily", name: "Lily", color: "#df8a27", weeklyTarget: 17.5 },
-]
-
-const WEEKLY_HOURS_LOCAL_KEY = "atoz.demoWeeklyHours"
-
-function readWeeklyHours(): Record<string, number> {
-  if (typeof window === "undefined") return { emma: 14.5, noah: 12, lily: 9.5 }
-  try {
-    const raw = localStorage.getItem(WEEKLY_HOURS_LOCAL_KEY)
-    return raw ? JSON.parse(raw) : { emma: 14.5, noah: 12, lily: 9.5 }
-  } catch {
-    return { emma: 14.5, noah: 12, lily: 9.5 }
-  }
-}
 
 export default function KidPage() {
   const params = useParams<{ kidId: string }>()
   const [items, setItems] = useState<PortfolioItem[]>([])
-  const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => readWeeklyHours())
+  const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => readDemoHours())
 
   const refresh = useCallback(() => {
     setItems(listPortfolio())
-    setWeeklyHours(readWeeklyHours())
+    setWeeklyHours(readDemoHours())
   }, [])
 
   useEffect(() => {
