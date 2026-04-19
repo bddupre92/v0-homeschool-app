@@ -94,7 +94,7 @@ export default function KidPage() {
 
   return (
     <div className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
-      <Topbar onLogHours={() => setLogOpen(true)} />
+      <Navigation />
       <main className="atoz-page">
         <div className="text-xs text-[var(--ink-3)] mb-2">
           <Link href="/today" className="hover:text-[var(--ink)]">← Today</Link>

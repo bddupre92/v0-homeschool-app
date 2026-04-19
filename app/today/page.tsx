@@ -335,16 +335,6 @@ export default function TodayPage() {
           </div>
         </section>
       </main>
-
-      <LogHoursDialog
-        open={logOpen}
-        onOpenChange={setLogOpen}
-        children={DEMO_KIDS}
-        defaultKidId="emma"
-        defaultSubject="Mathematics"
-        defaultMinutes={30}
-        onSubmit={handleQuickLog}
-      />
     </div>
   )
 }
