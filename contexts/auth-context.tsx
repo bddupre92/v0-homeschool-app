@@ -23,8 +23,8 @@ import { db } from "@/lib/firebase"
 import { Loader2 } from "lucide-react"
 
 // --- Configuration ---
-// Set this to false to enable real Firebase authentication.
-const DEV_MODE_BYPASS_AUTH = false
+// Enable via NEXT_PUBLIC_DEV_BYPASS_AUTH=true for local review screenshots.
+const DEV_MODE_BYPASS_AUTH = process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === "true"
 
 const mockUser: User = {
   uid: "dev-user-uid",
