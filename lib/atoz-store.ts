@@ -144,9 +144,20 @@ const KEY = {
   invites: "atoz.invites",
   onboarding: "atoz.onboarding",
   todayLayout: "atoz.todayLayout",
+  advisor: "atoz.advisor",
+  branding: "atoz.branding",
 } as const
 
 export type TodayLayout = "agenda" | "per-kid" | "compass"
+
+export interface AdvisorPrefs {
+  enabled: boolean
+}
+
+export interface BrandingPrefs {
+  familyName?: string
+  accentColor?: string
+}
 
 export interface OnboardingState {
   completed: boolean
@@ -417,6 +428,30 @@ export function getTodayLayout(): TodayLayout {
 
 export function setTodayLayout(layout: TodayLayout): void {
   write(KEY.todayLayout, layout)
+}
+
+// ── advisor ──────────────────────────────────────────────────────
+
+export function getAdvisorPrefs(): AdvisorPrefs {
+  return read<AdvisorPrefs>(KEY.advisor, { enabled: false })
+}
+
+export function setAdvisorPrefs(next: Partial<AdvisorPrefs>): AdvisorPrefs {
+  const merged = { ...getAdvisorPrefs(), ...next }
+  write(KEY.advisor, merged)
+  return merged
+}
+
+// ── branding ─────────────────────────────────────────────────────
+
+export function getBranding(): BrandingPrefs {
+  return read<BrandingPrefs>(KEY.branding, {})
+}
+
+export function setBranding(next: Partial<BrandingPrefs>): BrandingPrefs {
+  const merged = { ...getBranding(), ...next }
+  write(KEY.branding, merged)
+  return merged
 }
 
 // ── day tweaks ───────────────────────────────────────────────────

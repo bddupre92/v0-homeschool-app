@@ -19,6 +19,7 @@ import {
 } from "@/components/primitives/teach"
 import { ReflectionPicker } from "@/components/reflection-picker"
 import { CapturePhoto, CaptureAudio } from "@/components/capture-media"
+import AdvisorPanel from "@/components/advisor-panel"
 import { saveCaptureMedia } from "@/lib/blob-store"
 import {
   type Capture,
@@ -28,13 +29,16 @@ import {
   type ReflectionRating,
   addCapture,
   addPortfolioItem,
+  getAdvisorPrefs,
   getLesson,
   getSession,
   listCapturesForSession,
   uid,
+  upsertLesson,
   upsertSession,
 } from "@/lib/atoz-store"
-import { Camera, MessageSquare, Mic, Pause, Play, Square, ChevronLeft, Quote, X, Plus, StopCircle, Upload } from "lucide-react"
+import { useKids } from "@/lib/demo-kids"
+import { Camera, MessageSquare, Mic, Pause, Play, Sparkles, Square, ChevronLeft, Quote, X, Plus, StopCircle, Upload } from "lucide-react"
 
 type CaptureKind = "note" | "photo" | "voice" | "quote"
 
@@ -61,6 +65,13 @@ export default function TeachSessionPage() {
   const [reflectionRevisit, setReflectionRevisit] = useState("")
   const [addingStep, setAddingStep] = useState(false)
   const [newStep, setNewStep] = useState("")
+  const [advisorOpen, setAdvisorOpen] = useState(false)
+  const [advisorEnabled, setAdvisorEnabled] = useState(false)
+  const kids = useKids()
+
+  useEffect(() => {
+    setAdvisorEnabled(getAdvisorPrefs().enabled)
+  }, [])
   const photoInputRef = useRef<HTMLInputElement | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const voiceChunksRef = useRef<Blob[]>([])
@@ -245,8 +256,7 @@ export default function TeachSessionPage() {
     const step = { id: uid("stp"), text }
     const updatedLesson = { ...lesson, planSteps: [...lesson.planSteps, step] }
     setLesson(updatedLesson)
-    // Persist the lesson change too.
-    import("@/lib/atoz-store").then(({ upsertLesson }) => upsertLesson(updatedLesson))
+    upsertLesson(updatedLesson)
     setNewStep("")
     setAddingStep(false)
   }
@@ -407,7 +417,7 @@ export default function TeachSessionPage() {
   // ACTIVE teach mode
   return (
     <TeachScreen desktop>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 gap-3">
         <button
           onClick={() => router.replace("/teach")}
           className="text-white/60 hover:text-white text-sm inline-flex items-center gap-1"
@@ -415,10 +425,21 @@ export default function TeachSessionPage() {
         >
           <ChevronLeft size={16} /> Exit
         </button>
-        <TeachSubjectChip>
-          {lesson.subject}
-          {lesson.durationMin ? ` · ${lesson.durationMin} min` : ""}
-        </TeachSubjectChip>
+        <div className="flex items-center gap-2">
+          {advisorEnabled && (
+            <button
+              type="button"
+              onClick={() => setAdvisorOpen(true)}
+              className="inline-flex items-center gap-1 text-xs text-white/70 hover:text-white border border-white/15 hover:border-white/30 rounded-full px-3 py-1.5 transition"
+            >
+              <Sparkles size={12} aria-hidden="true" /> Advisor
+            </button>
+          )}
+          <TeachSubjectChip>
+            {lesson.subject}
+            {lesson.durationMin ? ` · ${lesson.durationMin} min` : ""}
+          </TeachSubjectChip>
+        </div>
       </div>
 
       <div className="text-center mb-6">
@@ -714,6 +735,21 @@ export default function TeachSessionPage() {
           <Square size={14} /> End
         </TeachBtn>
       </CaptureBar>
+
+      {advisorEnabled && lesson && (
+        <AdvisorPanel
+          open={advisorOpen}
+          onOpenChange={setAdvisorOpen}
+          lesson={lesson}
+          kid={kids.find((k) => lesson.kidIds.includes(k.id))}
+          onApplyStep={(text) => {
+            const step = { id: uid("stp"), text }
+            const updated = { ...lesson, planSteps: [...lesson.planSteps, step] }
+            setLesson(updated)
+            upsertLesson(updated)
+          }}
+        />
+      )}
     </TeachScreen>
   )
 }

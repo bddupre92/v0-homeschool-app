@@ -24,6 +24,7 @@
     "undici": ">=7.24.0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "@auth/core": "latest",
     "@auth/firebase-adapter": "latest",
     "@emotion/is-prop-valid": "latest",

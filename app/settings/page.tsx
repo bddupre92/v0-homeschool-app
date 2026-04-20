@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Bell, CreditCard, LogOut, Shield, Sun, User, Loader2 } from "lucide-react"
+import { Bell, CreditCard, LogOut, Shield, Sparkles, Sun, User, Loader2 } from "lucide-react"
+import { getAdvisorPrefs, setAdvisorPrefs } from "@/lib/atoz-store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -25,6 +26,12 @@ export default function SettingsPage() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [bio, setBio] = useState("")
+
+  const [advisorEnabled, setAdvisorEnabled] = useState(false)
+
+  useEffect(() => {
+    setAdvisorEnabled(getAdvisorPrefs().enabled)
+  }, [])
 
   // Notification preferences (local for now)
   const [notifResources, setNotifResources] = useState(true)
@@ -85,6 +92,13 @@ export default function SettingsPage() {
                   >
                     <User className="h-4 w-4" />
                     Account
+                  </Link>
+                  <Link
+                    href="#advisor"
+                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Advisor
                   </Link>
                   <Link
                     href="#appearance"
@@ -153,6 +167,45 @@ export default function SettingsPage() {
                     Save Changes
                   </Button>
                 </CardFooter>
+              </Card>
+
+              <Card id="advisor">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5" />
+                    Advisor
+                  </CardTitle>
+                  <CardDescription>
+                    A contextual helper inside the lesson authoring flow. Off by default. Never a
+                    global chat — it only sees the lesson you're planning.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Label htmlFor="advisor-enabled" className="text-sm font-medium">
+                        Enable the advisor
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Shows a "Suggest shape" button on /teach. Requires ANTHROPIC_API_KEY on the server.
+                      </p>
+                    </div>
+                    <Switch
+                      id="advisor-enabled"
+                      checked={advisorEnabled}
+                      onCheckedChange={(v) => {
+                        setAdvisorEnabled(v)
+                        setAdvisorPrefs({ enabled: v })
+                        toast({
+                          title: v ? "Advisor on" : "Advisor off",
+                          description: v
+                            ? "You'll see the Advisor button on the teach screen."
+                            : "Hidden again — no requests are sent.",
+                        })
+                      }}
+                    />
+                  </div>
+                </CardContent>
               </Card>
 
               <Card id="appearance">
