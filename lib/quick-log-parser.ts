@@ -65,10 +65,15 @@ function extractMinutes(segment: string): number | null {
   if (/\bquarter\s+of\s+an\s+hour\b/i.test(segment)) return 15
   if (/\ban\s+hour\b/i.test(segment)) return 60
 
-  // "for 20", "20 min", "20m", "40 minutes", "1 hr", "1 hour", "1.5 hours"
+  // "for 20", "20 min", "20m", "40 minutes", "1 hr", "1 hour", "1.5 hours".
+  // Numeric branch first so decimals win; `\b` after `\s*` blocks matches
+  // like "mat h" in "math" where \w+ would gobble "mat" and the bare `h`
+  // would latch onto the word's trailing letter.
   const patterns: Array<{ re: RegExp; unit: "min" | "hr" }> = [
-    { re: /(\d+(?:[.,]\d+)?|\w+)\s*(?:hours?|hrs?|h)\b/i, unit: "hr" },
-    { re: /(\d+(?:[.,]\d+)?|\w+)\s*(?:minutes?|mins?|m)\b/i, unit: "min" },
+    { re: /(\d+(?:[.,]\d+)?)\s*(?:hours?|hrs?|h)\b/i, unit: "hr" },
+    { re: /(\b\w+)\s+(?:hours?|hrs?|h)\b/i, unit: "hr" },
+    { re: /(\d+(?:[.,]\d+)?)\s*(?:minutes?|mins?|m)\b/i, unit: "min" },
+    { re: /(\b\w+)\s+(?:minutes?|mins?|m)\b/i, unit: "min" },
   ]
   for (const { re, unit } of patterns) {
     const m = segment.match(re)

@@ -23,8 +23,16 @@ import { db } from "@/lib/firebase"
 import { Loader2 } from "lucide-react"
 
 // --- Configuration ---
-// Enable via NEXT_PUBLIC_DEV_BYPASS_AUTH=true for local review screenshots.
-const DEV_MODE_BYPASS_AUTH = process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === "true"
+// Enable via NEXT_PUBLIC_DEV_BYPASS_AUTH=true for local review screenshots
+// and e2e tests. Belt + suspenders: even if the client flag is truthy, we
+// refuse to activate when NODE_ENV is "production" unless the deploy
+// explicitly opted in via ALLOW_DEV_AUTH_BYPASS=true. The NEXT_PUBLIC
+// flag is baked into the bundle at build time, so this also means
+// production builds made with default config simply cannot expose the
+// mock user.
+const DEV_MODE_BYPASS_AUTH =
+  process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === "true" &&
+  (process.env.NODE_ENV !== "production" || process.env.ALLOW_DEV_AUTH_BYPASS === "true")
 
 const mockUser: User = {
   uid: "dev-user-uid",

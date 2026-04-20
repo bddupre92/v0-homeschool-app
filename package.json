@@ -15,7 +15,9 @@
     "test:all": "node scripts/test-all.js",
     "production-check": "node scripts/production-check.js",
     "pre-deploy": "npm run test:all",
-    "review:screenshots": "node scripts/review-screenshots.mjs"
+    "review:screenshots": "node scripts/review-screenshots.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "overrides": {
     "react": "^19",
