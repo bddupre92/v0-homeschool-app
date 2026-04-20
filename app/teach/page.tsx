@@ -24,6 +24,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { Plus, Play, Trash2, Edit3 } from "lucide-react"
 import { useKids } from "@/lib/demo-kids"
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
 
 const KID_PALETTE = ["#d46e4d", "#7d9e7d", "#df8a27", "#4a90a4", "#8a6aa1"]
 
@@ -70,6 +71,7 @@ export default function TeachRoomPage() {
         return
       }
       const session = startSession(lesson.id)
+      trackEvent(AnalyticsEvents.LESSON_START, { subject: lesson.subject, from: "teach" })
       router.push(`/teach/${session.id}`)
     },
     [router, toast],

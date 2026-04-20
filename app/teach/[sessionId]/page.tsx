@@ -39,6 +39,7 @@ import {
   upsertSession,
 } from "@/lib/atoz-store"
 import { useKids } from "@/lib/demo-kids"
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
 import { Camera, MessageSquare, Mic, Pause, Play, Sparkles, Square, ChevronLeft, Quote, X, Plus, StopCircle, Upload } from "lucide-react"
 
 type CaptureKind = "note" | "photo" | "voice" | "quote"
@@ -187,6 +188,7 @@ export default function TeachSessionPage() {
     }
     addCapture(capture)
     setCaptures((prev) => [capture, ...prev])
+    trackEvent(AnalyticsEvents.CAPTURE_TAKEN, { kind: capture.kind })
     closeCaptureDialog()
   }, [session, openCaptureKind, captureText, photoPending, voicePending, elapsedMs, closeCaptureDialog])
 
@@ -318,6 +320,12 @@ export default function TeachSessionPage() {
         createdAt: endedAt,
       }
       addPortfolioItem(item)
+    })
+
+    trackEvent(AnalyticsEvents.SESSION_END, {
+      minutes,
+      captures: captures.length,
+      hasReflection: prompts.length > 0 || Boolean(reflectionNote.trim()),
     })
 
     router.replace("/teach?justSaved=1")

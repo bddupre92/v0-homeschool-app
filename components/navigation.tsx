@@ -39,6 +39,7 @@ import { NotificationsPopover } from "@/components/notifications"
 import LogHoursDialog from "@/components/log-hours-dialog"
 import { readDemoHours, useKids, writeDemoHours } from "@/lib/demo-kids"
 import { getBranding, onStorageChange } from "@/lib/atoz-store"
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 
@@ -97,6 +98,7 @@ export default function Navigation() {
     const kid = kids.find((k) => k.id === data.childId)
     const minutes = Math.round(data.hours * 60)
     const durationLabel = minutes < 60 ? `${minutes} min` : `${(minutes / 60).toFixed(2).replace(/\.?0+$/, "")} hr`
+    trackEvent(AnalyticsEvents.HOURS_LOGGED, { subject: data.subject, minutes })
     toast({
       title: "Logged",
       description: `${durationLabel} of ${data.subject} for ${kid?.name ?? "learner"}.`,

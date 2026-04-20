@@ -27,6 +27,7 @@ import {
   setOnboarding,
   upsertKid,
 } from "@/lib/atoz-store"
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { ArrowRight, ChevronLeft, Home } from "lucide-react"
@@ -97,12 +98,15 @@ export default function OnboardingPage() {
       state: state || undefined,
       completedAt: new Date().toISOString(),
     })
+    trackEvent(AnalyticsEvents.KID_ADDED, { context: "onboarding" })
+    trackEvent(AnalyticsEvents.ONBOARDING_COMPLETED, { hasState: Boolean(state) })
     toast({ title: "Welcome aboard", description: `${kid.name} is ready to start.` })
     router.replace("/today")
   }
 
   const skip = () => {
     setOnboarding({ completed: true, completedAt: new Date().toISOString() })
+    trackEvent(AnalyticsEvents.ONBOARDING_COMPLETED, { skipped: true })
     router.replace("/today")
   }
 

@@ -37,6 +37,7 @@ import { useKids, readDemoHours, type DemoKid } from "@/lib/demo-kids"
 import ComplianceCountdown from "@/components/compliance-countdown"
 import { CapturePhoto } from "@/components/capture-media"
 import DayTweaks, { formatDateKey } from "@/components/day-tweaks"
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
 import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
 import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
 import { Button } from "@/components/ui/button"
@@ -189,6 +190,7 @@ export default function TodayPage() {
 
   const startTeach = (lesson: Lesson) => {
     const session = startSession(lesson.id)
+    trackEvent(AnalyticsEvents.LESSON_START, { subject: lesson.subject, from: "today" })
     router.push(`/teach/${session.id}`)
   }
 

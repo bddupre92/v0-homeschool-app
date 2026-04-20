@@ -13,6 +13,7 @@ export enum EventCategory {
   Search = "search",
   User = "user",
   Error = "error",
+  CalmLoop = "calm_loop",
 }
 
 // Define common events
@@ -22,6 +23,7 @@ export const AnalyticsEvents = {
   SIGN_IN: `${EventCategory.Auth}_sign_in`,
   SIGN_OUT: `${EventCategory.Auth}_sign_out`,
   PASSWORD_RESET: `${EventCategory.Auth}_password_reset`,
+  ONBOARDING_COMPLETED: `${EventCategory.Auth}_onboarding_completed`,
 
   // Content events
   VIEW_RESOURCE: `${EventCategory.Content}_view_resource`,
@@ -36,6 +38,15 @@ export const AnalyticsEvents = {
   // Engagement events
   SEARCH: `${EventCategory.Search}_query`,
   FILTER_APPLY: `${EventCategory.Search}_filter_apply`,
+
+  // Calm-loop events — the primary product signals. Deliberately a
+  // tight set: lesson start, capture taken, session end, hours
+  // logged, kid added. No per-user tracking beyond these.
+  LESSON_START: `${EventCategory.CalmLoop}_lesson_start`,
+  CAPTURE_TAKEN: `${EventCategory.CalmLoop}_capture_taken`,
+  SESSION_END: `${EventCategory.CalmLoop}_session_end`,
+  HOURS_LOGGED: `${EventCategory.CalmLoop}_hours_logged`,
+  KID_ADDED: `${EventCategory.CalmLoop}_kid_added`,
 
   // User events
   UPDATE_PROFILE: `${EventCategory.User}_update_profile`,

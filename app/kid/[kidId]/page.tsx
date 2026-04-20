@@ -20,6 +20,7 @@ import {
   startSession,
 } from "@/lib/atoz-store"
 import { useKids } from "@/lib/demo-kids"
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
 import { ArrowLeft, CheckCircle2, Play } from "lucide-react"
 
 function sameLocalDay(iso: string, day: Date): boolean {
@@ -133,6 +134,7 @@ export default function KidModePage() {
                   onClick={() => {
                     if (done) return
                     const session = startSession(lesson.id)
+                    trackEvent(AnalyticsEvents.LESSON_START, { subject: lesson.subject, from: "kid-mode" })
                     router.push(`/teach/${session.id}`)
                   }}
                   disabled={done}

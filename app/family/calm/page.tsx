@@ -25,6 +25,7 @@ import {
   type Lesson,
 } from "@/lib/atoz-store"
 import { readDemoHours, useKids } from "@/lib/demo-kids"
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
 import WeeklyRhythm from "@/components/weekly-rhythm"
 import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
 import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
@@ -87,7 +88,9 @@ export default function CalmFamilyPage() {
       toast({ title: "Name required", description: "Give your learner a name.", variant: "destructive" })
       return
     }
+    const isNew = !kids.some((k) => k.id === merged.id)
     upsertKid(merged)
+    if (isNew) trackEvent(AnalyticsEvents.KID_ADDED, { context: "family-calm" })
     toast({ title: "Saved", description: `${merged.name} updated.` })
     closeEditor()
   }

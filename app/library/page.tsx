@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { Plus, Search } from "lucide-react"
 import { useKids } from "@/lib/demo-kids"
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
 
 const STATUS_FILTERS: { v: LessonStatus | "all"; label: string }[] = [
   { v: "all", label: "All" },
@@ -88,6 +89,7 @@ export default function LibraryPage() {
       return
     }
     const session = startSession(lesson.id)
+    trackEvent(AnalyticsEvents.LESSON_START, { subject: lesson.subject, from: "library" })
     router.push(`/teach/${session.id}`)
   }
 
