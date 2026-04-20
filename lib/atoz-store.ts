@@ -94,6 +94,8 @@ export interface PortfolioItem {
   voiceBlobId?: string
   voiceMimeType?: string
   notes: string[]
+  /** Observations, not scores. Labels from the curated list in components/trait-picker. */
+  traits?: string[]
   rating?: ReflectionRating
   minutes: number
   createdAt: string

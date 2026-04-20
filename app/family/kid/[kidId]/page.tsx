@@ -76,6 +76,13 @@ export default function KidPage() {
     return Array.from(byDate.entries()).sort(([a], [b]) => (a > b ? -1 : 1))
   }, [kidItems])
 
+  // Observed traits across all captured items — deliberately no counts / no chart.
+  const observedTraits = useMemo(() => {
+    const set = new Set<string>()
+    for (const item of kidItems) for (const t of item.traits ?? []) set.add(t)
+    return Array.from(set)
+  }, [kidItems])
+
   return (
     <div className="min-h-screen bg-[var(--linen)] text-[var(--ink)] font-sans">
       <Navigation />
@@ -143,6 +150,25 @@ export default function KidPage() {
             </div>
           </div>
         </section>
+
+        {observedTraits.length > 0 && (
+          <section className="mb-10">
+            <div className="atoz-eyebrow mb-3">Observed</div>
+            <ul className="flex flex-wrap gap-2">
+              {observedTraits.map((trait) => (
+                <li
+                  key={trait}
+                  className="text-xs px-3 py-1 rounded-full border border-[var(--rule)] bg-white text-[var(--ink-2)]"
+                >
+                  {trait}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-[var(--ink-4)] mt-2">
+              Observations across saved lessons. No scores, no ranks — just what you noticed.
+            </p>
+          </section>
+        )}
 
         <section>
           <div className="flex items-baseline justify-between mb-4">
@@ -223,6 +249,18 @@ export default function KidPage() {
                           <ul className="mt-2 text-xs text-[var(--ink-3)] space-y-0.5">
                             {item.notes.slice(0, 3).map((n, i) => (
                               <li key={i}>· {n}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {item.traits && item.traits.length > 0 && (
+                          <ul className="mt-2 flex flex-wrap gap-1">
+                            {item.traits.map((t, i) => (
+                              <li
+                                key={i}
+                                className="text-[11px] px-2 py-0.5 rounded-full border border-[var(--rule)] bg-[var(--linen)] text-[var(--ink-3)]"
+                              >
+                                {t}
+                              </li>
                             ))}
                           </ul>
                         )}

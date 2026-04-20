@@ -20,6 +20,7 @@ import {
 import { ReflectionPicker } from "@/components/reflection-picker"
 import { CapturePhoto, CaptureAudio } from "@/components/capture-media"
 import AdvisorPanel from "@/components/advisor-panel"
+import TraitPicker from "@/components/trait-picker"
 import { saveCaptureMedia } from "@/lib/blob-store"
 import {
   type Capture,
@@ -63,6 +64,7 @@ export default function TeachSessionPage() {
   const [reflectionNote, setReflectionNote] = useState("")
   const [reflectionStuck, setReflectionStuck] = useState("")
   const [reflectionRevisit, setReflectionRevisit] = useState("")
+  const [traits, setTraits] = useState<string[]>([])
   const [addingStep, setAddingStep] = useState(false)
   const [newStep, setNewStep] = useState("")
   const [advisorOpen, setAdvisorOpen] = useState(false)
@@ -310,6 +312,7 @@ export default function TeachSessionPage() {
         voiceBlobId: voiceCap?.blobId,
         voiceMimeType: voiceCap?.mimeType,
         notes,
+        traits: traits.length > 0 ? traits : undefined,
         rating: reflection,
         minutes,
         createdAt: endedAt,
@@ -373,6 +376,16 @@ export default function TeachSessionPage() {
               rows={3}
               className="mt-4 w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder:text-white/40 text-sm focus:outline-none focus:border-white/25 resize-none"
             />
+          </TeachCard>
+
+          <TeachCard>
+            <div className="text-xs uppercase tracking-[0.14em] text-white/50 font-semibold mb-3">
+              How they showed up
+            </div>
+            <p className="text-xs text-white/50 mb-3">
+              Tap the ones you noticed. Observations, not scores — nothing rolls up.
+            </p>
+            <TraitPicker value={traits} onChange={setTraits} dark />
           </TeachCard>
 
           <TeachCard>

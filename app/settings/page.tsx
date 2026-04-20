@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Bell, CreditCard, LogOut, Shield, Sparkles, Sun, User, Loader2 } from "lucide-react"
+import { Bell, CalendarDays, CreditCard, LogOut, Shield, Sparkles, Sun, User, Loader2 } from "lucide-react"
 import { getAdvisorPrefs, setAdvisorPrefs } from "@/lib/atoz-store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -99,6 +99,13 @@ export default function SettingsPage() {
                   >
                     <Sparkles className="h-4 w-4" />
                     Advisor
+                  </Link>
+                  <Link
+                    href="/settings/compliance"
+                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
+                  >
+                    <CalendarDays className="h-4 w-4" />
+                    Compliance
                   </Link>
                   <Link
                     href="#appearance"
