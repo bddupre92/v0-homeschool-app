@@ -236,6 +236,27 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Email verification</h3>
+                    {user?.emailVerified ? (
+                      <p className="text-sm text-muted-foreground">
+                        <Badge variant="secondary" className="mr-2">Verified</Badge>
+                        {user.email}
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-sm text-muted-foreground">
+                          Optional. Verifying lets you recover your account if you lose access.
+                        </p>
+                        <Button variant="outline" asChild>
+                          <Link href="/verify-email">Verify email</Link>
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
                     <h3 className="text-lg font-medium">Password</h3>
                     <p className="text-sm text-muted-foreground">
                       To change your password, use the password reset flow.
