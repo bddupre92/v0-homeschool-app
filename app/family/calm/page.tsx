@@ -22,9 +22,12 @@ import {
   onStorageChange,
   upsertKid,
   type Kid,
+  type Lesson,
 } from "@/lib/atoz-store"
 import { readDemoHours, useKids } from "@/lib/demo-kids"
 import WeeklyRhythm from "@/components/weekly-rhythm"
+import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
+import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -55,6 +58,9 @@ export default function CalmFamilyPage() {
   const [membersCount, setMembersCount] = useState(1)
   const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => readDemoHours())
   const [editor, setEditor] = useState<Kid | null>(null)
+  const [authorOpen, setAuthorOpen] = useState(false)
+  const [editing, setEditing] = useState<Lesson | undefined>(undefined)
+  const [scheduleTarget, setScheduleTarget] = useState<Lesson | null>(null)
 
   const refresh = useCallback(() => {
     const items = listPortfolio()
@@ -108,12 +114,26 @@ export default function CalmFamilyPage() {
               Kids, parents, helpers. Tap a kid to see their portfolio and hours.
             </p>
           </div>
-          <Link
-            href="/people"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--rule)] bg-white hover:bg-[var(--sage-ll)] text-sm font-medium"
-          >
-            <Users size={14} aria-hidden="true" /> People · {membersCount}
-          </Link>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditing(undefined)
+                setAuthorOpen(true)
+              }}
+              disabled={kids.length === 0}
+              className="rounded-full border-[var(--rule)]"
+            >
+              <Plus size={14} className="mr-1" aria-hidden="true" /> New lesson
+            </Button>
+            <Link
+              href="/people"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--rule)] bg-white hover:bg-[var(--sage-ll)] text-sm font-medium"
+            >
+              <Users size={14} aria-hidden="true" /> People · {membersCount}
+            </Link>
+          </div>
         </header>
 
         {kids.length > 0 && (
@@ -203,6 +223,33 @@ export default function CalmFamilyPage() {
         onSave={saveKid}
         onRemove={removeKid}
         existingId={editor && kids.some((k) => k.id === editor.id) ? editor.id : null}
+      />
+
+      <LessonAuthoringDialog
+        open={authorOpen}
+        onOpenChange={(o) => {
+          setAuthorOpen(o)
+          if (!o) setEditing(undefined)
+        }}
+        kids={kids}
+        lesson={editing}
+        onSaved={(saved) => {
+          refresh()
+          setEditing(saved)
+        }}
+        onScheduleClick={(saved) => {
+          setAuthorOpen(false)
+          setScheduleTarget(saved)
+        }}
+      />
+
+      <LessonScheduleSheet
+        open={!!scheduleTarget}
+        onOpenChange={(o) => {
+          if (!o) setScheduleTarget(null)
+        }}
+        lesson={scheduleTarget}
+        onScheduled={() => refresh()}
       />
     </div>
   )

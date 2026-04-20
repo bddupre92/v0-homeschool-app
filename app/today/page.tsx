@@ -16,10 +16,12 @@ import {
   ComplianceStrip,
 } from "@/components/primitives"
 import {
+  type DayTweaks as DayTweaksType,
   type Lesson,
   type LessonSession,
   type PortfolioItem,
   type TodayLayout,
+  getDayTweaks,
   getTodayLayout,
   listLessons,
   listPortfolio,
@@ -30,9 +32,13 @@ import {
 } from "@/lib/atoz-store"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { CalendarDays, Compass, LayoutList, Play, Sparkle, Users } from "lucide-react"
+import { CalendarDays, Compass, LayoutList, Play, Plus, Sparkle, Users } from "lucide-react"
 import { useKids, readDemoHours, type DemoKid } from "@/lib/demo-kids"
 import ComplianceCountdown from "@/components/compliance-countdown"
+import DayTweaks, { formatDateKey } from "@/components/day-tweaks"
+import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
+import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
+import { Button } from "@/components/ui/button"
 
 const COMPLIANCE_KEY = "atoz.complianceMode"
 
@@ -74,6 +80,10 @@ export default function TodayPage() {
   const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => readDemoHours())
   const [complianceOn, setComplianceOn] = useState<boolean>(false)
   const [layout, setLayout] = useState<TodayLayout>("agenda")
+  const [authorOpen, setAuthorOpen] = useState(false)
+  const [editing, setEditing] = useState<Lesson | undefined>(undefined)
+  const [scheduleTarget, setScheduleTarget] = useState<Lesson | null>(null)
+  const [dayTweaks, setDayTweaksState] = useState<DayTweaksType>({})
 
   const refresh = useCallback(() => {
     setLessons(listLessons())
@@ -82,27 +92,42 @@ export default function TodayPage() {
     setWeeklyHours(readDemoHours())
   }, [])
 
+  const today = new Date()
+  const dateKey = formatDateKey(today)
+
   useEffect(() => {
     refresh()
     if (typeof window !== "undefined") {
       setComplianceOn(localStorage.getItem(COMPLIANCE_KEY) === "on")
       setLayout(getTodayLayout())
+      setDayTweaksState(getDayTweaks(dateKey))
     }
     return onStorageChange(refresh)
-  }, [refresh])
+  }, [refresh, dateKey])
 
   const handleLayoutChange = (next: TodayLayout) => {
     setLayout(next)
     setTodayLayout(next)
   }
 
-  const today = new Date()
   const scheduledToday = useMemo(
     () =>
       lessons
         .filter((l) => l.status === "scheduled" && l.scheduledFor && sameLocalDay(l.scheduledFor, today))
         .sort((a, b) => (a.scheduledFor! < b.scheduledFor! ? -1 : 1)),
     [lessons, today],
+  )
+
+  const filteredToday = useMemo(() => {
+    if (dayTweaks.quietDay) return []
+    if (!dayTweaks.skipSubjects?.length) return scheduledToday
+    const skip = new Set(dayTweaks.skipSubjects)
+    return scheduledToday.filter((l) => !skip.has(l.subject))
+  }, [scheduledToday, dayTweaks])
+
+  const todaySubjects = useMemo(
+    () => Array.from(new Set(scheduledToday.map((l) => l.subject).filter(Boolean))),
+    [scheduledToday],
   )
 
   const completedSessionIdsToday = useMemo(
@@ -115,7 +140,7 @@ export default function TodayPage() {
     [sessions, today],
   )
 
-  const doneCount = scheduledToday.filter((l) => completedSessionIdsToday.has(l.id)).length
+  const doneCount = filteredToday.filter((l) => completedSessionIdsToday.has(l.id)).length
 
   const recentPortfolio = useMemo(() => portfolio.slice(0, 3), [portfolio])
 
@@ -178,13 +203,15 @@ export default function TodayPage() {
             {greetingFor()}, <em className="not-italic font-normal text-[var(--sage-dd)]">Rachel</em>.
           </h1>
           <p className="text-[var(--ink-2)] max-w-[540px]">
-            {scheduledToday.length === 0 && portfolio.length === 0 ? (
+            {dayTweaks.quietDay ? (
+              <>A quiet day. No lessons, no pressure — rest is learning too.</>
+            ) : filteredToday.length === 0 && portfolio.length === 0 ? (
               <>No lessons scheduled today. That's a quiet day — rest is learning too.</>
             ) : (
               <>
-                {doneCount} of {scheduledToday.length} lesson{scheduledToday.length === 1 ? "" : "s"} done.
-                {scheduledToday.length > doneCount && scheduledToday[doneCount] && (
-                  <> Next up: {scheduledToday[doneCount].title || "a lesson"}.</>
+                {doneCount} of {filteredToday.length} lesson{filteredToday.length === 1 ? "" : "s"} done.
+                {filteredToday.length > doneCount && filteredToday[doneCount] && (
+                  <> Next up: {filteredToday[doneCount].title || "a lesson"}.</>
                 )}
               </>
             )}
@@ -245,8 +272,24 @@ export default function TodayPage() {
         <section className="mb-10">
           <div className="flex items-baseline justify-between mb-3 flex-wrap gap-3">
             <h2 className="font-display text-2xl font-medium">Today's lessons</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <LayoutSwitcher value={layout} onChange={handleLayoutChange} />
+              <DayTweaks
+                dateKey={dateKey}
+                subjects={todaySubjects}
+                onChange={(next) => setDayTweaksState(next)}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditing(undefined)
+                  setAuthorOpen(true)
+                }}
+                className="rounded-full border-[var(--rule)]"
+              >
+                <Plus size={14} className="mr-1" aria-hidden="true" /> New lesson
+              </Button>
               <Link href="/teach" className="text-sm text-[var(--ink-3)] hover:text-[var(--ink)]">
                 Manage →
               </Link>
@@ -255,7 +298,7 @@ export default function TodayPage() {
 
           {layout === "agenda" && (
             <AgendaView
-              lessons={scheduledToday}
+              lessons={filteredToday}
               kids={kids}
               doneIds={completedSessionIdsToday}
               onTeach={startTeach}
@@ -264,7 +307,7 @@ export default function TodayPage() {
 
           {layout === "per-kid" && (
             <PerKidView
-              lessons={scheduledToday}
+              lessons={filteredToday}
               kids={kids}
               doneIds={completedSessionIdsToday}
               onTeach={startTeach}
@@ -276,7 +319,7 @@ export default function TodayPage() {
               kids={kids}
               weeklyHours={weeklyHours}
               subjectHoursThisWeek={subjectHoursThisWeek}
-              scheduledToday={scheduledToday}
+              scheduledToday={filteredToday}
             />
           )}
         </section>
@@ -376,6 +419,33 @@ export default function TodayPage() {
           </div>
         </section>
       </main>
+
+      <LessonAuthoringDialog
+        open={authorOpen}
+        onOpenChange={(o) => {
+          setAuthorOpen(o)
+          if (!o) setEditing(undefined)
+        }}
+        kids={kids}
+        lesson={editing}
+        onSaved={(saved) => {
+          refresh()
+          setEditing(saved)
+        }}
+        onScheduleClick={(saved) => {
+          setAuthorOpen(false)
+          setScheduleTarget(saved)
+        }}
+      />
+
+      <LessonScheduleSheet
+        open={!!scheduleTarget}
+        onOpenChange={(o) => {
+          if (!o) setScheduleTarget(null)
+        }}
+        lesson={scheduleTarget}
+        onScheduled={() => refresh()}
+      />
     </div>
   )
 }

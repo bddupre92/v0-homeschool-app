@@ -98,6 +98,17 @@ export default function KidPage() {
               </p>
             </div>
           </div>
+          <Link
+            href={`/kid/${kid.id}`}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition"
+            style={{
+              borderColor: kid.color,
+              color: kid.color,
+              background: `${kid.color}14`,
+            }}
+          >
+            Hand to {kid.name} →
+          </Link>
         </header>
 
         <section className="mb-10 grid grid-cols-1 md:grid-cols-3 gap-3">

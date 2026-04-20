@@ -403,6 +403,23 @@ export function setTodayLayout(layout: TodayLayout): void {
   write(KEY.todayLayout, layout)
 }
 
+// ── day tweaks ───────────────────────────────────────────────────
+
+export interface DayTweaks {
+  quietDay?: boolean
+  skipSubjects?: string[]
+}
+
+const DAY_TWEAKS_PREFIX = "atoz.dayTweaks."
+
+export function getDayTweaks(dateKey: string): DayTweaks {
+  return read<DayTweaks>(DAY_TWEAKS_PREFIX + dateKey, {})
+}
+
+export function setDayTweaks(dateKey: string, next: DayTweaks): void {
+  write(DAY_TWEAKS_PREFIX + dateKey, next)
+}
+
 /**
  * Wipe any auto-seeded demo kids so the first real kid added during
  * onboarding isn't mixed with Emma/Noah/Lily.
