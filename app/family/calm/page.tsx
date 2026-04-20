@@ -24,6 +24,7 @@ import {
   type Kid,
 } from "@/lib/atoz-store"
 import { readDemoHours, useKids } from "@/lib/demo-kids"
+import WeeklyRhythm from "@/components/weekly-rhythm"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -114,6 +115,12 @@ export default function CalmFamilyPage() {
             <Users size={14} aria-hidden="true" /> People · {membersCount}
           </Link>
         </header>
+
+        {kids.length > 0 && (
+          <section className="mb-8">
+            <WeeklyRhythm kids={kids} />
+          </section>
+        )}
 
         <section>
           <div className="flex items-center justify-between mb-4">

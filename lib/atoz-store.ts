@@ -127,7 +127,10 @@ const KEY = {
   memberships: "atoz.memberships",
   invites: "atoz.invites",
   onboarding: "atoz.onboarding",
+  todayLayout: "atoz.todayLayout",
 } as const
+
+export type TodayLayout = "agenda" | "per-kid" | "compass"
 
 export interface OnboardingState {
   completed: boolean
@@ -388,6 +391,16 @@ export function setOnboarding(next: Partial<OnboardingState>): OnboardingState {
   const merged = { ...getOnboarding(), ...next }
   write(KEY.onboarding, merged)
   return merged
+}
+
+// ── today layout ─────────────────────────────────────────────────
+
+export function getTodayLayout(): TodayLayout {
+  return read<TodayLayout>(KEY.todayLayout, "agenda")
+}
+
+export function setTodayLayout(layout: TodayLayout): void {
+  write(KEY.todayLayout, layout)
 }
 
 /**
