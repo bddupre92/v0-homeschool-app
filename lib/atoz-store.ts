@@ -126,7 +126,14 @@ const KEY = {
   portfolio: "atoz.portfolio",
   memberships: "atoz.memberships",
   invites: "atoz.invites",
+  onboarding: "atoz.onboarding",
 } as const
+
+export interface OnboardingState {
+  completed: boolean
+  state?: string // US state abbr, used by Phase 4 compliance guides
+  completedAt?: string
+}
 
 function canUseStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined"
@@ -369,6 +376,26 @@ export function newInvite(partial: Partial<Invite> & { role: MemberRole }): Invi
     createdAt: now.toISOString(),
     expiresAt: expires.toISOString(),
   }
+}
+
+// ── onboarding ───────────────────────────────────────────────────
+
+export function getOnboarding(): OnboardingState {
+  return read<OnboardingState>(KEY.onboarding, { completed: false })
+}
+
+export function setOnboarding(next: Partial<OnboardingState>): OnboardingState {
+  const merged = { ...getOnboarding(), ...next }
+  write(KEY.onboarding, merged)
+  return merged
+}
+
+/**
+ * Wipe any auto-seeded demo kids so the first real kid added during
+ * onboarding isn't mixed with Emma/Noah/Lily.
+ */
+export function resetKids(): void {
+  write(KEY.kids, [])
 }
 
 // ── change subscription ──────────────────────────────────────────

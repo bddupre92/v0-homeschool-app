@@ -78,7 +78,7 @@ export default function SignUpForm() {
 
     try {
       await signUp(data.email, data.password, data.name)
-      router.push("/today")
+      router.push("/onboarding")
     } catch (err: any) {
       console.error("Sign up error:", err)
 
@@ -108,7 +108,7 @@ export default function SignUpForm() {
 
     try {
       await signInWithGoogle()
-      window.location.href = "/today"
+      window.location.href = "/onboarding"
     } catch (err: any) {
       console.error("Google sign in error:", err)
 

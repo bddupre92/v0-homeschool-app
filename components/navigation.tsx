@@ -65,6 +65,7 @@ function isChromelessRoute(pathname: string): boolean {
     pathname.startsWith("/sign-up") ||
     pathname.startsWith("/reset-password") ||
     pathname.startsWith("/verify-email") ||
+    pathname.startsWith("/onboarding") ||
     pathname.startsWith("/offline") ||
     pathname.startsWith("/teach/") // in-lesson teach mode
   )
