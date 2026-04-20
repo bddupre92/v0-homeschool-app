@@ -21,6 +21,7 @@ import {
   onStorageChange,
 } from "@/lib/atoz-store"
 import { readDemoHours, useKids } from "@/lib/demo-kids"
+import { CaptureAudio, CapturePhoto } from "@/components/capture-media"
 import { useToast } from "@/hooks/use-toast"
 
 export default function KidPage() {
@@ -189,17 +190,28 @@ export default function KidPage() {
                           {item.subject} · {item.minutes} min
                           {item.rating && <> · {item.rating}</>}
                         </div>
-                        {item.photoUrls.length > 0 && (
+                        {(item.photoUrls.length > 0 || (item.photoBlobIds?.length ?? 0) > 0) && (
                           <div className="flex gap-1 flex-wrap mb-2">
                             {item.photoUrls.slice(0, 4).map((u, i) => (
                               <img
-                                key={i}
+                                key={`d-${i}`}
                                 src={u}
                                 alt=""
                                 className="w-14 h-14 object-cover rounded-lg border border-[var(--rule)]"
                               />
                             ))}
+                            {(item.photoBlobIds ?? []).slice(0, Math.max(0, 4 - item.photoUrls.length)).map((id, i) => (
+                              <CapturePhoto
+                                key={`b-${i}`}
+                                blobId={id}
+                                alt=""
+                                className="w-14 h-14 object-cover rounded-lg border border-[var(--rule)]"
+                              />
+                            ))}
                           </div>
+                        )}
+                        {item.voiceBlobId && (
+                          <CaptureAudio blobId={item.voiceBlobId} className="w-full mt-1 mb-2" />
                         )}
                         {item.quote && (
                           <p className="atoz-quote !text-[15px] mb-2">&ldquo;{item.quote}&rdquo;</p>

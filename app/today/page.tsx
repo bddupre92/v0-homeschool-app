@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast"
 import { CalendarDays, Compass, LayoutList, Play, Plus, Sparkle, Users } from "lucide-react"
 import { useKids, readDemoHours, type DemoKid } from "@/lib/demo-kids"
 import ComplianceCountdown from "@/components/compliance-countdown"
+import { CapturePhoto } from "@/components/capture-media"
 import DayTweaks, { formatDateKey } from "@/components/day-tweaks"
 import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
 import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
@@ -381,6 +382,12 @@ export default function TodayPage() {
                       {item.photoUrls[0] ? (
                         <img
                           src={item.photoUrls[0]}
+                          alt=""
+                          className="w-full h-full object-cover rounded-[10px]"
+                        />
+                      ) : item.photoBlobIds?.[0] ? (
+                        <CapturePhoto
+                          blobId={item.photoBlobIds[0]}
                           alt=""
                           className="w-full h-full object-cover rounded-[10px]"
                         />

@@ -45,9 +45,18 @@ export interface Capture {
   sessionId: string
   kind: CaptureKind
   text?: string
-  dataUrl?: string // photo/voice as data URL (v1, small)
+  dataUrl?: string // small photo/voice inlined as data URL (< 100KB)
+  blobId?: string // IndexedDB id (lib/blob-store) for larger media
+  mimeType?: string // e.g. "image/jpeg", "audio/webm" — tracked alongside blobId
   relMs: number // ms since session start
   createdAt: string
+}
+
+export interface ReflectionPrompt {
+  /** stable id so re-ordering is safe */
+  id: string
+  question: string
+  answer?: string
 }
 
 export type ReflectionRating = "great" | "good" | "okay" | "tough"
@@ -63,6 +72,8 @@ export interface LessonSession {
   reflection?: {
     rating?: ReflectionRating
     note?: string
+    /** 3.4 extended reflection: answers to the calm-day prompts */
+    prompts?: ReflectionPrompt[]
   }
 }
 
@@ -77,6 +88,11 @@ export interface PortfolioItem {
   quote?: string
   narration?: string
   photoUrls: string[]
+  /** IndexedDB blob ids for photos too large to inline as dataUrl. Pair with photoUrls. */
+  photoBlobIds?: string[]
+  /** IndexedDB blob id for a voice-narration clip, if captured. */
+  voiceBlobId?: string
+  voiceMimeType?: string
   notes: string[]
   rating?: ReflectionRating
   minutes: number

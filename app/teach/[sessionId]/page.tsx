@@ -18,6 +18,8 @@ import {
   CaptureBar,
 } from "@/components/primitives/teach"
 import { ReflectionPicker } from "@/components/reflection-picker"
+import { CapturePhoto, CaptureAudio } from "@/components/capture-media"
+import { saveCaptureMedia } from "@/lib/blob-store"
 import {
   type Capture,
   type Lesson,
@@ -32,7 +34,7 @@ import {
   uid,
   upsertSession,
 } from "@/lib/atoz-store"
-import { Camera, MessageSquare, Mic, Pause, Play, Square, ChevronLeft, Quote, X, Plus } from "lucide-react"
+import { Camera, MessageSquare, Mic, Pause, Play, Square, ChevronLeft, Quote, X, Plus, StopCircle, Upload } from "lucide-react"
 
 type CaptureKind = "note" | "photo" | "voice" | "quote"
 
@@ -47,13 +49,22 @@ export default function TeachSessionPage() {
   const [captures, setCaptures] = useState<Capture[]>([])
   const [openCaptureKind, setOpenCaptureKind] = useState<CaptureKind | null>(null)
   const [captureText, setCaptureText] = useState("")
-  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null)
+  const [photoPending, setPhotoPending] = useState<{ dataUrl?: string; blobId?: string; mimeType: string } | null>(null)
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+  const [voicePending, setVoicePending] = useState<{ blobId?: string; dataUrl?: string; mimeType: string; durationMs: number } | null>(null)
+  const [voiceRecording, setVoiceRecording] = useState(false)
+  const [voiceRecordedMs, setVoiceRecordedMs] = useState(0)
   const [wrapOpen, setWrapOpen] = useState(false)
   const [reflection, setReflection] = useState<ReflectionRating | undefined>(undefined)
   const [reflectionNote, setReflectionNote] = useState("")
   const [addingStep, setAddingStep] = useState(false)
   const [newStep, setNewStep] = useState("")
   const photoInputRef = useRef<HTMLInputElement | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const voiceChunksRef = useRef<Blob[]>([])
+  const voiceStreamRef = useRef<MediaStream | null>(null)
+  const voiceStartRef = useRef<number>(0)
+  const voiceTickRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Hydrate session + lesson from storage
   useEffect(() => {
@@ -115,45 +126,115 @@ export default function TeachSessionPage() {
     [session],
   )
 
+  const resetCaptureDraft = useCallback(() => {
+    setCaptureText("")
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl)
+    setPhotoPreviewUrl(null)
+    setPhotoPending(null)
+    setVoicePending(null)
+    setVoiceRecording(false)
+    setVoiceRecordedMs(0)
+    if (voiceTickRef.current) {
+      clearInterval(voiceTickRef.current)
+      voiceTickRef.current = null
+    }
+    if (voiceStreamRef.current) {
+      for (const track of voiceStreamRef.current.getTracks()) track.stop()
+      voiceStreamRef.current = null
+    }
+    voiceChunksRef.current = []
+  }, [photoPreviewUrl])
+
+  const closeCaptureDialog = useCallback(() => {
+    resetCaptureDraft()
+    setOpenCaptureKind(null)
+  }, [resetCaptureDraft])
+
   const saveCapture = useCallback(() => {
     if (!session || !openCaptureKind) return
     const text = captureText.trim()
-    if (!text && !photoDataUrl) {
-      setOpenCaptureKind(null)
+    const hasMedia = !!(photoPending || voicePending)
+    if (!text && !hasMedia) {
+      closeCaptureDialog()
       return
     }
+    const media = photoPending ?? voicePending
     const capture: Capture = {
       id: uid("cap"),
       sessionId: session.id,
       kind: openCaptureKind,
       text: text || undefined,
-      dataUrl: photoDataUrl || undefined,
+      dataUrl: media?.dataUrl,
+      blobId: media?.blobId,
+      mimeType: media?.mimeType,
       relMs: elapsedMs,
       createdAt: new Date().toISOString(),
     }
     addCapture(capture)
     setCaptures((prev) => [capture, ...prev])
-    setCaptureText("")
-    setPhotoDataUrl(null)
-    setOpenCaptureKind(null)
-  }, [session, openCaptureKind, captureText, photoDataUrl, elapsedMs])
+    closeCaptureDialog()
+  }, [session, openCaptureKind, captureText, photoPending, voicePending, elapsedMs, closeCaptureDialog])
 
-  const handlePhotoFile = (file: File) => {
-    // Downgrade to text note if storage full — handled naturally by localStorage
-    // quota catch in addCapture; here we just try to read.
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        // Keep under ~256KB to respect localStorage quota
-        if (reader.result.length > 256_000) {
-          setCaptureText((t) => (t ? `${t} · large photo omitted` : "Photo too large to store · added as note"))
-        } else {
-          setPhotoDataUrl(reader.result)
+  const handlePhotoFile = async (file: File) => {
+    try {
+      const saved = await saveCaptureMedia(file, "photo")
+      setPhotoPending(saved)
+      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl)
+      setPhotoPreviewUrl(saved.dataUrl ? null : URL.createObjectURL(file))
+    } catch {
+      setCaptureText((t) =>
+        t ? `${t} · photo save failed` : "Couldn't save that photo — saved this as a note instead.",
+      )
+    }
+  }
+
+  const startVoiceRecording = useCallback(async () => {
+    if (voiceRecording) return
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setCaptureText((t) => (t ? t : "Voice recording is not available on this device."))
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      voiceStreamRef.current = stream
+      voiceChunksRef.current = []
+      const recorder = new MediaRecorder(stream)
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) voiceChunksRef.current.push(e.data)
+      }
+      recorder.onstop = async () => {
+        const type = recorder.mimeType || "audio/webm"
+        const blob = new Blob(voiceChunksRef.current, { type })
+        voiceChunksRef.current = []
+        const saved = await saveCaptureMedia(blob, "voice")
+        const duration = Date.now() - voiceStartRef.current
+        setVoicePending({ ...saved, durationMs: duration })
+        if (voiceStreamRef.current) {
+          for (const track of voiceStreamRef.current.getTracks()) track.stop()
+          voiceStreamRef.current = null
         }
       }
+      mediaRecorderRef.current = recorder
+      voiceStartRef.current = Date.now()
+      recorder.start()
+      setVoiceRecording(true)
+      voiceTickRef.current = setInterval(() => {
+        setVoiceRecordedMs(Date.now() - voiceStartRef.current)
+      }, 250)
+    } catch {
+      setCaptureText((t) => (t ? t : "Microphone permission denied."))
     }
-    reader.readAsDataURL(file)
-  }
+  }, [voiceRecording])
+
+  const stopVoiceRecording = useCallback(() => {
+    if (!voiceRecording || !mediaRecorderRef.current) return
+    mediaRecorderRef.current.stop()
+    setVoiceRecording(false)
+    if (voiceTickRef.current) {
+      clearInterval(voiceTickRef.current)
+      voiceTickRef.current = null
+    }
+  }, [voiceRecording])
 
   const addStepInline = () => {
     if (!lesson) return
@@ -183,10 +264,12 @@ export default function TeachSessionPage() {
     upsertSession(done)
 
     const minutes = Math.round(elapsedMs / 60000)
-    const photoCapture = captures.find((c) => c.kind === "photo" && c.dataUrl)
     const quoteCapture = captures.find((c) => c.kind === "quote" && c.text)
     const notes = captures.filter((c) => c.kind === "note" && c.text).map((c) => c.text!)
-    const photos = captures.filter((c) => c.kind === "photo" && c.dataUrl).map((c) => c.dataUrl!)
+    const photoCaps = captures.filter((c) => c.kind === "photo" && (c.dataUrl || c.blobId))
+    const photoUrls = photoCaps.map((c) => c.dataUrl ?? "").filter(Boolean)
+    const photoBlobIds = photoCaps.map((c) => c.blobId ?? "").filter(Boolean)
+    const voiceCap = captures.find((c) => c.kind === "voice" && c.blobId)
 
     // One portfolio item per kid on the lesson.
     lesson.kidIds.forEach((kidId) => {
@@ -200,7 +283,10 @@ export default function TeachSessionPage() {
         date: endedAt.slice(0, 10),
         quote: quoteCapture?.text,
         narration: reflectionNote || undefined,
-        photoUrls: photos,
+        photoUrls,
+        photoBlobIds: photoBlobIds.length > 0 ? photoBlobIds : undefined,
+        voiceBlobId: voiceCap?.blobId,
+        voiceMimeType: voiceCap?.mimeType,
         notes,
         rating: reflection,
         minutes,
@@ -415,11 +501,19 @@ export default function TeachSessionPage() {
                     <span className="atoz-quote text-[15px] block">“{c.text}”</span>
                   )}
                   {c.kind !== "quote" && c.text}
-                  {c.dataUrl && (
-                    <img
-                      src={c.dataUrl}
+                  {c.kind === "photo" && (c.dataUrl || c.blobId) && (
+                    <CapturePhoto
+                      dataUrl={c.dataUrl}
+                      blobId={c.blobId}
                       alt="Capture"
                       className="mt-1 max-h-40 rounded"
+                    />
+                  )}
+                  {c.kind === "voice" && (c.dataUrl || c.blobId) && (
+                    <CaptureAudio
+                      dataUrl={c.dataUrl}
+                      blobId={c.blobId}
+                      className="mt-1 w-full max-w-[320px]"
                     />
                   )}
                 </span>
@@ -434,22 +528,27 @@ export default function TeachSessionPage() {
         <div
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
           onClick={(e) => {
-            if (e.currentTarget === e.target) setOpenCaptureKind(null)
+            if (e.currentTarget === e.target) closeCaptureDialog()
           }}
         >
           <div className="w-full max-w-[480px] bg-[#1b1f15] border border-white/10 rounded-2xl p-5 text-white">
             <div className="flex items-center justify-between mb-3">
               <div className="font-display text-lg capitalize">{openCaptureKind}</div>
-              <button onClick={() => setOpenCaptureKind(null)} aria-label="Close">
+              <button onClick={closeCaptureDialog} aria-label="Close">
                 <X size={18} />
               </button>
             </div>
             {openCaptureKind === "photo" ? (
               <>
-                {photoDataUrl ? (
-                  <img src={photoDataUrl} alt="preview" className="rounded-lg max-h-64 mx-auto" />
+                {photoPending ? (
+                  <CapturePhoto
+                    dataUrl={photoPending.dataUrl ?? photoPreviewUrl ?? undefined}
+                    blobId={photoPending.dataUrl ? undefined : photoPending.blobId}
+                    alt="preview"
+                    className="rounded-lg max-h-64 mx-auto"
+                  />
                 ) : (
-                  <>
+                  <div className="flex flex-wrap gap-2">
                     <input
                       ref={photoInputRef}
                       type="file"
@@ -462,9 +561,20 @@ export default function TeachSessionPage() {
                       }}
                     />
                     <TeachBtn variant="primary" onClick={() => photoInputRef.current?.click()}>
-                      Choose photo
+                      <Camera size={14} className="mr-1" aria-hidden="true" /> Take photo
                     </TeachBtn>
-                  </>
+                    <TeachBtn
+                      variant="secondary"
+                      onClick={() => {
+                        if (!photoInputRef.current) return
+                        photoInputRef.current.removeAttribute("capture")
+                        photoInputRef.current.click()
+                        photoInputRef.current.setAttribute("capture", "environment")
+                      }}
+                    >
+                      <Upload size={14} className="mr-1" aria-hidden="true" /> Upload
+                    </TeachBtn>
+                  </div>
                 )}
                 <textarea
                   value={captureText}
@@ -474,6 +584,54 @@ export default function TeachSessionPage() {
                   className="mt-3 w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder:text-white/40 text-sm focus:outline-none focus:border-white/25 resize-none"
                 />
               </>
+            ) : openCaptureKind === "voice" ? (
+              <div className="space-y-3">
+                {voicePending ? (
+                  <div className="space-y-2">
+                    <CaptureAudio
+                      dataUrl={voicePending.dataUrl}
+                      blobId={voicePending.blobId}
+                      className="w-full"
+                    />
+                    <div className="text-xs text-white/50">
+                      {(voicePending.durationMs / 1000).toFixed(1)}s recorded.
+                    </div>
+                    <TeachBtn
+                      variant="secondary"
+                      onClick={() => {
+                        setVoicePending(null)
+                        setVoiceRecordedMs(0)
+                      }}
+                    >
+                      Redo
+                    </TeachBtn>
+                  </div>
+                ) : voiceRecording ? (
+                  <div className="flex items-center gap-3">
+                    <TeachBtn variant="primary" onClick={stopVoiceRecording}>
+                      <StopCircle size={14} className="mr-1" aria-hidden="true" /> Stop
+                    </TeachBtn>
+                    <span className="text-sm text-white/70 tabular-nums">
+                      {Math.floor(voiceRecordedMs / 1000)}s
+                    </span>
+                    <span
+                      className="w-2 h-2 rounded-full bg-red-500 animate-pulse"
+                      aria-hidden="true"
+                    />
+                  </div>
+                ) : (
+                  <TeachBtn variant="primary" onClick={startVoiceRecording}>
+                    <Mic size={14} className="mr-1" aria-hidden="true" /> Start recording
+                  </TeachBtn>
+                )}
+                <textarea
+                  value={captureText}
+                  onChange={(e) => setCaptureText(e.target.value.slice(0, 2000))}
+                  placeholder="Optional transcript or context…"
+                  rows={2}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder:text-white/40 text-sm focus:outline-none focus:border-white/25 resize-none"
+                />
+              </div>
             ) : (
               <textarea
                 autoFocus
@@ -484,17 +642,12 @@ export default function TeachSessionPage() {
                 className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder:text-white/40 text-sm focus:outline-none focus:border-white/25 resize-none"
               />
             )}
-            {openCaptureKind === "voice" && (
-              <p className="text-xs text-white/50 mt-2">
-                Voice recording stores a transcript in v1. Type what was said.
-              </p>
-            )}
             <div className="flex justify-end gap-2 mt-4">
-              <TeachBtn variant="secondary" onClick={() => setOpenCaptureKind(null)}>Cancel</TeachBtn>
+              <TeachBtn variant="secondary" onClick={closeCaptureDialog}>Cancel</TeachBtn>
               <TeachBtn
                 variant="primary"
                 onClick={saveCapture}
-                disabled={!captureText.trim() && !photoDataUrl}
+                disabled={!captureText.trim() && !photoPending && !voicePending}
               >
                 Save
               </TeachBtn>
