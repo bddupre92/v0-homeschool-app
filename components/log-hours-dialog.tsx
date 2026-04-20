@@ -4,13 +4,19 @@
  * Log hours — Flow 01 from the AtoZ Family design handoff.
  * Chip-based pickers for kid, subject, and duration. Smart defaults
  * (most-recent kid, 30 min) so the common case is four taps to save.
+ * Also accepts natural-language input ("Emma did 40 min of math…")
+ * via the "Type it" mode at the top.
  */
 
 import { useEffect, useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Chip, KidChip } from "@/components/primitives"
+import { Sparkles } from "lucide-react"
+import { parseQuickLog, type ParsedLogEntry } from "@/lib/quick-log-parser"
+import type { Kid } from "@/lib/atoz-store"
 
 const COMMON_SUBJECTS = [
   "Mathematics",
@@ -94,6 +100,8 @@ export default function LogHoursDialog({
   const [showCustom, setShowCustom] = useState(false)
   const [date, setDate] = useState(todayIso())
   const [notes, setNotes] = useState("")
+  const [nlExpanded, setNlExpanded] = useState(false)
+  const [nlText, setNlText] = useState("")
 
   // Reset form each time the dialog opens so smart defaults re-apply.
   useEffect(() => {
@@ -105,7 +113,30 @@ export default function LogHoursDialog({
     setShowCustom(false)
     setDate(todayIso())
     setNotes("")
+    setNlExpanded(false)
+    setNlText("")
   }, [open, defaultKidId, firstKidId, defaultSubject, defaultMinutes])
+
+  const parsed = useMemo(() => {
+    if (!nlText.trim()) return null
+    return parseQuickLog(nlText, kids as Kid[])
+  }, [nlText, kids])
+
+  const commitParsed = () => {
+    if (!parsed) return
+    for (const entry of parsed.entries) {
+      const kidId = entry.kidId ?? childId
+      if (!kidId || !entry.subject || entry.minutes <= 0) continue
+      onSubmit({
+        childId: kidId,
+        subject: entry.subject,
+        hours: entry.minutes / 60,
+        date,
+        notes: entry.notes,
+      })
+    }
+    onOpenChange(false)
+  }
 
   const effectiveMinutes = useMemo(() => {
     if (!showCustom) return minutes
@@ -146,6 +177,68 @@ export default function LogHoursDialog({
         </DialogHeader>
 
         <div className="px-8 pb-6 space-y-5">
+          {/* QUICK-TYPE (NL) */}
+          <div className="rounded-xl border border-[var(--rule)] bg-[var(--linen)]/40">
+            <button
+              type="button"
+              onClick={() => setNlExpanded((v) => !v)}
+              className="w-full flex items-center gap-2 px-4 py-3 text-sm text-left"
+              aria-expanded={nlExpanded}
+            >
+              <Sparkles size={14} className="text-[var(--sage-dd)]" aria-hidden="true" />
+              <span className="font-medium text-[var(--ink-2)]">Type it out</span>
+              <span className="text-xs text-[var(--ink-3)] ml-auto">
+                {nlExpanded ? "Tap to collapse" : 'e.g. "Emma did 40 min of math"'}
+              </span>
+            </button>
+            {nlExpanded && (
+              <div className="px-4 pb-4 space-y-2">
+                <Textarea
+                  value={nlText}
+                  onChange={(e) => setNlText(e.target.value.slice(0, 500))}
+                  rows={2}
+                  placeholder={`"Emma did 40 min of math and we read Charlotte's Web for 20"`}
+                  className="resize-none"
+                />
+                {parsed && parsed.entries.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="atoz-eyebrow">We heard</div>
+                    <ul className="space-y-1 text-sm text-[var(--ink-2)]">
+                      {parsed.entries.map((e, i) => (
+                        <li key={i} className="flex items-baseline gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--sage-d)] flex-shrink-0" />
+                          <span>
+                            <strong>{e.kidName ?? "Someone"}</strong> · {e.subject} ·{" "}
+                            {e.minutes < 60 ? `${e.minutes} min` : `${(e.minutes / 60).toFixed(1).replace(/\.0$/, "")} hr`}
+                            {e.notes ? ` · ${e.notes}` : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    {!parsed.hasUsableEntry && (
+                      <p className="text-xs text-[var(--ink-3)]">
+                        Couldn't tell who did what. Try naming the kid.
+                      </p>
+                    )}
+                    <Button
+                      size="sm"
+                      disabled={!parsed.hasUsableEntry}
+                      onClick={commitParsed}
+                      className="bg-[var(--sage-dd)] hover:bg-[var(--ink)] text-white"
+                    >
+                      Log {parsed.entries.length === 1 ? "this" : `all ${parsed.entries.length}`}
+                    </Button>
+                  </div>
+                )}
+                {parsed && parsed.entries.length === 0 && (
+                  <p className="text-xs text-[var(--ink-3)]">
+                    Needs a kid name, a subject, and a duration. Try: "Emma read for 20 min."
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* WHO */}
           <fieldset className="space-y-2">
             <legend className="atoz-eyebrow">Who</legend>

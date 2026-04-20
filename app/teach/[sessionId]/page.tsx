@@ -57,6 +57,8 @@ export default function TeachSessionPage() {
   const [wrapOpen, setWrapOpen] = useState(false)
   const [reflection, setReflection] = useState<ReflectionRating | undefined>(undefined)
   const [reflectionNote, setReflectionNote] = useState("")
+  const [reflectionStuck, setReflectionStuck] = useState("")
+  const [reflectionRevisit, setReflectionRevisit] = useState("")
   const [addingStep, setAddingStep] = useState(false)
   const [newStep, setNewStep] = useState("")
   const photoInputRef = useRef<HTMLInputElement | null>(null)
@@ -256,16 +258,26 @@ export default function TeachSessionPage() {
   const saveToPortfolio = () => {
     if (!session || !lesson) return
     const endedAt = new Date().toISOString()
+    const prompts = [
+      reflectionStuck.trim() && { id: "stuck", question: "What stuck?", answer: reflectionStuck.trim() },
+      reflectionRevisit.trim() && { id: "revisit", question: "What to revisit?", answer: reflectionRevisit.trim() },
+    ].filter(Boolean) as { id: string; question: string; answer: string }[]
     const done: LessonSession = {
       ...session,
       endedAt,
-      reflection: { rating: reflection, note: reflectionNote || undefined },
+      reflection: {
+        rating: reflection,
+        note: reflectionNote || undefined,
+        prompts: prompts.length > 0 ? prompts : undefined,
+      },
     }
     upsertSession(done)
 
     const minutes = Math.round(elapsedMs / 60000)
     const quoteCapture = captures.find((c) => c.kind === "quote" && c.text)
-    const notes = captures.filter((c) => c.kind === "note" && c.text).map((c) => c.text!)
+    const captureNotes = captures.filter((c) => c.kind === "note" && c.text).map((c) => c.text!)
+    const reflectionNotes = prompts.map((p) => `${p.question} ${p.answer}`)
+    const notes = [...captureNotes, ...reflectionNotes]
     const photoCaps = captures.filter((c) => c.kind === "photo" && (c.dataUrl || c.blobId))
     const photoUrls = photoCaps.map((c) => c.dataUrl ?? "").filter(Boolean)
     const photoBlobIds = photoCaps.map((c) => c.blobId ?? "").filter(Boolean)
@@ -351,6 +363,32 @@ export default function TeachSessionPage() {
               rows={3}
               className="mt-4 w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder:text-white/40 text-sm focus:outline-none focus:border-white/25 resize-none"
             />
+          </TeachCard>
+
+          <TeachCard>
+            <div className="text-xs uppercase tracking-[0.14em] text-white/50 font-semibold mb-3">
+              Worth remembering
+            </div>
+            <label className="block">
+              <span className="text-sm text-white/70">What stuck?</span>
+              <textarea
+                value={reflectionStuck}
+                onChange={(e) => setReflectionStuck(e.target.value.slice(0, 300))}
+                placeholder="A detail, a question they asked, a moment…"
+                rows={2}
+                className="mt-2 w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder:text-white/40 text-sm focus:outline-none focus:border-white/25 resize-none"
+              />
+            </label>
+            <label className="block mt-4">
+              <span className="text-sm text-white/70">What to revisit?</span>
+              <textarea
+                value={reflectionRevisit}
+                onChange={(e) => setReflectionRevisit(e.target.value.slice(0, 300))}
+                placeholder="A concept that needed more time, something to come back to…"
+                rows={2}
+                className="mt-2 w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder:text-white/40 text-sm focus:outline-none focus:border-white/25 resize-none"
+              />
+            </label>
           </TeachCard>
 
           <div className="flex flex-wrap gap-2 justify-end">
