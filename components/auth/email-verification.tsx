@@ -23,7 +23,7 @@ export default function EmailVerification() {
   // Check if email is already verified
   useEffect(() => {
     if (user?.emailVerified) {
-      router.push("/dashboard")
+      router.push("/today")
     }
   }, [user, router])
 
@@ -99,7 +99,7 @@ export default function EmailVerification() {
     try {
       await user.reload()
       if (user.emailVerified) {
-        router.push("/dashboard")
+        router.push("/today")
       } else {
         setError("Your email is not verified yet. Please check your inbox.")
       }
@@ -116,10 +116,10 @@ export default function EmailVerification() {
     <div className="flex items-center justify-center min-h-screen bg-muted/40">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Verify Your Email</CardTitle>
+          <CardTitle>Verify your email</CardTitle>
           <CardDescription>
-            We've sent a verification email to <strong>{user.email}</strong>. Please check your inbox and click the
-            verification link.
+            Verifying <strong>{user.email}</strong> lets you recover your account if you lose access. It's optional —
+            you can do this any time.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -191,9 +191,9 @@ export default function EmailVerification() {
               )}
             </Button>
           </div>
-          <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => router.push("/sign-in")}>
+          <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => router.push("/today")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Sign In
+            Skip for now
           </Button>
         </CardFooter>
       </Card>

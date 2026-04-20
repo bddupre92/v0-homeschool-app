@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -10,6 +11,7 @@ import { GoogleIcon } from "@/components/icons/google-icon"
 
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -31,6 +33,9 @@ const formSchema = z
     email: z.string().email("Invalid email address"),
     password: passwordSchema,
     confirmPassword: z.string(),
+    terms: z.literal(true, {
+      errorMap: () => ({ message: "You must agree to the Terms and Privacy Policy" }),
+    }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -52,9 +57,12 @@ export default function SignUpForm() {
       email: "",
       password: "",
       confirmPassword: "",
+      terms: false as unknown as true,
     },
     mode: "onChange",
   })
+
+  const termsAccepted = form.watch("terms") === true
 
   // Get current password value for requirements check
   const password = form.watch("password")
@@ -70,7 +78,7 @@ export default function SignUpForm() {
 
     try {
       await signUp(data.email, data.password, data.name)
-      router.push("/verify-email")
+      router.push("/onboarding")
     } catch (err: any) {
       console.error("Sign up error:", err)
 
@@ -91,12 +99,16 @@ export default function SignUpForm() {
   }
 
   const handleGoogleSignIn = async () => {
+    if (!termsAccepted) {
+      setError("Please agree to the Terms and Privacy Policy before continuing.")
+      return
+    }
     setError(null)
     setIsLoading(true)
 
     try {
       await signInWithGoogle()
-      window.location.href = "/dashboard"
+      window.location.href = "/onboarding"
     } catch (err: any) {
       console.error("Google sign in error:", err)
 
@@ -210,7 +222,36 @@ export default function SignUpForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <FormField
+              control={form.control}
+              name="terms"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start gap-3 space-y-0 pt-1">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value === true}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                      aria-label="Agree to Terms and Privacy Policy"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="text-sm font-normal text-[var(--ink-2)]">
+                      I agree to the{" "}
+                      <Link href="/terms-of-service" target="_blank" className="underline hover:text-[var(--ink)]">
+                        Terms of Service
+                      </Link>{" "}
+                      and{" "}
+                      <Link href="/privacy-policy" target="_blank" className="underline hover:text-[var(--ink)]">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </FormLabel>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full" disabled={isLoading || !termsAccepted}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -230,7 +271,13 @@ export default function SignUpForm() {
             <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
           </div>
         </div>
-        <Button variant="outline" type="button" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
+        <Button
+          variant="outline"
+          type="button"
+          className="w-full"
+          onClick={handleGoogleSignIn}
+          disabled={isLoading || !termsAccepted}
+        >
           <GoogleIcon className="mr-2 h-4 w-4" />
           Google
         </Button>

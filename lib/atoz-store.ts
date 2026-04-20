@@ -5,6 +5,16 @@
  * v2 will migrate to Supabase; v1 keeps data on the device.
  */
 
+export interface Kid {
+  id: string
+  name: string
+  color: string
+  age?: number
+  weeklyTarget?: number
+  createdAt: string
+  updatedAt: string
+}
+
 export type LessonStatus = "draft" | "scheduled" | "archived"
 
 export interface LessonPlanStep {
@@ -109,13 +119,24 @@ export interface Invite {
 // ── storage helpers ──────────────────────────────────────────────
 
 const KEY = {
+  kids: "atoz.kids",
   lessons: "atoz.lessons",
   sessions: "atoz.sessions",
   captures: "atoz.captures",
   portfolio: "atoz.portfolio",
   memberships: "atoz.memberships",
   invites: "atoz.invites",
+  onboarding: "atoz.onboarding",
+  todayLayout: "atoz.todayLayout",
 } as const
+
+export type TodayLayout = "agenda" | "per-kid" | "compass"
+
+export interface OnboardingState {
+  completed: boolean
+  state?: string // US state abbr, used by Phase 4 compliance guides
+  completedAt?: string
+}
 
 function canUseStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined"
@@ -143,6 +164,56 @@ function write<T>(key: string, value: T): void {
 
 export function uid(prefix = "id"): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`
+}
+
+// ── kids ─────────────────────────────────────────────────────────
+
+export function listKids(): Kid[] {
+  return read<Kid[]>(KEY.kids, [])
+}
+
+export function getKid(id: string): Kid | undefined {
+  return listKids().find((k) => k.id === id)
+}
+
+export function upsertKid(kid: Kid): Kid {
+  const now = new Date().toISOString()
+  const all = listKids()
+  const idx = all.findIndex((k) => k.id === kid.id)
+  const merged = { ...kid, updatedAt: now }
+  if (idx >= 0) all[idx] = merged
+  else all.push({ ...merged, createdAt: now })
+  write(KEY.kids, all)
+  return merged
+}
+
+export function deleteKid(id: string): void {
+  write(
+    KEY.kids,
+    listKids().filter((k) => k.id !== id),
+  )
+}
+
+export function newDraftKid(partial: Partial<Kid> = {}): Kid {
+  const now = new Date().toISOString()
+  return {
+    id: uid("kid"),
+    name: "",
+    color: "#d46e4d",
+    weeklyTarget: 17.5,
+    createdAt: now,
+    updatedAt: now,
+    ...partial,
+  }
+}
+
+export function seedKidsIfEmpty(seed: Omit<Kid, "createdAt" | "updatedAt">[]): void {
+  if (listKids().length > 0) return
+  const now = new Date().toISOString()
+  write(
+    KEY.kids,
+    seed.map((k) => ({ ...k, createdAt: now, updatedAt: now })),
+  )
 }
 
 // ── lessons ──────────────────────────────────────────────────────
@@ -308,6 +379,53 @@ export function newInvite(partial: Partial<Invite> & { role: MemberRole }): Invi
     createdAt: now.toISOString(),
     expiresAt: expires.toISOString(),
   }
+}
+
+// ── onboarding ───────────────────────────────────────────────────
+
+export function getOnboarding(): OnboardingState {
+  return read<OnboardingState>(KEY.onboarding, { completed: false })
+}
+
+export function setOnboarding(next: Partial<OnboardingState>): OnboardingState {
+  const merged = { ...getOnboarding(), ...next }
+  write(KEY.onboarding, merged)
+  return merged
+}
+
+// ── today layout ─────────────────────────────────────────────────
+
+export function getTodayLayout(): TodayLayout {
+  return read<TodayLayout>(KEY.todayLayout, "agenda")
+}
+
+export function setTodayLayout(layout: TodayLayout): void {
+  write(KEY.todayLayout, layout)
+}
+
+// ── day tweaks ───────────────────────────────────────────────────
+
+export interface DayTweaks {
+  quietDay?: boolean
+  skipSubjects?: string[]
+}
+
+const DAY_TWEAKS_PREFIX = "atoz.dayTweaks."
+
+export function getDayTweaks(dateKey: string): DayTweaks {
+  return read<DayTweaks>(DAY_TWEAKS_PREFIX + dateKey, {})
+}
+
+export function setDayTweaks(dateKey: string, next: DayTweaks): void {
+  write(DAY_TWEAKS_PREFIX + dateKey, next)
+}
+
+/**
+ * Wipe any auto-seeded demo kids so the first real kid added during
+ * onboarding isn't mixed with Emma/Noah/Lily.
+ */
+export function resetKids(): void {
+  write(KEY.kids, [])
 }
 
 // ── change subscription ──────────────────────────────────────────

@@ -20,11 +20,12 @@ import {
   listPortfolio,
   onStorageChange,
 } from "@/lib/atoz-store"
-import { DEMO_KIDS, readDemoHours } from "@/lib/demo-kids"
+import { readDemoHours, useKids } from "@/lib/demo-kids"
 import { useToast } from "@/hooks/use-toast"
 
 export default function KidPage() {
   const params = useParams<{ kidId: string }>()
+  const kids = useKids()
   const [items, setItems] = useState<PortfolioItem[]>([])
   const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => readDemoHours())
 
@@ -38,7 +39,7 @@ export default function KidPage() {
     return onStorageChange(refresh)
   }, [refresh])
 
-  const kid = DEMO_KIDS.find((k) => k.id === params?.kidId)
+  const kid = kids.find((k) => k.id === params?.kidId)
   const kidItems = useMemo(
     () => (kid ? items.filter((i) => i.kidId === kid.id) : []),
     [items, kid],
@@ -51,17 +52,16 @@ export default function KidPage() {
         <main className="atoz-page">
           <h1 className="font-display text-3xl font-light">That kid isn&apos;t here.</h1>
           <p className="mt-2 text-[var(--ink-3)]">
-            Try one of: <Link className="underline" href="/family/kid/emma">Emma</Link>,{" "}
-            <Link className="underline" href="/family/kid/noah">Noah</Link>,{" "}
-            <Link className="underline" href="/family/kid/lily">Lily</Link>
+            Go back to <Link className="underline" href="/family/calm">Family</Link> to see your roster.
           </p>
         </main>
       </div>
     )
   }
 
+  const target = kid.weeklyTarget ?? 17.5
   const hours = weeklyHours[kid.id] ?? 0
-  const pct = Math.min(100, Math.round((hours / kid.weeklyTarget) * 100))
+  const pct = Math.min(100, Math.round((hours / target) * 100))
   const totalMinutes = kidItems.reduce((s, i) => s + (i.minutes ?? 0), 0)
 
   // Group portfolio by date (most recent first)
@@ -98,6 +98,17 @@ export default function KidPage() {
               </p>
             </div>
           </div>
+          <Link
+            href={`/kid/${kid.id}`}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition"
+            style={{
+              borderColor: kid.color,
+              color: kid.color,
+              background: `${kid.color}14`,
+            }}
+          >
+            Hand to {kid.name} →
+          </Link>
         </header>
 
         <section className="mb-10 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -106,7 +117,7 @@ export default function KidPage() {
             <div className="flex items-baseline justify-between mb-2">
               <div>
                 <span className="font-display text-[28px] font-normal tracking-tight">{hours}</span>{" "}
-                <span className="text-[var(--ink-3)] text-sm">of {kid.weeklyTarget} hrs</span>
+                <span className="text-[var(--ink-3)] text-sm">of {target} hrs</span>
               </div>
               <Pill variant={pct >= 100 ? "sage" : "honey"}>{pct}%</Pill>
             </div>

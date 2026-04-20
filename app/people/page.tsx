@@ -31,7 +31,7 @@ import {
 } from "@/lib/atoz-store"
 import { useToast } from "@/hooks/use-toast"
 import { MoreVertical, Plus } from "lucide-react"
-import { DEMO_KIDS } from "@/lib/demo-kids"
+import { useKids } from "@/lib/demo-kids"
 
 const DEMO_PRIMARY: Membership = {
   id: "mem_primary",
@@ -67,6 +67,7 @@ function roleLabel(role: MemberRole): string {
 
 export default function PeoplePage() {
   const { toast } = useToast()
+  const kids = useKids()
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [invites, setInvites] = useState<Invite[]>([])
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -204,7 +205,7 @@ export default function PeoplePage() {
         <InviteFlowDialog
           open={inviteOpen}
           onOpenChange={setInviteOpen}
-          kids={DEMO_KIDS}
+          kids={kids}
           onSent={() => refresh()}
         />
       </main>
