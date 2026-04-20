@@ -24,12 +24,10 @@
     "undici": ">=7.24.0"
   },
   "dependencies": {
-    "@ai-sdk/groq": "latest",
     "@auth/core": "latest",
     "@auth/firebase-adapter": "latest",
     "@emotion/is-prop-valid": "latest",
     "@hookform/resolvers": "latest",
-    "@mapbox/mapbox-gl-geocoder": "latest",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -62,7 +60,6 @@
     "@vercel/analytics": "^1.0.0",
     "@vercel/blob": "^2.3.1",
     "@vercel/postgres": "^0.10.0",
-    "ai": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.0.0",
@@ -70,7 +67,6 @@
     "firebase-admin": "^13.0.0",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.454.0",
-    "mapbox-gl": "^3.0.0",
     "next": "15.5.13",
     "next-auth": "^4.24.0",
     "next-themes": "latest",

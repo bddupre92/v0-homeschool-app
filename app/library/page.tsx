@@ -28,12 +28,7 @@ import {
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { Plus, Search } from "lucide-react"
-
-const DEMO_KIDS = [
-  { id: "emma", name: "Emma", color: "#d46e4d" },
-  { id: "noah", name: "Noah", color: "#7d9e7d" },
-  { id: "lily", name: "Lily", color: "#df8a27" },
-]
+import { DEMO_KIDS } from "@/lib/demo-kids"
 
 const STATUS_FILTERS: { v: LessonStatus | "all"; label: string }[] = [
   { v: "all", label: "All" },

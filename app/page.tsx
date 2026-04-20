@@ -4,13 +4,24 @@ import Image from "next/image"
 import { ArrowRight, Presentation, FolderHeart, Leaf, Shield } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import Navigation from "@/components/navigation"
-import { Footer } from "@/components/footer"
 
 export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen bg-[var(--linen)] text-[var(--ink)]">
-      <Navigation />
+      <header className="container px-4 md:px-6 py-4 flex items-center justify-between">
+        <Link href="/" className="atoz-brand">
+          <span className="atoz-brand-mark">A</span>
+          <span>AtoZ Family</span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" asChild>
+            <Link href="/sign-in">Sign in</Link>
+          </Button>
+          <Button asChild className="bg-[var(--sage-dd)] hover:bg-[var(--ink)] text-white">
+            <Link href="/sign-up">Sign up</Link>
+          </Button>
+        </div>
+      </header>
 
       <main className="flex-1">
         {/* Hero Section */}
@@ -154,21 +165,11 @@ export default function HomePage() {
                 >
                   <Link href="/sign-up">Get started free <ArrowRight className="h-4 w-4 ml-2" /></Link>
                 </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  asChild
-                  className="rounded-full border-[var(--rule)]"
-                >
-                  <Link href="/design-system">See the design system</Link>
-                </Button>
               </div>
             </div>
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
   )
 }

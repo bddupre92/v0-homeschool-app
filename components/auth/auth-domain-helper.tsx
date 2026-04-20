@@ -14,6 +14,9 @@ export default function AuthDomainHelper() {
 
   useEffect(() => {
     if (typeof window === "undefined") return
+    // Developer-only affordance. In production, silently render nothing so
+    // real users don't see our internal config status.
+    if (process.env.NODE_ENV === "production") return
 
     const issues: string[] = []
 

@@ -28,34 +28,9 @@ import {
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { Play, Sparkle } from "lucide-react"
-
-const DEMO_KIDS = [
-  { id: "emma", name: "Emma", color: "#d46e4d", weeklyTarget: 17.5 },
-  { id: "noah", name: "Noah", color: "#7d9e7d", weeklyTarget: 17.5 },
-  { id: "lily", name: "Lily", color: "#df8a27", weeklyTarget: 17.5 },
-]
+import { DEMO_KIDS, readDemoHours } from "@/lib/demo-kids"
 
 const COMPLIANCE_KEY = "atoz.complianceMode"
-const WEEKLY_HOURS_LOCAL_KEY = "atoz.demoWeeklyHours"
-
-function demoWeeklyHours(): Record<string, number> {
-  // Lightweight demo numbers that prove the progress bars work without
-  // requiring any real logs. Stored in localStorage so Undo works.
-  if (typeof window === "undefined") return { emma: 14.5, noah: 12, lily: 9.5 }
-  try {
-    const raw = localStorage.getItem(WEEKLY_HOURS_LOCAL_KEY)
-    return raw ? JSON.parse(raw) : { emma: 14.5, noah: 12, lily: 9.5 }
-  } catch {
-    return { emma: 14.5, noah: 12, lily: 9.5 }
-  }
-}
-
-function saveWeeklyHours(next: Record<string, number>): void {
-  if (typeof window === "undefined") return
-  try {
-    localStorage.setItem(WEEKLY_HOURS_LOCAL_KEY, JSON.stringify(next))
-  } catch {}
-}
 
 function greetingFor(): string {
   const h = new Date().getHours()
@@ -79,14 +54,14 @@ export default function TodayPage() {
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [sessions, setSessions] = useState<LessonSession[]>([])
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([])
-  const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => demoWeeklyHours())
+  const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => readDemoHours())
   const [complianceOn, setComplianceOn] = useState<boolean>(false)
 
   const refresh = useCallback(() => {
     setLessons(listLessons())
     setSessions(listSessions())
     setPortfolio(listPortfolio())
-    setWeeklyHours(demoWeeklyHours())
+    setWeeklyHours(readDemoHours())
   }, [])
 
   useEffect(() => {

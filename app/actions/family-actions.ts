@@ -72,8 +72,6 @@ export async function saveFamilyBlueprint(data: {
       RETURNING *
     `
     revalidatePath("/family")
-    revalidatePath("/plan")
-    revalidatePath("/dashboard")
     return { success: true, data: result.rows[0] }
   } catch (error) {
     console.error("Failed to save family blueprint:", error)
@@ -121,8 +119,6 @@ export async function addChild(data: {
       RETURNING *
     `
     revalidatePath("/family")
-    revalidatePath("/plan")
-    revalidatePath("/dashboard")
     return { success: true, data: result.rows[0] }
   } catch (error) {
     console.error("Failed to add child:", error)
@@ -155,7 +151,6 @@ export async function updateChild(childId: string, data: {
       RETURNING *
     `
     revalidatePath("/family")
-    revalidatePath("/plan")
     return { success: true, data: result.rows[0] }
   } catch (error) {
     console.error("Failed to update child:", error)
@@ -168,7 +163,6 @@ export async function deleteChild(childId: string) {
     await getAuthenticatedUserId()
     await sql`DELETE FROM children WHERE id = ${childId}`
     revalidatePath("/family")
-    revalidatePath("/plan")
     return { success: true }
   } catch (error) {
     console.error("Failed to delete child:", error)
@@ -201,8 +195,6 @@ export async function logHours(data: {
       )
       RETURNING *
     `
-    revalidatePath("/plan")
-    revalidatePath("/dashboard")
     return { success: true, data: result.rows[0] }
   } catch (error) {
     console.error("Failed to log hours:", error)
@@ -311,8 +303,6 @@ export async function saveComplianceFiling(data: {
       )
       RETURNING *
     `
-    revalidatePath("/plan")
-    revalidatePath("/dashboard")
     return { success: true, data: result.rows[0] }
   } catch (error) {
     console.error("Failed to save compliance filing:", error)
@@ -336,7 +326,6 @@ export async function updateComplianceFiling(filingId: string, data: {
       WHERE id = ${filingId}
       RETURNING *
     `
-    revalidatePath("/plan")
     return { success: true, data: result.rows[0] }
   } catch (error) {
     console.error("Failed to update compliance filing:", error)
@@ -385,7 +374,6 @@ export async function addFilingDocument(data: {
       )
       RETURNING *
     `
-    revalidatePath("/plan")
     return { success: true, data: result.rows[0] }
   } catch (error) {
     console.error("Failed to add filing document:", error)
@@ -397,7 +385,6 @@ export async function deleteFilingDocument(documentId: string) {
   try {
     await getAuthenticatedUserId()
     await sql`DELETE FROM filing_documents WHERE id = ${documentId}`
-    revalidatePath("/plan")
     return { success: true }
   } catch (error) {
     console.error("Failed to delete filing document:", error)
@@ -450,8 +437,6 @@ export async function deleteHourLog(logId: string) {
   try {
     await getAuthenticatedUserId()
     await sql`DELETE FROM hour_logs WHERE id = ${logId}`
-    revalidatePath("/plan")
-    revalidatePath("/dashboard")
     return { success: true }
   } catch (error) {
     console.error("Failed to delete hour log:", error)

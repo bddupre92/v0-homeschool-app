@@ -18,7 +18,7 @@ export default function OfflinePage() {
         </p>
         <div className="space-y-4">
           <Button asChild className="w-full">
-            <Link href="/dashboard">Go to Dashboard</Link>
+            <Link href="/today">Go to Today</Link>
           </Button>
           <Button variant="outline" className="w-full" onClick={() => window.location.reload()}>
             Try Again

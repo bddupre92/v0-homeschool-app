@@ -23,13 +23,9 @@ import {
 } from "@/lib/atoz-store"
 import { useToast } from "@/hooks/use-toast"
 import { Plus, Play, Trash2, Edit3 } from "lucide-react"
+import { DEMO_KIDS } from "@/lib/demo-kids"
 
 const KID_PALETTE = ["#d46e4d", "#7d9e7d", "#df8a27", "#4a90a4", "#8a6aa1"]
-const DEMO_KIDS = [
-  { id: "emma", name: "Emma", color: "#d46e4d" },
-  { id: "noah", name: "Noah", color: "#7d9e7d" },
-  { id: "lily", name: "Lily", color: "#df8a27" },
-]
 
 export default function TeachRoomPage() {
   const router = useRouter()
@@ -103,20 +99,15 @@ export default function TeachRoomPage() {
               Author a lesson, schedule it, teach it, capture what happened. One flow, end to end.
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
-              <Link href="/design-system">Design system</Link>
-            </Button>
-            <Button
-              onClick={() => {
-                setEditing(undefined)
-                setAuthorOpen(true)
-              }}
-              className="bg-[var(--sage-dd)] hover:bg-[var(--ink)] text-white"
-            >
-              <Plus size={14} className="mr-1" /> New lesson
-            </Button>
-          </div>
+          <Button
+            onClick={() => {
+              setEditing(undefined)
+              setAuthorOpen(true)
+            }}
+            className="bg-[var(--sage-dd)] hover:bg-[var(--ink)] text-white"
+          >
+            <Plus size={14} className="mr-1" /> New lesson
+          </Button>
         </header>
 
         <Section title="Scheduled" sub="Ready to teach. Kids can see these.">

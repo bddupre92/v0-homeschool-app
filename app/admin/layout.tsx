@@ -24,11 +24,11 @@ export default async function AdminLayout({
     const userData = userDoc.data()
 
     if (!userData || userData.role !== "admin") {
-      redirect("/dashboard")
+      redirect("/today")
     }
   } catch (error) {
     console.error("Error checking admin status:", error)
-    redirect("/dashboard")
+    redirect("/today")
   }
 
   return (

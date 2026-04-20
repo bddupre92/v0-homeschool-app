@@ -30,7 +30,7 @@ export default function SeedDataPage() {
   // Check if user is admin
   useEffect(() => {
     if (userProfile && userProfile.role !== "admin") {
-      router.push("/dashboard")
+      router.push("/today")
     }
   }, [userProfile, router])
 
