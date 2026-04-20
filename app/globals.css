@@ -1099,7 +1099,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--sage-d);
+  background: var(--brand, var(--sage-d));
   color: #fff;
   display: grid;
   place-items: center;
@@ -1185,7 +1185,7 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--sage-dd);
+  background: var(--brand, var(--sage-dd));
   color: #fff;
   display: grid;
   place-items: center;

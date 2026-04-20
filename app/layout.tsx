@@ -14,6 +14,7 @@ import { PerformanceMonitoringProvider } from "@/lib/performance-monitoring"
 import { SessionInitializer } from "@/components/session-initializer"
 import { DbInitializer } from "@/components/db-initializer"
 import QueryProvider from "@/components/query-provider"
+import BrandingApplier from "@/components/branding-applier"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -100,6 +101,7 @@ export default function RootLayout({
                         {children}
                       </Suspense>
                       <ServiceWorkerRegister />
+                      <BrandingApplier />
                       <Footer />
                       <CookieConsent />
                       <SessionInitializer />

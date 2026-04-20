@@ -7,7 +7,7 @@
  * landing, auth pages, full-screen teach mode).
  */
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
@@ -38,6 +38,7 @@ import { useAuth } from "../contexts/auth-context"
 import { NotificationsPopover } from "@/components/notifications"
 import LogHoursDialog from "@/components/log-hours-dialog"
 import { readDemoHours, useKids, writeDemoHours } from "@/lib/demo-kids"
+import { getBranding, onStorageChange } from "@/lib/atoz-store"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 
@@ -80,6 +81,12 @@ export default function Navigation() {
   const { user, signOut, loading } = useAuth()
   const { toast } = useToast()
   const kids = useKids()
+  const [familyName, setFamilyName] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    setFamilyName(getBranding().familyName)
+    return onStorageChange(() => setFamilyName(getBranding().familyName))
+  }, [])
 
   if (isChromelessRoute(pathname)) return null
 
@@ -140,8 +147,8 @@ export default function Navigation() {
                     className="atoz-brand"
                     onClick={() => setMobileOpen(false)}
                   >
-                    <span className="atoz-brand-mark">A</span>
-                    <span>AtoZ Family</span>
+                    <span className="atoz-brand-mark">{(familyName ?? "AtoZ").charAt(0).toUpperCase()}</span>
+                    <span>{familyName ?? "AtoZ Family"}</span>
                   </Link>
                   <nav className="flex flex-col gap-1">
                     {PRIMARY_ROOMS.map((item) => (
@@ -158,8 +165,8 @@ export default function Navigation() {
             </Sheet>
 
             <Link href="/today" className="atoz-brand">
-              <span className="atoz-brand-mark">A</span>
-              <span className="hidden sm:inline">AtoZ Family</span>
+              <span className="atoz-brand-mark">{(familyName ?? "AtoZ").charAt(0).toUpperCase()}</span>
+              <span className="hidden sm:inline">{familyName ?? "AtoZ Family"}</span>
             </Link>
           </div>
 

@@ -14,9 +14,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Chip, KidChip } from "@/components/primitives"
-import { Sparkles } from "lucide-react"
+import { Loader2, Sparkles } from "lucide-react"
 import { parseQuickLog, type ParsedLogEntry } from "@/lib/quick-log-parser"
-import type { Kid } from "@/lib/atoz-store"
+import { getAdvisorPrefs, type Kid } from "@/lib/atoz-store"
 
 const COMMON_SUBJECTS = [
   "Mathematics",
@@ -102,6 +102,14 @@ export default function LogHoursDialog({
   const [notes, setNotes] = useState("")
   const [nlExpanded, setNlExpanded] = useState(false)
   const [nlText, setNlText] = useState("")
+  const [aiEntries, setAiEntries] = useState<ParsedLogEntry[] | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [advisorEnabled, setAdvisorEnabled] = useState(false)
+
+  useEffect(() => {
+    setAdvisorEnabled(getAdvisorPrefs().enabled)
+  }, [])
 
   // Reset form each time the dialog opens so smart defaults re-apply.
   useEffect(() => {
@@ -115,6 +123,9 @@ export default function LogHoursDialog({
     setNotes("")
     setNlExpanded(false)
     setNlText("")
+    setAiEntries(null)
+    setAiError(null)
+    setAiLoading(false)
   }, [open, defaultKidId, firstKidId, defaultSubject, defaultMinutes])
 
   const parsed = useMemo(() => {
@@ -122,9 +133,15 @@ export default function LogHoursDialog({
     return parseQuickLog(nlText, kids as Kid[])
   }, [nlText, kids])
 
+  const entriesToCommit = aiEntries ?? parsed?.entries ?? []
+  const entriesUsable =
+    aiEntries !== null
+      ? aiEntries.some((e) => e.kidId && e.subject && e.minutes > 0)
+      : parsed?.hasUsableEntry ?? false
+
   const commitParsed = () => {
-    if (!parsed) return
-    for (const entry of parsed.entries) {
+    if (entriesToCommit.length === 0) return
+    for (const entry of entriesToCommit) {
       const kidId = entry.kidId ?? childId
       if (!kidId || !entry.subject || entry.minutes <= 0) continue
       onSubmit({
@@ -136,6 +153,43 @@ export default function LogHoursDialog({
       })
     }
     onOpenChange(false)
+  }
+
+  const requestAiParse = async () => {
+    if (!nlText.trim() || kids.length === 0) return
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      const res = await fetch("/api/advisor/quick-log", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          text: nlText,
+          kids: kids.map((k) => ({ id: k.id, name: k.name, age: (k as Kid).age })),
+          subjects: COMMON_SUBJECTS,
+          dateIso: date,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setAiError(json?.error ?? "Advisor couldn't help right now.")
+        return
+      }
+      const entries = Array.isArray(json.entries) ? json.entries : []
+      const withKidNames: ParsedLogEntry[] = entries.map((e: any) => ({
+        kidId: e.kidId,
+        kidName: kids.find((k) => k.id === e.kidId)?.name,
+        subject: e.subject,
+        minutes: e.minutes,
+        notes: e.notes,
+        confidence: e.confidence ?? 0.5,
+      }))
+      setAiEntries(withKidNames)
+    } catch (err: any) {
+      setAiError(err?.message ?? "Request failed")
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   const effectiveMinutes = useMemo(() => {
@@ -200,40 +254,74 @@ export default function LogHoursDialog({
                   placeholder={`"Emma did 40 min of math and we read Charlotte's Web for 20"`}
                   className="resize-none"
                 />
-                {parsed && parsed.entries.length > 0 && (
+                {(aiEntries ?? parsed?.entries ?? []).length > 0 && (
                   <div className="space-y-2">
-                    <div className="atoz-eyebrow">We heard</div>
+                    <div className="atoz-eyebrow flex items-center gap-2">
+                      We heard
+                      {aiEntries && (
+                        <span className="text-[10px] uppercase tracking-widest text-[var(--sage-dd)] font-semibold">
+                          · Advisor
+                        </span>
+                      )}
+                    </div>
                     <ul className="space-y-1 text-sm text-[var(--ink-2)]">
-                      {parsed.entries.map((e, i) => (
+                      {(aiEntries ?? parsed?.entries ?? []).map((e, i) => (
                         <li key={i} className="flex items-baseline gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-[var(--sage-d)] flex-shrink-0" />
                           <span>
                             <strong>{e.kidName ?? "Someone"}</strong> · {e.subject} ·{" "}
-                            {e.minutes < 60 ? `${e.minutes} min` : `${(e.minutes / 60).toFixed(1).replace(/\.0$/, "")} hr`}
+                            {e.minutes < 60
+                              ? `${e.minutes} min`
+                              : `${(e.minutes / 60).toFixed(1).replace(/\.0$/, "")} hr`}
                             {e.notes ? ` · ${e.notes}` : ""}
                           </span>
                         </li>
                       ))}
                     </ul>
-                    {!parsed.hasUsableEntry && (
+                    {!entriesUsable && (
                       <p className="text-xs text-[var(--ink-3)]">
                         Couldn't tell who did what. Try naming the kid.
                       </p>
                     )}
                     <Button
                       size="sm"
-                      disabled={!parsed.hasUsableEntry}
+                      disabled={!entriesUsable}
                       onClick={commitParsed}
                       className="bg-[var(--sage-dd)] hover:bg-[var(--ink)] text-white"
                     >
-                      Log {parsed.entries.length === 1 ? "this" : `all ${parsed.entries.length}`}
+                      Log {entriesToCommit.length === 1 ? "this" : `all ${entriesToCommit.length}`}
                     </Button>
                   </div>
                 )}
-                {parsed && parsed.entries.length === 0 && (
-                  <p className="text-xs text-[var(--ink-3)]">
-                    Needs a kid name, a subject, and a duration. Try: "Emma read for 20 min."
-                  </p>
+                {parsed && parsed.entries.length === 0 && !aiEntries && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-[var(--ink-3)]">
+                      Needs a kid name, a subject, and a duration. Try: "Emma read for 20 min."
+                    </p>
+                    {advisorEnabled && nlText.trim().length > 12 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={requestAiParse}
+                        disabled={aiLoading}
+                      >
+                        {aiLoading ? (
+                          <>
+                            <Loader2 size={12} className="mr-1 animate-spin" aria-hidden="true" />
+                            Asking…
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={12} className="mr-1" aria-hidden="true" />
+                            Ask Advisor to parse this
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {aiError && (
+                  <p className="text-xs text-[var(--terracotta-d)]">{aiError}</p>
                 )}
               </div>
             )}

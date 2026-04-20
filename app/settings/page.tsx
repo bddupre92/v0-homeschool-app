@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Bell, CalendarDays, CreditCard, LogOut, Shield, Sparkles, Sun, User, Loader2 } from "lucide-react"
-import { getAdvisorPrefs, setAdvisorPrefs } from "@/lib/atoz-store"
+import { getAdvisorPrefs, getBranding, setAdvisorPrefs, setBranding } from "@/lib/atoz-store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -28,10 +28,21 @@ export default function SettingsPage() {
   const [bio, setBio] = useState("")
 
   const [advisorEnabled, setAdvisorEnabled] = useState(false)
+  const [familyName, setFamilyName] = useState("")
+  const [accentColor, setAccentColor] = useState<string>("#556b47")
 
   useEffect(() => {
     setAdvisorEnabled(getAdvisorPrefs().enabled)
+    const brand = getBranding()
+    setFamilyName(brand.familyName ?? "")
+    setAccentColor(brand.accentColor ?? "#556b47")
   }, [])
+
+  const saveBranding = (patch: { familyName?: string; accentColor?: string }) => {
+    setBranding(patch)
+    if (patch.familyName !== undefined) setFamilyName(patch.familyName)
+    if (patch.accentColor !== undefined) setAccentColor(patch.accentColor)
+  }
 
   // Notification preferences (local for now)
   const [notifResources, setNotifResources] = useState(true)
@@ -221,9 +232,63 @@ export default function SettingsPage() {
                     <Sun className="h-5 w-5" />
                     Appearance
                   </CardTitle>
-                  <CardDescription>Customize how the app looks</CardDescription>
+                  <CardDescription>Make the app feel like your home.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-medium">Family name</h3>
+                    <Input
+                      value={familyName}
+                      onChange={(e) => saveBranding({ familyName: e.target.value.slice(0, 60) })}
+                      placeholder="The Dupre Family"
+                      className="max-w-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Shown in place of "AtoZ Family" in the topbar when set.
+                    </p>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-medium">Accent color</h3>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {[
+                        "#556b47", // sage-dd default
+                        "#a44830", // terracotta-d
+                        "#a8501c", // honey-d
+                        "#4a7090", // slate blue
+                        "#6f4a7d", // plum
+                        "#2e5d3f", // deep green
+                      ].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => saveBranding({ accentColor: c })}
+                          className={`h-8 w-8 rounded-full border-2 transition ${
+                            accentColor === c ? "border-[var(--ink)] scale-110" : "border-transparent"
+                          }`}
+                          style={{ background: c }}
+                          aria-label={`Accent ${c}`}
+                          aria-pressed={accentColor === c}
+                        />
+                      ))}
+                      <input
+                        type="color"
+                        value={accentColor}
+                        onChange={(e) => saveBranding({ accentColor: e.target.value })}
+                        aria-label="Custom accent color"
+                        className="h-8 w-10 rounded border border-[var(--rule)] cursor-pointer"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Applied to highlighted actions across the app. More surfaces pick this up as
+                      the design iterates.
+                    </p>
+                  </div>
+
+                  <Separator />
+
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Theme</h3>
                     <div className="grid grid-cols-3 gap-4">
