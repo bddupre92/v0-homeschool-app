@@ -21,8 +21,19 @@ const LEGACY_REDIRECTS: Record<string, string> = {
   "/settings/modules": "/settings",
 }
 
+// Exact-match redirects (don't follow the `prefix + "/"` rule because it would
+// clash with a valid nested route, e.g. /family/calm under /family).
+const EXACT_REDIRECTS: Record<string, string> = {
+  "/family": "/family/calm",
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Exact-match redirects (must run before prefix matches).
+  if (EXACT_REDIRECTS[pathname]) {
+    return NextResponse.redirect(new URL(EXACT_REDIRECTS[pathname], request.url), 308)
+  }
 
   // Legacy-route redirects. Match exact path or a path whose prefix is a
   // deleted directory (e.g. /community/events/123 → /people).

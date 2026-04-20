@@ -37,7 +37,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAuth } from "../contexts/auth-context"
 import { NotificationsPopover } from "@/components/notifications"
 import LogHoursDialog from "@/components/log-hours-dialog"
-import { DEMO_KIDS, readDemoHours, writeDemoHours } from "@/lib/demo-kids"
+import { readDemoHours, useKids, writeDemoHours } from "@/lib/demo-kids"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 
@@ -77,6 +77,7 @@ export default function Navigation() {
   const [logOpen, setLogOpen] = useState(false)
   const { user, signOut, loading } = useAuth()
   const { toast } = useToast()
+  const kids = useKids()
 
   if (isChromelessRoute(pathname)) return null
 
@@ -84,7 +85,7 @@ export default function Navigation() {
     const prev = readDemoHours()
     const next = { ...prev, [data.childId]: (prev[data.childId] ?? 0) + data.hours }
     writeDemoHours(next)
-    const kid = DEMO_KIDS.find((k) => k.id === data.childId)
+    const kid = kids.find((k) => k.id === data.childId)
     const minutes = Math.round(data.hours * 60)
     const durationLabel = minutes < 60 ? `${minutes} min` : `${(minutes / 60).toFixed(2).replace(/\.?0+$/, "")} hr`
     toast({
@@ -256,8 +257,8 @@ export default function Navigation() {
           <LogHoursDialog
             open={logOpen}
             onOpenChange={setLogOpen}
-            children={DEMO_KIDS}
-            defaultKidId="emma"
+            children={kids}
+            defaultKidId={kids[0]?.id ?? "emma"}
             defaultSubject="Mathematics"
             defaultMinutes={30}
             onSubmit={handleLog}

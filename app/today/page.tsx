@@ -28,7 +28,7 @@ import {
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { Play, Sparkle } from "lucide-react"
-import { DEMO_KIDS, readDemoHours } from "@/lib/demo-kids"
+import { useKids, readDemoHours } from "@/lib/demo-kids"
 
 const COMPLIANCE_KEY = "atoz.complianceMode"
 
@@ -51,6 +51,7 @@ function sameLocalDay(iso: string, day: Date): boolean {
 export default function TodayPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const kids = useKids()
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [sessions, setSessions] = useState<LessonSession[]>([])
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([])
@@ -141,9 +142,10 @@ export default function TodayPage() {
 
         {complianceOn ? (
           <section className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-3">
-            {DEMO_KIDS.map((kid) => {
+            {kids.map((kid) => {
+              const target = kid.weeklyTarget ?? 17.5
               const hours = weeklyHours[kid.id] ?? 0
-              const pct = Math.min(100, Math.round((hours / kid.weeklyTarget) * 100))
+              const pct = Math.min(100, Math.round((hours / target) * 100))
               return (
                 <div key={kid.id} className="atoz-mini-card">
                   <div className="text-xs text-[var(--ink-3)] mb-1 flex items-center gap-2">
@@ -153,7 +155,7 @@ export default function TodayPage() {
                   <div className="flex items-baseline justify-between mb-2">
                     <div>
                       <span className="font-display text-[28px] font-normal tracking-tight">{hours}</span>{" "}
-                      <span className="text-[var(--ink-3)] text-sm">of {kid.weeklyTarget} hrs</span>
+                      <span className="text-[var(--ink-3)] text-sm">of {target} hrs</span>
                     </div>
                     <Pill variant={pct >= 100 ? "sage" : "honey"}>{pct}%</Pill>
                   </div>
@@ -200,7 +202,7 @@ export default function TodayPage() {
             <ul className="space-y-2">
               {scheduledToday.map((lesson) => {
                 const done = completedSessionIdsToday.has(lesson.id)
-                const kid = DEMO_KIDS.find((k) => lesson.kidIds.includes(k.id))
+                const kid = kids.find((k) => lesson.kidIds.includes(k.id))
                 const time = lesson.scheduledFor
                   ? new Date(lesson.scheduledFor).toLocaleTimeString(undefined, {
                       hour: "numeric",
@@ -262,7 +264,7 @@ export default function TodayPage() {
             </div>
             <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {recentPortfolio.map((item) => {
-                const kid = DEMO_KIDS.find((k) => k.id === item.kidId)
+                const kid = kids.find((k) => k.id === item.kidId)
                 return (
                   <li key={item.id} className="atoz-portfolio-item">
                     <div

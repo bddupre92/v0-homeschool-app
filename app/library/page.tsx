@@ -28,7 +28,7 @@ import {
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { Plus, Search } from "lucide-react"
-import { DEMO_KIDS } from "@/lib/demo-kids"
+import { useKids } from "@/lib/demo-kids"
 
 const STATUS_FILTERS: { v: LessonStatus | "all"; label: string }[] = [
   { v: "all", label: "All" },
@@ -40,6 +40,7 @@ const STATUS_FILTERS: { v: LessonStatus | "all"; label: string }[] = [
 export default function LibraryPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const kids = useKids()
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [status, setStatus] = useState<LessonStatus | "all">("all")
   const [subject, setSubject] = useState<string>("")
@@ -148,7 +149,7 @@ export default function LibraryPage() {
           )}
           <div className="flex flex-wrap gap-2">
             <Chip active={kidFilter === ""} onClick={() => setKidFilter("")}>All kids</Chip>
-            {DEMO_KIDS.map((k) => (
+            {kids.map((k) => (
               <KidChip
                 key={k.id}
                 name={k.name}
@@ -195,7 +196,7 @@ export default function LibraryPage() {
           setAuthorOpen(o)
           if (!o) setEditing(undefined)
         }}
-        kids={DEMO_KIDS}
+        kids={kids}
         lesson={editing}
         onSaved={(saved) => {
           refresh()
@@ -233,7 +234,7 @@ function LessonListItem({
   onTeach: () => void
   onDelete: () => void
 }) {
-  const kids = DEMO_KIDS.filter((k) => lesson.kidIds.includes(k.id))
+  const kids = kids.filter((k) => lesson.kidIds.includes(k.id))
   const firstKid = kids[0]
   const statusVariant =
     lesson.status === "scheduled" ? "sage" : lesson.status === "archived" ? "terracotta" : undefined

@@ -1,28 +1,56 @@
 /**
- * Single source of truth for the demo kid roster used across calm rooms
- * until real kid CRUD (currently on legacy `/family`) lands in
- * `/family/calm` and feeds the same data shape.
+ * Kid roster bridge. The shipping kid data source is now
+ * `lib/atoz-store.ts` (localStorage-backed per the local-first
+ * doctrine). This module provides:
  *
- * Previously duplicated in:
- *  - components/navigation.tsx (DEMO_KIDS)
- *  - app/family/kid/[kidId]/page.tsx (DEMO_KIDS)
- *  - app/today/page.tsx (DEMO_KIDS)
- *  - app/family/calm/page.tsx (DEMO_KIDS)
+ * - `SEED_KIDS`: initial roster used the first time the store is empty
+ *   on a device (Emma / Noah / Lily, matching the prototype copy).
+ * - `useKids()`: reactive React hook that subscribes to store changes.
+ * - `readDemoHours()` / `writeDemoHours()`: weekly-hours helpers that
+ *   will migrate into real portfolio aggregation in Phase 2.
+ *
+ * `DEMO_KIDS` remains as a legacy named export for any mid-refactor
+ * consumers but is now backed by the live store, not a static array.
  */
 
-export interface DemoKid {
-  id: string
-  name: string
-  color: string
-  age?: number
-  weeklyTarget?: number
-}
+"use client"
 
-export const DEMO_KIDS: DemoKid[] = [
+import { useEffect, useState } from "react"
+import { listKids, onStorageChange, seedKidsIfEmpty, type Kid } from "@/lib/atoz-store"
+
+export type DemoKid = Kid
+
+export const SEED_KIDS: Omit<Kid, "createdAt" | "updatedAt">[] = [
   { id: "emma", name: "Emma", color: "#d46e4d", age: 9, weeklyTarget: 17.5 },
   { id: "noah", name: "Noah", color: "#7d9e7d", age: 7, weeklyTarget: 17.5 },
   { id: "lily", name: "Lily", color: "#df8a27", age: 5, weeklyTarget: 17.5 },
 ]
+
+export function ensureSeedKids(): Kid[] {
+  seedKidsIfEmpty(SEED_KIDS)
+  return listKids()
+}
+
+export function useKids(): Kid[] {
+  const [kids, setKids] = useState<Kid[]>(() => {
+    if (typeof window === "undefined") return []
+    return ensureSeedKids()
+  })
+  useEffect(() => {
+    setKids(ensureSeedKids())
+    return onStorageChange(() => setKids(listKids()))
+  }, [])
+  return kids
+}
+
+/** @deprecated Use `useKids()` in components or `listKids()` in handlers. */
+export const DEMO_KIDS: Kid[] = (() => {
+  if (typeof window === "undefined") {
+    const now = new Date().toISOString()
+    return SEED_KIDS.map((k) => ({ ...k, createdAt: now, updatedAt: now }))
+  }
+  return ensureSeedKids()
+})()
 
 export const DEMO_HOURS_KEY = "atoz.demoWeeklyHours"
 

@@ -23,7 +23,7 @@ import {
 } from "@/lib/atoz-store"
 import { useToast } from "@/hooks/use-toast"
 import { Plus, Play, Trash2, Edit3 } from "lucide-react"
-import { DEMO_KIDS } from "@/lib/demo-kids"
+import { useKids } from "@/lib/demo-kids"
 
 const KID_PALETTE = ["#d46e4d", "#7d9e7d", "#df8a27", "#4a90a4", "#8a6aa1"]
 
@@ -31,6 +31,7 @@ export default function TeachRoomPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const kids = useKids()
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [authorOpen, setAuthorOpen] = useState(false)
   const [editing, setEditing] = useState<Lesson | undefined>(undefined)
@@ -156,7 +157,7 @@ export default function TeachRoomPage() {
             setAuthorOpen(o)
             if (!o) setEditing(undefined)
           }}
-          kids={DEMO_KIDS}
+          kids={kids}
           lesson={editing}
           onSaved={(saved) => {
             refresh()
@@ -215,7 +216,8 @@ function LessonRow({
   onReschedule: () => void
   onDelete: () => void
 }) {
-  const firstKid = DEMO_KIDS.find((k) => lesson.kidIds.includes(k.id)) ?? DEMO_KIDS[0]
+  const kids = useKids()
+  const firstKid = kids.find((k) => lesson.kidIds.includes(k.id)) ?? kids[0]
   const kidColor = firstKid?.color ?? KID_PALETTE[0]
   const scheduledFor = lesson.scheduledFor
     ? new Date(lesson.scheduledFor).toLocaleString(undefined, {
@@ -243,7 +245,7 @@ function LessonRow({
           {scheduledFor && <span>· {scheduledFor}</span>}
           <span className="flex items-center gap-1">
             {lesson.kidIds.map((kid) => {
-              const k = DEMO_KIDS.find((x) => x.id === kid)
+              const k = kids.find((x) => x.id === kid)
               if (!k) return null
               return <KidDot key={kid} name={k.name} color={k.color} size="xs" />
             })}
