@@ -1,59 +1,85 @@
-# AtoZ Family — Design Iteration Handoff
+# AtoZ Family — Repo Handoff
 
-This doc is the brief for the next session (design iteration). If you're
-starting fresh, read this first, then `.kiro/steering/product.md` for the
-product thesis, then explore the five rooms live.
+This doc is the state of the repo as of **Phase 4 complete**. For the
+phased plan read `ROADMAP.md`; for a design-partner brief read
+`DESIGN.md`; for the product thesis read `.kiro/steering/product.md`.
 
 ## The product in one sentence
 
 A calm, local-first homeschool companion. Five rooms — `Today`, `Teach`,
-`Family`, `Community`, `Library` — plus auth + settings + profile. No
-streaks, no badges, no leaderboards.
+`Family`, `Community`, `Library` — plus auth, onboarding, settings, and
+a hand-to-learner Kid Mode. No streaks, no badges, no leaderboards.
 
-## Current state (after PRs #38 + #39)
+## Shipping state
 
-- **Build:** passes (`npm run build` → 31 routes, down from 41)
-- **Routes shipping:** only the five rooms + auth + settings + profile + admin/offline/legal. All legacy rooms deleted with 308 redirects.
-- **Nav chrome:** `Navigation` returns `null` on `/`, `/sign-in`, `/sign-up`, `/reset-password`, `/verify-email`, `/offline`, and fullscreen `/teach/[id]`. Authenticated rooms get the topbar + Log-hours FAB + phone bottom nav.
-- **Demo data:** single source of truth at `lib/demo-kids.ts`. Emma/Noah/Lily with weekly-hour localStorage helpers.
-- **Data doctrine:** localStorage (`lib/atoz-store.ts`) for lessons, sessions, captures, portfolio, memberships, invites. Firebase Auth for sign-in. Firebase server actions for family blueprint + kid CRUD (the one exception — see deferrals below).
-- **Bundle diet:** dropped `mapbox-gl`, `@mapbox/mapbox-gl-geocoder`, `@ai-sdk/groq`, `ai`. 128 fewer npm packages.
+- **Build:** passes (`npm run build` → 33 routes).
+- **Phases shipped:** 1 through 4 (see `ROADMAP.md`).
+- **Nav chrome:** `Navigation` returns `null` on `/`, `/sign-in`,
+  `/sign-up`, `/reset-password`, `/verify-email`, `/onboarding`,
+  `/offline`, `/kid/[id]`, and fullscreen `/teach/[id]`. Authenticated
+  rooms get the topbar + Log-hours FAB + phone bottom nav.
+- **Data doctrine:** local-first. `lib/atoz-store.ts` holds kids,
+  lessons, sessions, captures, portfolio, memberships, invites,
+  onboarding state, today-layout preference, day-tweaks, advisor
+  prefs, and family branding. IndexedDB (`lib/blob-store.ts`) holds
+  photo + voice blobs that exceed the 100KB inline threshold.
+  Firebase Auth is the only always-online dependency.
 
-## Five rooms — source of truth
+## Surface map (33 routes)
 
-`components/navigation.tsx:53-61` (`PRIMARY_ROOMS`):
+| Room / Surface | Route | Notes |
+|---|---|---|
+| Today | `/today` | Three layouts (Agenda / Per-kid / Compass), compliance countdown, upcoming, recently saved, day tweaks drawer, inline add-lesson. |
+| Teach | `/teach` | Lesson authoring hub (drafts + scheduled). |
+| Teach (fullscreen) | `/teach/[sessionId]` | Timer, plan steps, capture bar (note / photo / quote / voice), optional advisor sidebar, wrap screen with reflection + traits + "worth remembering" prompts. |
+| Family | `/family/calm` | Kid roster, weekly rhythm grid, inline add/edit kid, inline add lesson. `/family` redirects here. |
+| Per-kid portfolio | `/family/kid/[kidId]` | Observed traits cloud, photos, voice clips, reflections, "Hand to [kid]" launcher. |
+| Kid Mode | `/kid/[kidId]` | Chromeless, big tappable lesson tiles for the learner. |
+| Community | `/people` | Co-parents, tutors, grandparents with scoped access. |
+| Library | `/library` | Every lesson, filter by kid / subject / status. |
+| Onboarding | `/onboarding` | 3-step: welcome → state → first learner. |
+| Settings | `/settings` | Account, Advisor (opt-in), Appearance (family name + accent), Notifications, Security. |
+| Settings → Compliance | `/settings/compliance` | State-specific filings (FL/TX/CA/NY/PA). |
+| Auth | `/sign-in`, `/sign-up`, `/reset-password`, `/verify-email` | Email verification is opt-in. |
+| Legal / system | `/privacy-policy`, `/terms-of-service`, `/offline` | |
 
-| Room | Route | Page file | Job |
-|---|---|---|---|
-| Today | `/today` | `app/today/page.tsx` | Daily landing: greeting + today's lessons + weekly progress + FAB. |
-| Teach | `/teach` | `app/teach/page.tsx` | Author → schedule → teach → capture. `/teach/[sessionId]` is fullscreen teach mode. |
-| Family | `/family/calm` | `app/family/calm/page.tsx` | Kid roster + per-kid portfolio via `/family/kid/[kidId]`. |
-| Community | `/people` | `app/people/page.tsx` | Co-parents, tutors, grandparents. Scoped access. |
-| Library | `/library` | `app/library/page.tsx` | Every lesson across statuses. Filter by kid/subject/status. |
+## API routes
 
-## Quick-start for iteration
+- `POST /api/advisor/suggest` — contextual lesson suggestions (Claude
+  Sonnet 4.6). 503 if `ANTHROPIC_API_KEY` missing.
+- `POST /api/advisor/quick-log` — NL fallback for log-hours (Claude
+  Haiku 4.5). 503 if key missing.
+- Legacy `/api/*` routes (lessons, backups, etc.) retained from
+  earlier scaffolding; not all are wired.
+
+## Architecture decisions locked
+
+1. **Kid data lives in atoz-store**, not Firebase. `app/actions/family-actions.ts` remains for reference but isn't wired.
+2. **Email verification is optional.** Sign-up routes to `/onboarding`, not `/verify-email`.
+3. **Photos > 100KB go to IndexedDB**, ≤ 100KB stay inline as data URLs. See `lib/blob-store.ts` `BLOB_SIZE_THRESHOLD`.
+4. **Direct `@anthropic-ai/sdk`** — not Vercel AI SDK. Routes live at `app/api/advisor/*`.
+5. **State compliance data is hand-curated.** Covered: FL, TX, CA, NY, PA. All other states show "coming soon" in `/settings/compliance`.
+
+## Design tokens
+
+Source of truth: `design/tokens.json` (W3C design-tokens format) and
+the `:root` block in `app/globals.css`. Must stay in sync. See
+`DESIGN.md` for the full palette + type + spacing breakdown.
+
+## Screenshot review workflow
 
 ```bash
-npm install --legacy-peer-deps
+# Terminal 1
 NEXT_PUBLIC_DEV_BYPASS_AUTH=true npm run dev
-# → http://localhost:3000, signed in as "Developer User"
-```
 
-## Screenshot tooling (for visual diff mid-iteration)
-
-```bash
-# All 13 core routes × mobile + desktop
+# Terminal 2 — all 14 static routes × mobile + desktop
 npm run review:screenshots
 
-# Include legacy-redirect targets too
-node scripts/review-screenshots.mjs --legacy=true
-
-# Seed a lesson + session + portfolio so dynamic routes render
+# Seed dynamic routes (/teach/[id], /family/kid/emma, /kid/emma)
 node scripts/review-seed-dynamic.mjs
 ```
 
-Screenshots write to `screenshots/<viewport>/<slug>.png` (gitignored).
-Drag-drop into GitHub issues or compare before/after locally.
+Outputs to `screenshots/<viewport>/<slug>.png` (gitignored).
 
 ## Auth bypass flag
 
@@ -61,67 +87,79 @@ Drag-drop into GitHub issues or compare before/after locally.
 in the env when running the dev server and you render as a mock user
 with no Firebase required.
 
-## Known deferrals (design decisions needed before tackling)
+## Known deferrals
 
-### 1. Kid CRUD port — #30
+### 1. Real Firebase + Postgres config (Phase 6)
 
-- `/family/calm` currently renders kids from `lib/demo-kids.ts` (hardcoded Emma/Noah/Lily). There's still a callout on the page linking users to the legacy `/family` admin for add/edit/delete.
-- Real kid CRUD lives in `app/actions/family-actions.ts` via Firebase. It's not wired to the calm room.
-- **Decision needed:** do kids stay Firebase-backed, or move into `lib/atoz-store.ts` to match the local-first doctrine used by lessons/sessions/portfolio? Once decided, port all six rooms that import `DEMO_KIDS` to read from the chosen source.
+Works with `NEXT_PUBLIC_DEV_BYPASS_AUTH` on. Production needs
+`NEXT_PUBLIC_FIREBASE_*` and the Postgres connection string in the
+environment. `/api/init-db` currently silently 500s — harmless in dev.
 
-### 2. T&C checkbox on `/sign-up` — #25
+### 2. `ANTHROPIC_API_KEY` for advisor features (Phase 6)
 
-- No "I agree to Terms & Privacy" checkbox. `/terms-of-service` and `/privacy-policy` exist. Needs copy approved and a required-checkbox component wired in.
+Advisor sidebar (4.1) and NL quick-log fallback (4.4) both return 503
+until the key is set. UI hides gracefully in dev — no noisy warnings.
 
-### 3. Nested `<html>`/`<body>` hydration warning
+### 3. Compliance data pending legal review (Phase 4.2 noted)
 
-- Console-only warning on `/today` + `/teach`. No visible break. Likely in `app/layout.tsx`. Worth fixing before any e2e visual-regression work.
+`lib/compliance/index.ts` has hand-curated stubs for 5 states. UI
+ships a disclaimer. Expanding the dataset and getting legal sign-off
+is a v1-launch gate.
 
-### 4. `/verify-email` flow intent
+### 4. Test coverage (Phase 6)
 
-- `app/verify-email/page.tsx` is a thin wrapper. Unclear whether email verification is enforced or optional before first `/today` access. Trace it when you touch auth UX.
+Vitest configured, no tests for atoz-store CRUD yet. Playwright
+scripts exist for screenshots; no e2e tests yet.
 
-### 5. `/settings/modules` gone; no replacement settings UI yet
+### 5. Sentry DSN not wired (Phase 6)
 
-- We deleted `/settings/modules` entirely. If opt-in features (Advisor sidebar, etc.) come back later, they'll need a new settings surface.
-
-## Deleted routes (redirects in `middleware.ts`)
-
-```
-/dashboard       → /today
-/planner         → /teach
-/plan            → /today
-/resources       → /library
-/portfolio       → /family/calm
-/advisor         → /today
-/boards          → /library
-/scroll          → /library
-/search          → /library
-/about           → /
-/community/*     → /people
-/settings/modules → /settings
-```
+`@sentry/nextjs` installed; DSN left unset. No events flow to Sentry
+until that's configured.
 
 ## Anti-goals (don't re-add)
 
 - Streaks, badges, leaderboards, points, XP, scoring.
-- Social feed with upvotes/hashtags (`/scroll` used to be this; it's gone).
-- Pinterest-style resource boards (`/boards` — gone).
-- AI assistant global chat widget (`AIAssistant` component — gone).
+- Social feed (`/scroll` gone), upvotes, hashtags.
+- Pinterest-style resource boards (`/boards` gone).
+- Global AI chat widget. (Advisor is contextual to a single lesson
+  and opt-in.)
 - Mapbox / location-based community features.
-- Module-preferences toggle UI that lets users turn features on/off. The app is a fixed shape — five rooms — in MVP.
+- Module-preferences toggle UI — five rooms are fixed in MVP.
 
-## Files to grep when designing
+## Deleted routes (redirects in `middleware.ts`)
 
-- **Brand voice / copy:** `app/page.tsx` (landing hero), `app/today/page.tsx` (greeting), `app/teach/page.tsx` ("The lesson loop."), `.kiro/steering/product.md`
-- **Design tokens / primitives:** `components/primitives/` (KidDot, ProgressRail, Pill, Chip, KidChip, ComplianceStrip), `app/globals.css`, `app/design-system/page.tsx` (internal tool — safe to iterate in)
-- **Demo seeds:** `lib/demo-kids.ts`, `scripts/review-seed-dynamic.mjs`
+```
+/dashboard        → /today
+/planner          → /teach
+/plan             → /today
+/resources        → /library
+/portfolio        → /family/calm
+/advisor          → /today
+/boards           → /library
+/scroll           → /library
+/search           → /library
+/about            → /
+/community/*      → /people
+/settings/modules → /settings
+/family           → /family/calm   (EXACT match — /family/calm, /family/kid/* still resolve)
+```
 
-## Open tracker
+## Files to grep when working
 
-Tracker issue **#37** — linked to all the per-page review issues. Most are closed by PRs #38 + #39; the deferrals above are what remains.
+- **Local data**: `lib/atoz-store.ts`, `lib/blob-store.ts`, `lib/demo-kids.ts`.
+- **Kid roster hook**: `useKids()` in `lib/demo-kids.ts` — auto-seeds on first read.
+- **Design tokens**: `design/tokens.json` + `:root` in `app/globals.css`.
+- **Primitives**: `components/primitives/`.
+- **Compliance data**: `lib/compliance/index.ts`.
+- **NL parser**: `lib/quick-log-parser.ts`.
+- **Brand voice / copy**: `.kiro/steering/product.md`.
 
 ## Environment caveats
 
-- Firebase isn't configured in the Claude Code on the web environment — `/family/calm`'s server actions return empty. Design flows that depend on real kid CRUD need either (a) the port-to-atoz-store decision, or (b) a test Firebase project.
-- Postgres isn't configured either — `/api/init-db` returns 500, silently caught in `components/db-initializer.tsx`. Harmless in dev.
+- Firebase isn't configured in the dev sandbox — `/family/calm`'s
+  Firebase server actions return empty. Kid CRUD is on atoz-store
+  now so this doesn't affect the UI.
+- Postgres isn't configured — `/api/init-db` returns 500, silently
+  caught in `components/db-initializer.tsx`. Harmless in dev.
+- `ANTHROPIC_API_KEY` unset — advisor features return 503. UI
+  hides them behind the opt-in toggle + local-parser-first path.

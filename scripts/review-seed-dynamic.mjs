@@ -150,10 +150,11 @@ async function main() {
     await seed(page)
     await captureRoute(page, `/teach/${SESSION_ID}`, "teach-session", viewportName)
     await captureRoute(page, `/family/kid/emma`, "family-kid-emma", viewportName)
+    await captureRoute(page, `/kid/emma`, "kid-mode-emma", viewportName)
     await context.close()
   }
   await browser.close()
-  console.log("\nDone. Screenshots in screenshots/<viewport>/{teach-session,family-kid-emma}.png")
+  console.log("\nDone. Screenshots in screenshots/<viewport>/{teach-session,family-kid-emma,kid-mode-emma}.png")
 }
 
 main().catch((err) => { console.error(err); process.exit(1) })

@@ -23,19 +23,20 @@ const ROOT = resolve(__dirname, "..")
 const BASE_URL = process.env.REVIEW_BASE_URL ?? "http://localhost:3000"
 
 const CORE_ROUTES = [
-  { slug: "root",            path: "/",                   label: "Landing" },
-  { slug: "sign-in",         path: "/sign-in",            label: "Sign in" },
-  { slug: "sign-up",         path: "/sign-up",            label: "Sign up" },
-  { slug: "reset-password",  path: "/reset-password",     label: "Reset password" },
-  { slug: "verify-email",    path: "/verify-email",       label: "Verify email" },
-  { slug: "today",           path: "/today",              label: "Today (calm room)" },
-  { slug: "teach",           path: "/teach",              label: "Teach (calm room)" },
-  { slug: "family-calm",     path: "/family/calm",        label: "Family (calm room)" },
-  { slug: "people",          path: "/people",             label: "Community (calm room)" },
-  { slug: "library",         path: "/library",            label: "Library (calm room)" },
-  { slug: "settings",        path: "/settings",           label: "Settings" },
-  { slug: "settings-modules",path: "/settings/modules",   label: "Settings → Modules" },
-  { slug: "profile",         path: "/profile",            label: "Profile" },
+  { slug: "root",               path: "/",                     label: "Landing" },
+  { slug: "sign-in",            path: "/sign-in",              label: "Sign in" },
+  { slug: "sign-up",            path: "/sign-up",              label: "Sign up" },
+  { slug: "reset-password",     path: "/reset-password",       label: "Reset password" },
+  { slug: "verify-email",       path: "/verify-email",         label: "Verify email" },
+  { slug: "onboarding",         path: "/onboarding",           label: "Onboarding (3-step)" },
+  { slug: "today",              path: "/today",                label: "Today (calm room)" },
+  { slug: "teach",              path: "/teach",                label: "Teach (calm room)" },
+  { slug: "family-calm",        path: "/family/calm",          label: "Family (calm room)" },
+  { slug: "people",             path: "/people",               label: "Community (calm room)" },
+  { slug: "library",            path: "/library",              label: "Library (calm room)" },
+  { slug: "settings",           path: "/settings",             label: "Settings" },
+  { slug: "settings-compliance",path: "/settings/compliance",  label: "Settings → Compliance" },
+  { slug: "profile",            path: "/profile",              label: "Profile" },
 ]
 
 const LEGACY_ROUTES = [
