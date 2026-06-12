@@ -10,11 +10,10 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "test:generate": "node scripts/generate-tests.js",
     "test:production": "node scripts/production-test-suite.js",
-    "test:all": "node scripts/test-all.js",
+    "typecheck": "tsc --noEmit",
     "production-check": "node scripts/production-check.js",
-    "pre-deploy": "npm run test:all",
+    "pre-deploy": "npm run typecheck && npm run test:run && npm run build",
     "review:screenshots": "node scripts/review-screenshots.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"

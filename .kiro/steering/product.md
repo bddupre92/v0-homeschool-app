@@ -31,14 +31,29 @@ Supporting surfaces:
 
 ## Data doctrine
 
-**Local-first.** Kids, lessons, sessions, captures, portfolio,
-memberships, invites, onboarding state, and user preferences live in
-localStorage via `lib/atoz-store.ts`. Photos and voice clips larger
-than 100KB go to IndexedDB via `lib/blob-store.ts`. The app works
-offline and on any device without a backend.
+**Local-first reads, durable system of record.** Kids, lessons,
+sessions, captures, portfolio, memberships, invites, onboarding state,
+and user preferences live in localStorage via `lib/atoz-store.ts`.
+Photos and voice clips larger than 100KB go to IndexedDB via
+`lib/blob-store.ts`. The app works offline and renders instantly from
+local data.
 
-**Firebase Auth** is the only always-online dependency; it gates
-access to the rooms but never holds the user's primary data.
+**End-state (DRAFT — pending owner sign-off):** localStorage is a
+cache, not the only copy. Postgres (`lib/db.ts`, turned on in Phase 7)
+becomes the durable system of record for anything a family cannot
+afford to lose — compliance hours, portfolio entries, kids. Sync model
+is deliberately simple: explicit "backup to server / restore on new
+device" first; live sync only if real demand appears. Until backup
+ships, treat localStorage truthfully in copy: never imply records are
+"safe" across devices.
+
+**Shared-by-nature data is server-side from day one.** Community
+data (groups, co-ops, announcements, rotations, field trips) cannot be
+device-local; it lives in Postgres, gated by Firebase Auth + group
+membership. This is a deliberate, scoped exception to local-first.
+
+**Firebase Auth** gates access to the rooms but never holds the
+user's primary data.
 
 **Claude (Anthropic API)** powers two **opt-in, contextual** features:
 the advisor sidebar on `/teach` (4.1) and the NL quick-log fallback
