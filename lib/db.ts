@@ -28,15 +28,15 @@ export const db = {
   },
 
   async updateUser(firebaseUid: string, data: Record<string, any>) {
-    const updates = Object.entries(data)
-      .map(([key, value]) => `${key} = '${value}'`)
-      .join(', ')
-    const result = await sql`
-      UPDATE users 
-      SET ${sql.raw(updates)}, updated_at = CURRENT_TIMESTAMP
-      WHERE firebase_uid = ${firebaseUid}
-      RETURNING *
-    `
+    // Parameterized dynamic SET clause; column names are validated as
+    // identifiers to keep user-controlled values out of the SQL text.
+    const entries = Object.entries(data).filter(([key]) => /^[a-z_][a-z0-9_]*$/i.test(key))
+    if (entries.length === 0) return undefined
+    const setClause = entries.map(([key], i) => `${key} = $${i + 1}`).join(', ')
+    const result = await sql.query(
+      `UPDATE users SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE firebase_uid = $${entries.length + 1} RETURNING *`,
+      [...entries.map(([, value]) => value), firebaseUid],
+    )
     return result.rows[0]
   },
 
@@ -75,15 +75,13 @@ export const db = {
   },
 
   async updateLesson(lessonId: string, data: Record<string, any>) {
-    const updates = Object.entries(data)
-      .map(([key, value]) => `${key} = '${value}'`)
-      .join(', ')
-    const result = await sql`
-      UPDATE lessons 
-      SET ${sql.raw(updates)}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${lessonId}
-      RETURNING *
-    `
+    const entries = Object.entries(data).filter(([key]) => /^[a-z_][a-z0-9_]*$/i.test(key))
+    if (entries.length === 0) return undefined
+    const setClause = entries.map(([key], i) => `${key} = $${i + 1}`).join(', ')
+    const result = await sql.query(
+      `UPDATE lessons SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = $${entries.length + 1} RETURNING *`,
+      [...entries.map(([, value]) => value), lessonId],
+    )
     return result.rows[0]
   },
 
@@ -367,8 +365,8 @@ export const db = {
         ${userId}, ${data.name}, ${data.description || null}, ${data.groupType || 'co-op'},
         ${data.location || null}, ${data.stateAbbreviation || null},
         ${data.maxMembers || null}, ${data.isPrivate || false},
-        ${data.philosophy || null}, ${data.ageGroups || []},
-        ${data.subjectsOffered || []}, ${data.schedule ? JSON.stringify(data.schedule) : null},
+        ${data.philosophy || null}, ${(data.ageGroups || []) as unknown as string},
+        ${(data.subjectsOffered || []) as unknown as string}, ${data.schedule ? JSON.stringify(data.schedule) : null},
         ${data.meetingFrequency || null}, ${data.meetingSchedule || null},
         ${data.latitude || null}, ${data.longitude || null},
         ${data.city || null}, ${data.zipCode || null},

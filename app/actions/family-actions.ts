@@ -406,7 +406,7 @@ export async function getDashboardStats() {
     ])
 
     const totalLessons = hourSummary.reduce((sum: number, h: { session_count: number }) => sum + (h.session_count || 0), 0)
-    const pendingFilings = filings.filter((f: { status: string }) => f.status === "pending" || f.status === "overdue")
+    const pendingFilings = filings.filter((f) => f.status === "pending" || f.status === "overdue")
     const complianceStatus = pendingFilings.length === 0 ? "On Track" : `${pendingFilings.length} Pending`
 
     return {

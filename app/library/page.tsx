@@ -18,6 +18,7 @@ import {
 import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
 import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
 import {
+  type Kid,
   type Lesson,
   type LessonStatus,
   listLessons,
@@ -174,6 +175,7 @@ export default function LibraryPage() {
                 <LessonListItem
                   key={lesson.id}
                   lesson={lesson}
+                  kids={kids}
                   onEdit={() => {
                     setEditing(lesson)
                     setAuthorOpen(true)
@@ -225,19 +227,21 @@ export default function LibraryPage() {
 
 function LessonListItem({
   lesson,
+  kids,
   onEdit,
   onSchedule,
   onTeach,
   onDelete,
 }: {
   lesson: Lesson
+  kids: Kid[]
   onEdit: () => void
   onSchedule: () => void
   onTeach: () => void
   onDelete: () => void
 }) {
-  const kids = kids.filter((k) => lesson.kidIds.includes(k.id))
-  const firstKid = kids[0]
+  const lessonKids = kids.filter((k) => lesson.kidIds.includes(k.id))
+  const firstKid = lessonKids[0]
   const statusVariant =
     lesson.status === "scheduled" ? "sage" : lesson.status === "archived" ? "terracotta" : undefined
   const scheduledFor = lesson.scheduledFor
@@ -268,7 +272,7 @@ function LessonListItem({
           {lesson.durationMin && <span>· {lesson.durationMin} min</span>}
           {scheduledFor && <span>· {scheduledFor}</span>}
           <span className="inline-flex items-center gap-0.5">
-            {kids.map((k) => (
+            {lessonKids.map((k) => (
               <KidDot key={k.id} name={k.name} color={k.color} size="xs" />
             ))}
           </span>

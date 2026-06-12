@@ -7,10 +7,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { CheckCircle, AlertCircle, Mail, RefreshCw, ArrowLeft } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
+import { sendEmailVerification } from "firebase/auth"
 import { Progress } from "@/components/ui/progress"
 
 export default function EmailVerification() {
-  const { user, sendEmailVerification } = useAuth()
+  const { user } = useAuth()
   const [verificationSent, setVerificationSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [countdown, setCountdown] = useState(60)
@@ -81,7 +82,7 @@ export default function EmailVerification() {
     if (!user) return
 
     try {
-      await sendEmailVerification()
+      await sendEmailVerification(user)
       setVerificationSent(true)
       setError(null)
       setIsCountingDown(true)

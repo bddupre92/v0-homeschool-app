@@ -24,15 +24,15 @@ import { useEffect } from "react"
 export default function SeedDataPage() {
   const [isSeeding, setIsSeeding] = useState(false)
   const [result, setResult] = useState<{ success?: boolean; message?: string } | null>(null)
-  const { user, userProfile } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
 
-  // Check if user is admin
+  // Dev utility: there is no role system; require sign-in at minimum.
   useEffect(() => {
-    if (userProfile && userProfile.role !== "admin") {
+    if (!user) {
       router.push("/today")
     }
-  }, [userProfile, router])
+  }, [user, router])
 
   const handleSeedAll = async () => {
     setIsSeeding(true)
@@ -75,8 +75,8 @@ export default function SeedDataPage() {
     }
   }
 
-  // If not admin, show access denied
-  if (userProfile && userProfile.role !== "admin") {
+  // Dev utility: require sign-in (no role system exists)
+  if (!user) {
     return (
       <div className="container py-10">
         <Alert variant="destructive">
