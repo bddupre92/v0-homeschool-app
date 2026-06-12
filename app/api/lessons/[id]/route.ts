@@ -4,11 +4,12 @@ import { NextRequest, NextResponse } from 'next/server'
 // GET a specific lesson
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const result = await sql`
-      SELECT * FROM lessons WHERE id = ${params.id}
+      SELECT * FROM lessons WHERE id = ${id}
     `
 
     if (result.rows.length === 0) {
@@ -31,8 +32,9 @@ export async function GET(
 // PUT update a lesson
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const body = await request.json()
     const { title, description, subject, weekNumber, dayOfWeek, durationMinutes, resources } = body
@@ -48,7 +50,7 @@ export async function PUT(
         duration_minutes = COALESCE(${durationMinutes || null}, duration_minutes),
         resources = COALESCE(${JSON.stringify(resources) || null}, resources),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${params.id}
+      WHERE id = ${id}
       RETURNING *
     `
 
@@ -72,11 +74,12 @@ export async function PUT(
 // DELETE a lesson
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const result = await sql`
-      DELETE FROM lessons WHERE id = ${params.id}
+      DELETE FROM lessons WHERE id = ${id}
       RETURNING *
     `
 
