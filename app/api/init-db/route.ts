@@ -2,6 +2,13 @@ import { sql } from "@vercel/postgres"
 import { NextResponse } from "next/server"
 
 export async function POST() {
+  if (!process.env.POSTGRES_URL) {
+    return NextResponse.json(
+      { skipped: true, reason: "POSTGRES_URL not configured" },
+      { status: 200 },
+    )
+  }
+
   try {
     // Enable UUID extension
     await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`
@@ -257,9 +264,13 @@ export async function POST() {
 }
 
 export async function GET() {
+  if (!process.env.POSTGRES_URL) {
+    return NextResponse.json({ connected: false, reason: "POSTGRES_URL not configured" }, { status: 200 })
+  }
+
   // Quick health check - just verify connection works
   try {
-    const result = await sql`SELECT 1 as ok`
+    await sql`SELECT 1 as ok`
 
     // Check which tables exist
     const tables = await sql`
