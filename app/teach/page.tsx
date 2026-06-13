@@ -62,6 +62,7 @@ export default function TeachRoomPage() {
 
   const handleStart = useCallback(
     (lesson: Lesson) => {
+      trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "teach", action: "teach", status: lesson.status })
       if (lesson.status === "draft") {
         toast({
           title: "Schedule first",
@@ -78,11 +79,18 @@ export default function TeachRoomPage() {
   )
 
   const handleEdit = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "teach", action: "edit", status: lesson.status })
     setEditing(lesson)
     setAuthorOpen(true)
   }
 
+  const handleSchedule = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "teach", action: "schedule", status: lesson.status })
+    setScheduleTarget(lesson)
+  }
+
   const handleDelete = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "teach", action: "delete", status: lesson.status })
     deleteLesson(lesson.id)
     refresh()
     toast({ title: "Removed", description: `"${lesson.title || "Untitled"}" was removed.` })
@@ -113,9 +121,12 @@ export default function TeachRoomPage() {
           </Button>
         </header>
 
-        <Section title="Scheduled" sub="Ready to teach. Kids can see these.">
+        <Section title="This week" sub="Scheduled and ready to teach. Further out lives in the Library.">
           {scheduled.length === 0 ? (
-            <EmptyHint>Nothing scheduled yet. When a lesson is ready, schedule it.</EmptyHint>
+            <EmptyHint>
+              Nothing scheduled for this week. Author a draft and schedule it, or browse the{" "}
+              <Link className="underline" href="/library">Library</Link>.
+            </EmptyHint>
           ) : (
             <ul className="space-y-2">
               {scheduled.map((l) => (
@@ -124,7 +135,7 @@ export default function TeachRoomPage() {
                   lesson={l}
                   onStart={() => handleStart(l)}
                   onEdit={() => handleEdit(l)}
-                  onReschedule={() => setScheduleTarget(l)}
+                  onReschedule={() => handleSchedule(l)}
                   onDelete={() => handleDelete(l)}
                 />
               ))}
@@ -132,7 +143,7 @@ export default function TeachRoomPage() {
           )}
         </Section>
 
-        <Section title="Drafts" sub="Autosaved. Invisible to kids until scheduled.">
+        <Section title="Drafts" sub="Work in progress. Auto-cleared after 30 days untouched.">
           {drafts.length === 0 ? (
             <EmptyHint>
               Nothing in drafts. Use <strong>New lesson</strong> to start one.
@@ -145,13 +156,18 @@ export default function TeachRoomPage() {
                   lesson={l}
                   onStart={() => handleStart(l)}
                   onEdit={() => handleEdit(l)}
-                  onReschedule={() => setScheduleTarget(l)}
+                  onReschedule={() => handleSchedule(l)}
                   onDelete={() => handleDelete(l)}
                 />
               ))}
             </ul>
           )}
         </Section>
+
+        <section className="mt-12 pt-8 border-t border-[var(--rule)] text-xs text-[var(--ink-4)] flex flex-wrap items-center justify-between gap-3">
+          <div>Drafts and "this week" only. The full catalog lives in the Library.</div>
+          <Link href="/library" className="hover:text-[var(--ink)]">Browse the library →</Link>
+        </section>
 
         <LessonAuthoringDialog
           open={authorOpen}

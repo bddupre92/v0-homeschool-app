@@ -47,6 +47,10 @@ export const AnalyticsEvents = {
   SESSION_END: `${EventCategory.CalmLoop}_session_end`,
   HOURS_LOGGED: `${EventCategory.CalmLoop}_hours_logged`,
   KID_ADDED: `${EventCategory.CalmLoop}_kid_added`,
+  // Lesson row action — per-row interaction with a lesson. Used by
+  // Phase 6.10 to see which room users actually edit/schedule/delete
+  // from, so we can lock the Teach=workshop boundary on real signal.
+  LESSON_ROW_ACTION: `${EventCategory.CalmLoop}_lesson_row_action`,
 
   // User events
   UPDATE_PROFILE: `${EventCategory.User}_update_profile`,

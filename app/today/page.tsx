@@ -202,6 +202,7 @@ export default function TodayPage() {
   }
 
   const startTeach = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "today", action: "teach", status: lesson.status })
     const session = startSession(lesson.id)
     trackEvent(AnalyticsEvents.LESSON_START, { subject: lesson.subject, from: "today" })
     router.push(`/teach/${session.id}`)
@@ -222,7 +223,11 @@ export default function TodayPage() {
             {dayTweaks.quietDay ? (
               <>A quiet day. No lessons, no pressure — rest is learning too.</>
             ) : filteredToday.length === 0 && portfolio.length === 0 ? (
-              <>No lessons scheduled today. That's a quiet day — rest is learning too.</>
+              <>
+                No lessons scheduled today. Author one in{" "}
+                <Link className="underline" href="/teach">Teach</Link>, or browse the{" "}
+                <Link className="underline" href="/library">Library</Link>.
+              </>
             ) : (
               <>
                 {doneCount} of {filteredToday.length} lesson{filteredToday.length === 1 ? "" : "s"} done.
@@ -428,7 +433,8 @@ export default function TodayPage() {
 
         <section className="mt-12 pt-8 border-t border-[var(--rule)] flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--ink-4)]">
           <div>AtoZ Family</div>
-          <div>
+          <div className="flex items-center gap-4">
+            <Link href="/library" className="hover:text-[var(--ink)]">Browse the library →</Link>
             <Link href="/design-system" className="hover:text-[var(--ink)]">Design system</Link>
           </div>
         </section>
@@ -519,7 +525,8 @@ function AgendaView({
   if (lessons.length === 0) {
     return (
       <EmptyHint>
-        No lessons scheduled. Head to <Link className="underline" href="/teach">Teach</Link> to author one.
+        No lessons scheduled. Author one in <Link className="underline" href="/teach">Teach</Link>, or browse the{" "}
+        <Link className="underline" href="/library">Library</Link>.
       </EmptyHint>
     )
   }

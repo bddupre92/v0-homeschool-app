@@ -84,6 +84,7 @@ export default function LibraryPage() {
   }, [lessons, status, subject, kidFilter, query])
 
   const handleTeach = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "library", action: "teach", status: lesson.status })
     if (lesson.status === "draft") {
       toast({ title: "Schedule first", description: "Drafts aren't on Today yet." })
       setScheduleTarget(lesson)
@@ -92,6 +93,24 @@ export default function LibraryPage() {
     const session = startSession(lesson.id)
     trackEvent(AnalyticsEvents.LESSON_START, { subject: lesson.subject, from: "library" })
     router.push(`/teach/${session.id}`)
+  }
+
+  const handleEdit = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "library", action: "edit", status: lesson.status })
+    setEditing(lesson)
+    setAuthorOpen(true)
+  }
+
+  const handleSchedule = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "library", action: "schedule", status: lesson.status })
+    setScheduleTarget(lesson)
+  }
+
+  const handleDelete = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "library", action: "delete", status: lesson.status })
+    deleteLesson(lesson.id)
+    toast({ title: "Removed", description: `"${lesson.title || "Untitled"}" deleted.` })
+    refresh()
   }
 
   return (
@@ -167,7 +186,7 @@ export default function LibraryPage() {
         <section>
           {filtered.length === 0 ? (
             <div className="rounded-xl border border-dashed border-[var(--rule)] p-10 text-center text-sm text-[var(--ink-3)] bg-white/40">
-              Nothing here yet. <strong>New lesson</strong> is a good next step.
+              Nothing here yet. Author one in <Link className="underline" href="/teach">Teach</Link>, then browse them all here.
             </div>
           ) : (
             <ul className="space-y-2">
@@ -176,17 +195,10 @@ export default function LibraryPage() {
                   key={lesson.id}
                   lesson={lesson}
                   kids={kids}
-                  onEdit={() => {
-                    setEditing(lesson)
-                    setAuthorOpen(true)
-                  }}
-                  onSchedule={() => setScheduleTarget(lesson)}
+                  onEdit={() => handleEdit(lesson)}
+                  onSchedule={() => handleSchedule(lesson)}
                   onTeach={() => handleTeach(lesson)}
-                  onDelete={() => {
-                    deleteLesson(lesson.id)
-                    toast({ title: "Removed", description: `"${lesson.title || "Untitled"}" deleted.` })
-                    refresh()
-                  }}
+                  onDelete={() => handleDelete(lesson)}
                 />
               ))}
             </ul>
