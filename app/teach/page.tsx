@@ -16,10 +16,13 @@ import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
 import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
 import {
   type Lesson,
+  deleteLesson,
+  getDraftExpiryDate,
+  getLesson,
   listLessons,
   onStorageChange,
+  pruneExpiredDrafts,
   startSession,
-  deleteLesson,
 } from "@/lib/atoz-store"
 import { useToast } from "@/hooks/use-toast"
 import { Plus, Play, Trash2, Edit3 } from "lucide-react"
@@ -43,6 +46,7 @@ export default function TeachRoomPage() {
   }, [])
 
   useEffect(() => {
+    pruneExpiredDrafts()
     refresh()
     return onStorageChange(refresh)
   }, [refresh])
@@ -57,8 +61,30 @@ export default function TeachRoomPage() {
     }
   }, [searchParams, toast])
 
+  // Open the authoring dialog for the lesson in ?edit= (Phase 6.10 redirects
+  // /today's pencil icon here). One-shot — strip the param after opening.
+  useEffect(() => {
+    const editId = searchParams?.get("edit")
+    if (!editId) return
+    const target = getLesson(editId)
+    if (target) {
+      setEditing(target)
+      setAuthorOpen(true)
+    }
+    router.replace("/teach")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   const drafts = useMemo(() => lessons.filter((l) => l.status === "draft"), [lessons])
-  const scheduled = useMemo(() => lessons.filter((l) => l.status === "scheduled"), [lessons])
+  const scheduled = useMemo(() => {
+    const cutoff = Date.now() + 7 * 24 * 60 * 60 * 1000
+    return lessons.filter(
+      (l) =>
+        l.status === "scheduled" &&
+        l.scheduledFor &&
+        new Date(l.scheduledFor).getTime() <= cutoff,
+    )
+  }, [lessons])
 
   const handleStart = useCallback(
     (lesson: Lesson) => {
@@ -245,6 +271,10 @@ function LessonRow({
       })
     : null
   const isDraft = lesson.status === "draft"
+  const expiry = isDraft ? getDraftExpiryDate(lesson) : null
+  const daysToExpiry = expiry
+    ? Math.max(0, Math.ceil((expiry.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+    : null
 
   return (
     <li className="flex items-center gap-3 rounded-xl border border-[var(--rule)] bg-white px-4 py-3">
@@ -261,6 +291,18 @@ function LessonRow({
           {lesson.subject && <span>{lesson.subject}</span>}
           {lesson.durationMin && <span>· {lesson.durationMin} min</span>}
           {scheduledFor && <span>· {scheduledFor}</span>}
+          {isDraft && daysToExpiry !== null && (
+            <span
+              className={
+                daysToExpiry <= 7
+                  ? "text-[var(--terracotta-d)]"
+                  : "text-[var(--ink-4)]"
+              }
+              title={expiry?.toLocaleDateString()}
+            >
+              · Auto-clears in {daysToExpiry}d
+            </span>
+          )}
           <span className="flex items-center gap-1">
             {lesson.kidIds.map((kid) => {
               const k = kids.find((x) => x.id === kid)

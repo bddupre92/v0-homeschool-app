@@ -27,20 +27,19 @@ import {
   listPortfolio,
   listSessions,
   onStorageChange,
+  pruneExpiredDrafts,
   setTodayLayout,
   startSession,
+  toggleLessonDoneToday,
 } from "@/lib/atoz-store"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { CalendarDays, Compass, LayoutList, Play, Plus, Sparkle, Users } from "lucide-react"
+import { CalendarDays, Compass, LayoutList, Pencil, Play, Sparkle, Users } from "lucide-react"
 import { useKids, readDemoHours, type DemoKid } from "@/lib/demo-kids"
 import ComplianceCountdown from "@/components/compliance-countdown"
 import { CapturePhoto } from "@/components/capture-media"
 import DayTweaks, { formatDateKey } from "@/components/day-tweaks"
 import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
-import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
-import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
-import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 
 const COMPLIANCE_KEY = "atoz.complianceMode"
@@ -95,9 +94,6 @@ export default function TodayPage() {
   const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => readDemoHours())
   const [complianceOn, setComplianceOn] = useState<boolean>(false)
   const [layout, setLayout] = useState<TodayLayout>("agenda")
-  const [authorOpen, setAuthorOpen] = useState(false)
-  const [editing, setEditing] = useState<Lesson | undefined>(undefined)
-  const [scheduleTarget, setScheduleTarget] = useState<Lesson | null>(null)
   const [dayTweaks, setDayTweaksState] = useState<DayTweaksType>({})
 
   const refresh = useCallback(() => {
@@ -111,6 +107,8 @@ export default function TodayPage() {
   const dateKey = formatDateKey(today)
 
   useEffect(() => {
+    // Phase 6.10: drafts older than 30 days get soft-deleted on each visit.
+    pruneExpiredDrafts()
     refresh()
     if (typeof window !== "undefined") {
       setComplianceOn(localStorage.getItem(COMPLIANCE_KEY) === "on")
@@ -208,6 +206,17 @@ export default function TodayPage() {
     router.push(`/teach/${session.id}`)
   }
 
+  const toggleDone = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "today", action: "toggle_done", status: lesson.status })
+    toggleLessonDoneToday(lesson.id)
+    refresh()
+  }
+
+  const editInTeach = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "today", action: "edit", status: lesson.status })
+    router.push(`/teach?edit=${lesson.id}`)
+  }
+
   const dateEyebrow = today.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
 
   return (
@@ -300,17 +309,6 @@ export default function TodayPage() {
                 subjects={todaySubjects}
                 onChange={(next) => setDayTweaksState(next)}
               />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setEditing(undefined)
-                  setAuthorOpen(true)
-                }}
-                className="rounded-full border-[var(--rule)]"
-              >
-                <Plus size={14} className="mr-1" aria-hidden="true" /> New lesson
-              </Button>
               <Link href="/teach" className="text-sm text-[var(--ink-3)] hover:text-[var(--ink)]">
                 All lessons →
               </Link>
@@ -323,6 +321,8 @@ export default function TodayPage() {
               kids={kids}
               doneIds={completedSessionIdsToday}
               onTeach={startTeach}
+              onToggleDone={toggleDone}
+              onEdit={editInTeach}
             />
           )}
 
@@ -440,32 +440,6 @@ export default function TodayPage() {
         </section>
       </main>
 
-      <LessonAuthoringDialog
-        open={authorOpen}
-        onOpenChange={(o) => {
-          setAuthorOpen(o)
-          if (!o) setEditing(undefined)
-        }}
-        kids={kids}
-        lesson={editing}
-        onSaved={(saved) => {
-          refresh()
-          setEditing(saved)
-        }}
-        onScheduleClick={(saved) => {
-          setAuthorOpen(false)
-          setScheduleTarget(saved)
-        }}
-      />
-
-      <LessonScheduleSheet
-        open={!!scheduleTarget}
-        onOpenChange={(o) => {
-          if (!o) setScheduleTarget(null)
-        }}
-        lesson={scheduleTarget}
-        onScheduled={() => refresh()}
-      />
     </div>
   )
 }
@@ -516,11 +490,15 @@ function AgendaView({
   kids,
   doneIds,
   onTeach,
+  onToggleDone,
+  onEdit,
 }: {
   lessons: Lesson[]
   kids: DemoKid[]
   doneIds: Set<string>
   onTeach: (l: Lesson) => void
+  onToggleDone: (l: Lesson) => void
+  onEdit: (l: Lesson) => void
 }) {
   if (lessons.length === 0) {
     return (
@@ -542,13 +520,30 @@ function AgendaView({
             })
           : ""
         return (
-          <li key={lesson.id} className="atoz-lesson-row" data-state={done ? "done" : "open"}>
+          <li
+            key={lesson.id}
+            className="atoz-lesson-row group"
+            data-state={done ? "done" : "open"}
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest("button")) return
+              onTeach(lesson)
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onTeach(lesson)
+            }}
+          >
             <button
+              type="button"
               className="atoz-lesson-row__check"
               aria-checked={done}
               aria-label={done ? "Mark incomplete" : "Mark complete"}
               role="checkbox"
-              onClick={() => onTeach(lesson)}
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleDone(lesson)
+              }}
             >
               {done && (
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -576,7 +571,21 @@ function AgendaView({
             </div>
             <button
               type="button"
-              onClick={() => onTeach(lesson)}
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit(lesson)
+              }}
+              aria-label="Edit lesson in Teach"
+              className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-1 text-[var(--ink-3)] hover:text-[var(--ink)]"
+            >
+              <Pencil size={14} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onTeach(lesson)
+              }}
               className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--sage-dd)] hover:text-[var(--ink)]"
             >
               <Play size={14} aria-hidden="true" /> Teach

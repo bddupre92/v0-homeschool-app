@@ -14,11 +14,11 @@ Source of truth: `components/navigation.tsx` (PRIMARY_ROOMS).
 
 | Room | Route | Job |
 |---|---|---|
-| Today | `/today` | Daily landing. Three layouts (Agenda / Per-kid / Compass), compliance countdown, upcoming lessons, day tweaks. |
-| Teach | `/teach` | Author a lesson → schedule it → run it full-screen → capture what happened. Optional advisor sidebar for contextual help. |
+| Today | `/today` | The daily slice. Read-only management — check lessons off, tap to teach. Authoring lives in Teach. |
+| Teach | `/teach` | The workshop. Drafts (auto-clear after 30 days untouched) and "This week" (next 7 days). Author, schedule, run a session, capture. |
 | Family | `/family/calm` | Kids roster with inline CRUD, weekly rhythm grid, per-kid portfolios at `/family/kid/[id]`. |
 | Community | `/people` | Co-parents, tutors, grandparents with scoped access. |
-| Library | `/library` | Every lesson across statuses; filter by kid, subject, status. |
+| Library | `/library` | The catalog. Every lesson across statuses, plus "Recently deleted" with restore. Search, filter, browse — but author in Teach. |
 
 Supporting surfaces:
 
