@@ -1,73 +1,250 @@
 "use client"
 
-import { useState, useEffect } from "react"
+/**
+ * Settings — auto-save preferences page.
+ *
+ * Four sections: Account, Appearance, Notifications, Compliance.
+ * (Phase 6.10 collapsed six sections to four; folded Advisor + Sessions
+ * into Account, moved Family Name out of Appearance into Account.)
+ *
+ * Save model:
+ *  - Text inputs: debounced auto-save (400ms after last keystroke);
+ *    silent "Saved" status pill, no toast spam.
+ *  - Toggles + theme + accent color: immediate save with an Undo toast
+ *    (5s) so a mis-tap is recoverable.
+ *  - No explicit Save buttons.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Bell, CalendarDays, CreditCard, LogOut, Shield, Sparkles, Sun, User, Loader2 } from "lucide-react"
-import { getAdvisorPrefs, getBranding, setAdvisorPrefs, setBranding } from "@/lib/atoz-store"
+import { Bell, CalendarDays, Check, LogOut, Mail, Sparkles, Sun, User, ChevronRight } from "lucide-react"
+import {
+  getAdvisorPrefs,
+  getBranding,
+  setAdvisorPrefs,
+  setBranding,
+} from "@/lib/atoz-store"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { ToastAction } from "@/components/ui/toast"
 import Navigation from "@/components/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useTheme } from "next-themes"
 import { useToast } from "@/hooks/use-toast"
+
+const ACCENT_COLORS = [
+  { value: "#556b47", label: "Sage" },
+  { value: "#a44830", label: "Terracotta" },
+  { value: "#a8501c", label: "Honey" },
+  { value: "#4a7090", label: "Slate" },
+  { value: "#6f4a7d", label: "Plum" },
+  { value: "#2e5d3f", label: "Deep green" },
+]
+
+const NOTIF_KEY = "atoz.notifPrefs"
+type NotifPrefs = { resources: boolean; comments: boolean; followers: boolean; events: boolean }
+const NOTIF_DEFAULTS: NotifPrefs = { resources: true, comments: true, followers: true, events: true }
+
+function readNotifPrefs(): NotifPrefs {
+  if (typeof window === "undefined") return NOTIF_DEFAULTS
+  try {
+    const raw = window.localStorage.getItem(NOTIF_KEY)
+    return raw ? { ...NOTIF_DEFAULTS, ...JSON.parse(raw) } : NOTIF_DEFAULTS
+  } catch {
+    return NOTIF_DEFAULTS
+  }
+}
+
+function writeNotifPrefs(prefs: NotifPrefs) {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.setItem(NOTIF_KEY, JSON.stringify(prefs))
+  } catch {}
+}
+
+/** Tiny status pill — shows "Saved" briefly after a write. */
+function SavedPill({ visible }: { visible: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-xs text-[var(--sage-dd)] transition-opacity duration-300 ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
+      aria-live="polite"
+    >
+      <Check className="h-3 w-3" /> Saved
+    </span>
+  )
+}
 
 export default function SettingsPage() {
   const { user, updateUserProfile, signOut } = useAuth()
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
 
-  const [saving, setSaving] = useState(false)
+  // Account — Display name (auto-saved, debounced)
   const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [bio, setBio] = useState("")
+  const [namePill, setNamePill] = useState(false)
+  const nameSavedRef = useRef("")
+  const nameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const [advisorEnabled, setAdvisorEnabled] = useState(false)
+  // Account — Family name (auto-saved, debounced)
   const [familyName, setFamilyName] = useState("")
+  const [familyPill, setFamilyPill] = useState(false)
+  const familyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Account — Advisor toggle
+  const [advisorEnabled, setAdvisorEnabled] = useState(false)
+
+  // Appearance — Accent color
   const [accentColor, setAccentColor] = useState<string>("#556b47")
 
+  // Notifications
+  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(NOTIF_DEFAULTS)
+
+  // Hydrate from storage / auth
   useEffect(() => {
     setAdvisorEnabled(getAdvisorPrefs().enabled)
     const brand = getBranding()
     setFamilyName(brand.familyName ?? "")
     setAccentColor(brand.accentColor ?? "#556b47")
+    setNotifPrefs(readNotifPrefs())
   }, [])
-
-  const saveBranding = (patch: { familyName?: string; accentColor?: string }) => {
-    setBranding(patch)
-    if (patch.familyName !== undefined) setFamilyName(patch.familyName)
-    if (patch.accentColor !== undefined) setAccentColor(patch.accentColor)
-  }
-
-  // Notification preferences (local for now)
-  const [notifResources, setNotifResources] = useState(true)
-  const [notifComments, setNotifComments] = useState(true)
-  const [notifFollowers, setNotifFollowers] = useState(true)
-  const [notifEvents, setNotifEvents] = useState(true)
 
   useEffect(() => {
     if (user) {
-      setName(user.displayName || "")
-      setEmail(user.email || "")
+      const initial = user.displayName || ""
+      setName(initial)
+      nameSavedRef.current = initial
     }
   }, [user])
 
-  const handleSaveAccount = async () => {
-    setSaving(true)
-    try {
-      await updateUserProfile({ displayName: name })
-      toast({ title: "Saved", description: "Account settings updated." })
-    } catch {
-      toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" })
-    } finally {
-      setSaving(false)
+  // --- Display name: debounced auto-save ---
+  useEffect(() => {
+    if (!user) return
+    if (name === nameSavedRef.current) return
+    if (nameTimerRef.current) clearTimeout(nameTimerRef.current)
+    nameTimerRef.current = setTimeout(async () => {
+      try {
+        await updateUserProfile({ displayName: name })
+        nameSavedRef.current = name
+        setNamePill(true)
+        setTimeout(() => setNamePill(false), 1800)
+      } catch {
+        toast({ title: "Could not save name", description: "Try again in a moment.", variant: "destructive" })
+      }
+    }, 400)
+    return () => {
+      if (nameTimerRef.current) clearTimeout(nameTimerRef.current)
     }
-  }
+  }, [name, user, updateUserProfile, toast])
+
+  // --- Family name: debounced auto-save ---
+  useEffect(() => {
+    if (familyName === (getBranding().familyName ?? "")) return
+    if (familyTimerRef.current) clearTimeout(familyTimerRef.current)
+    familyTimerRef.current = setTimeout(() => {
+      setBranding({ familyName })
+      setFamilyPill(true)
+      setTimeout(() => setFamilyPill(false), 1800)
+    }, 400)
+    return () => {
+      if (familyTimerRef.current) clearTimeout(familyTimerRef.current)
+    }
+  }, [familyName])
+
+  // --- Toggle helper with Undo ---
+  const toggleAdvisor = useCallback(
+    (next: boolean) => {
+      const prev = advisorEnabled
+      setAdvisorEnabled(next)
+      setAdvisorPrefs({ enabled: next })
+      toast({
+        title: next ? "Advisor on" : "Advisor off",
+        description: next
+          ? "You'll see the Advisor button on the teach screen."
+          : "Hidden again — no requests are sent.",
+        action: (
+          <ToastAction
+            altText="Undo advisor toggle"
+            onClick={() => {
+              setAdvisorEnabled(prev)
+              setAdvisorPrefs({ enabled: prev })
+            }}
+          >
+            Undo
+          </ToastAction>
+        ),
+      })
+    },
+    [advisorEnabled, toast],
+  )
+
+  const updateNotif = useCallback(
+    (key: keyof NotifPrefs, next: boolean) => {
+      const prev = notifPrefs
+      const updated = { ...notifPrefs, [key]: next }
+      setNotifPrefs(updated)
+      writeNotifPrefs(updated)
+      toast({
+        title: next ? "Notification on" : "Notification off",
+        action: (
+          <ToastAction
+            altText="Undo notification toggle"
+            onClick={() => {
+              setNotifPrefs(prev)
+              writeNotifPrefs(prev)
+            }}
+          >
+            Undo
+          </ToastAction>
+        ),
+      })
+    },
+    [notifPrefs, toast],
+  )
+
+  const chooseAccent = useCallback(
+    (next: string) => {
+      const prev = accentColor
+      setAccentColor(next)
+      setBranding({ accentColor: next })
+      toast({
+        title: "Accent color updated",
+        action: (
+          <ToastAction
+            altText="Undo accent color"
+            onClick={() => {
+              setAccentColor(prev)
+              setBranding({ accentColor: prev })
+            }}
+          >
+            Undo
+          </ToastAction>
+        ),
+      })
+    },
+    [accentColor, toast],
+  )
+
+  const chooseTheme = useCallback(
+    (next: string) => {
+      const prev = theme ?? "system"
+      setTheme(next)
+      toast({
+        title: `Theme: ${next}`,
+        action: (
+          <ToastAction altText="Undo theme" onClick={() => setTheme(prev)}>
+            Undo
+          </ToastAction>
+        ),
+      })
+    },
+    [theme, setTheme, toast],
+  )
 
   const handleSignOut = async () => {
     try {
@@ -76,6 +253,16 @@ export default function SettingsPage() {
       toast({ title: "Error", description: "Failed to sign out.", variant: "destructive" })
     }
   }
+
+  const sections = useMemo(
+    () => [
+      { id: "account", label: "Account", icon: User },
+      { id: "appearance", label: "Appearance", icon: Sun },
+      { id: "notifications", label: "Notifications", icon: Bell },
+      { id: "compliance", label: "Compliance", icon: CalendarDays, external: "/settings/compliance" },
+    ],
+    [],
+  )
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--linen)] text-[var(--ink)]">
@@ -89,344 +276,268 @@ export default function SettingsPage() {
               Your preferences.
             </h1>
             <p className="text-[var(--ink-2)] mt-2">
-              Account, appearance, notifications, and security — all in one place.
+              Changes save automatically. Toggles show an Undo for five seconds.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-[250px_1fr] gap-6">
-            <Card className="md:h-fit">
-              <CardContent className="p-4">
-                <nav className="flex flex-col gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
+            <nav
+              aria-label="Settings sections"
+              className="md:sticky md:top-20 md:h-fit flex md:flex-col gap-1 overflow-x-auto md:overflow-visible -mx-4 px-4 md:mx-0 md:px-0"
+            >
+              {sections.map((s) => {
+                const Icon = s.icon
+                const href = s.external ?? `#${s.id}`
+                return (
                   <Link
-                    href="#account"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium bg-primary text-primary-foreground"
+                    key={s.id}
+                    href={href}
+                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-[var(--sage-ll)] whitespace-nowrap"
                   >
-                    <User className="h-4 w-4" />
-                    Account
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                    <span>{s.label}</span>
+                    {s.external && <ChevronRight className="h-3 w-3 ml-auto opacity-60" aria-hidden="true" />}
                   </Link>
-                  <Link
-                    href="#advisor"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    Advisor
-                  </Link>
-                  <Link
-                    href="/settings/compliance"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                  >
-                    <CalendarDays className="h-4 w-4" />
-                    Compliance
-                  </Link>
-                  <Link
-                    href="#appearance"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                  >
-                    <Sun className="h-4 w-4" />
-                    Appearance
-                  </Link>
-                  <Link
-                    href="#notifications"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                  >
-                    <Bell className="h-4 w-4" />
-                    Notifications
-                  </Link>
-                  <Link
-                    href="#security"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                  >
-                    <Shield className="h-4 w-4" />
-                    Security
-                  </Link>
-                </nav>
-              </CardContent>
-            </Card>
+                )
+              })}
+            </nav>
 
-            <div className="space-y-6">
-              <Card id="account">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    Account Settings
-                  </CardTitle>
-                  <CardDescription>Manage your account information</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Personal Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Display Name</Label>
-                        <Input
-                          id="name"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder="Your name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={email}
-                          disabled
-                          className="bg-muted"
-                        />
-                        <p className="text-xs text-muted-foreground">Email cannot be changed here.</p>
-                      </div>
+            <div className="space-y-8">
+              {/* Account ------------------------------------------------------ */}
+              <section id="account" className="space-y-6">
+                <header className="flex items-baseline justify-between">
+                  <h2 className="font-display text-2xl font-medium flex items-center gap-2">
+                    <User className="h-5 w-5" aria-hidden="true" /> Account
+                  </h2>
+                </header>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="name">Display name</Label>
+                      <SavedPill visible={namePill} />
                     </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button onClick={handleSaveAccount} disabled={saving}>
-                    {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Save Changes
-                  </Button>
-                </CardFooter>
-              </Card>
-
-              <Card id="advisor">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5" />
-                    Advisor
-                  </CardTitle>
-                  <CardDescription>
-                    A contextual helper inside the lesson authoring flow. Off by default. Never a
-                    global chat — it only sees the lesson you're planning.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <Label htmlFor="advisor-enabled" className="text-sm font-medium">
-                        Enable the advisor
-                      </Label>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Shows a "Suggest shape" button on /teach. Requires ANTHROPIC_API_KEY on the server.
-                      </p>
-                    </div>
-                    <Switch
-                      id="advisor-enabled"
-                      checked={advisorEnabled}
-                      onCheckedChange={(v) => {
-                        setAdvisorEnabled(v)
-                        setAdvisorPrefs({ enabled: v })
-                        toast({
-                          title: v ? "Advisor on" : "Advisor off",
-                          description: v
-                            ? "You'll see the Advisor button on the teach screen."
-                            : "Hidden again — no requests are sent.",
-                        })
-                      }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card id="appearance">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Sun className="h-5 w-5" />
-                    Appearance
-                  </CardTitle>
-                  <CardDescription>Make the app feel like your home.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-medium">Family name</h3>
                     <Input
-                      value={familyName}
-                      onChange={(e) => saveBranding({ familyName: e.target.value.slice(0, 60) })}
-                      placeholder="The Dupre Family"
-                      className="max-w-sm"
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Your name"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Shown in place of "AtoZ Family" in the topbar when set.
-                    </p>
                   </div>
 
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-medium">Accent color</h3>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      {[
-                        "#556b47", // sage-dd default
-                        "#a44830", // terracotta-d
-                        "#a8501c", // honey-d
-                        "#4a7090", // slate blue
-                        "#6f4a7d", // plum
-                        "#2e5d3f", // deep green
-                      ].map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => saveBranding({ accentColor: c })}
-                          className={`h-8 w-8 rounded-full border-2 transition ${
-                            accentColor === c ? "border-[var(--ink)] scale-110" : "border-transparent"
-                          }`}
-                          style={{ background: c }}
-                          aria-label={`Accent ${c}`}
-                          aria-pressed={accentColor === c}
-                        />
-                      ))}
-                      <input
-                        type="color"
-                        value={accentColor}
-                        onChange={(e) => saveBranding({ accentColor: e.target.value })}
-                        aria-label="Custom accent color"
-                        className="h-8 w-10 rounded border border-[var(--rule)] cursor-pointer"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Applied to highlighted actions across the app. More surfaces pick this up as
-                      the design iterates.
-                    </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={user?.email ?? ""}
+                      disabled
+                      className="bg-muted"
+                    />
+                    <p className="text-xs text-muted-foreground">Email can't be changed here.</p>
                   </div>
+                </div>
 
-                  <Separator />
-
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Theme</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                      {[
-                        { value: "light", label: "Light", bg: "bg-white" },
-                        { value: "dark", label: "Dark", bg: "bg-zinc-900" },
-                        { value: "system", label: "System", bg: "bg-gradient-to-r from-white to-zinc-900" },
-                      ].map((t) => (
-                        <button
-                          key={t.value}
-                          onClick={() => setTheme(t.value)}
-                          className={`border rounded-md p-2 cursor-pointer transition-colors ${
-                            theme === t.value ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
-                          }`}
-                        >
-                          <div className={`h-20 ${t.bg} rounded-md border mb-2`} />
-                          <div className="text-center text-sm font-medium">{t.label}</div>
-                        </button>
-                      ))}
-                    </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="familyName">Family name</Label>
+                    <SavedPill visible={familyPill} />
                   </div>
-                </CardContent>
-              </Card>
+                  <Input
+                    id="familyName"
+                    value={familyName}
+                    onChange={(e) => setFamilyName(e.target.value.slice(0, 60))}
+                    placeholder="The Dupre Family"
+                    className="max-w-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Shown in place of "AtoZ Family" in the topbar when set.
+                  </p>
+                </div>
 
-              <Card id="notifications">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Bell className="h-5 w-5" />
-                    Notification Settings
-                  </CardTitle>
-                  <CardDescription>Manage how you receive notifications</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">In-App Notifications</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="notif-resources">New resources in your interests</Label>
-                        <Switch id="notif-resources" checked={notifResources} onCheckedChange={setNotifResources} />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="notif-comments">Comments on your resources</Label>
-                        <Switch id="notif-comments" checked={notifComments} onCheckedChange={setNotifComments} />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="notif-followers">New followers</Label>
-                        <Switch id="notif-followers" checked={notifFollowers} onCheckedChange={setNotifFollowers} />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="notif-events">Upcoming events in your area</Label>
-                        <Switch id="notif-events" checked={notifEvents} onCheckedChange={setNotifEvents} />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button onClick={() => toast({ title: "Saved", description: "Notification preferences updated." })}>
-                    Save Notification Settings
-                  </Button>
-                </CardFooter>
-              </Card>
+                <Separator />
 
-              <Card id="security">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Security
-                  </CardTitle>
-                  <CardDescription>Manage your account security</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Email verification</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" aria-hidden="true" />
+                    <span className="font-medium">Email verification</span>
                     {user?.emailVerified ? (
-                      <p className="text-sm text-muted-foreground">
-                        <Badge variant="secondary" className="mr-2">Verified</Badge>
-                        {user.email}
-                      </p>
+                      <Badge variant="secondary">Verified</Badge>
                     ) : (
-                      <>
-                        <p className="text-sm text-muted-foreground">
-                          Optional. Verifying lets you recover your account if you lose access.
-                        </p>
-                        <Button variant="outline" asChild>
-                          <Link href="/verify-email">Verify email</Link>
-                        </Button>
-                      </>
+                      <Badge variant="outline">Not verified</Badge>
                     )}
                   </div>
+                  {user?.emailVerified ? (
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Optional. Verifying lets you recover your account if you lose access.
+                      </p>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href="/verify-email">Send verification link</Link>
+                      </Button>
+                    </>
+                  )}
+                </div>
 
-                  <Separator />
+                <Separator />
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Password</h3>
-                    <p className="text-sm text-muted-foreground">
-                      To change your password, use the password reset flow.
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 font-medium">
+                      <Sparkles className="h-4 w-4" aria-hidden="true" /> Advisor
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-prose">
+                      Contextual helper inside the lesson authoring flow. Off by default. Never a
+                      global chat — it only sees the lesson you're planning. Requires
+                      <code className="px-1">ANTHROPIC_API_KEY</code> on the server.
                     </p>
-                    <Button variant="outline" asChild>
-                      <Link href="/reset-password">Reset Password</Link>
-                    </Button>
                   </div>
+                  <Switch
+                    id="advisor-enabled"
+                    aria-label="Enable the advisor"
+                    checked={advisorEnabled}
+                    onCheckedChange={toggleAdvisor}
+                  />
+                </div>
 
-                  <Separator />
+                <Separator />
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Sessions</h3>
-                    <div className="rounded-md border p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">Current Session</div>
-                          <div className="text-sm text-muted-foreground">
-                            {user?.email || "Unknown"} · Active now
-                          </div>
-                        </div>
-                        <Badge>Active</Badge>
-                      </div>
+                <div className="space-y-2">
+                  <div className="font-medium">Password</div>
+                  <p className="text-sm text-muted-foreground">
+                    To change your password, use the password reset flow.
+                  </p>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/reset-password">Reset password</Link>
+                  </Button>
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="font-medium flex items-center gap-2">
+                      <LogOut className="h-4 w-4" aria-hidden="true" /> Sign out
                     </div>
+                    <p className="text-sm text-muted-foreground">Sign out of this device.</p>
                   </div>
-                </CardContent>
-              </Card>
+                  <Button variant="outline" onClick={handleSignOut}>Sign out</Button>
+                </div>
+              </section>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-destructive flex items-center gap-2">
-                    <LogOut className="h-5 w-5" />
-                    Account Actions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <div className="font-medium">Sign Out</div>
-                      <p className="text-sm text-muted-foreground">Sign out of your account on this device</p>
-                    </div>
-                    <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
+              {/* Appearance --------------------------------------------------- */}
+              <section id="appearance" className="space-y-6">
+                <header>
+                  <h2 className="font-display text-2xl font-medium flex items-center gap-2">
+                    <Sun className="h-5 w-5" aria-hidden="true" /> Appearance
+                  </h2>
+                </header>
+
+                <div className="space-y-3">
+                  <Label>Accent color</Label>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {ACCENT_COLORS.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => chooseAccent(value)}
+                        className={`h-8 w-8 rounded-full border-2 transition ${
+                          accentColor === value
+                            ? "border-[var(--ink)] scale-110"
+                            : "border-transparent hover:scale-105"
+                        }`}
+                        style={{ background: value }}
+                        aria-label={`Accent color: ${label}`}
+                        aria-pressed={accentColor === value}
+                      />
+                    ))}
+                    <input
+                      type="color"
+                      value={accentColor}
+                      onChange={(e) => chooseAccent(e.target.value)}
+                      aria-label="Custom accent color"
+                      className="h-8 w-10 rounded border border-[var(--rule)] cursor-pointer"
+                    />
                   </div>
-                </CardContent>
-              </Card>
+                  <p className="text-xs text-muted-foreground">
+                    Applied to highlighted actions across the app.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>Theme</Label>
+                  <div className="grid grid-cols-3 gap-3 max-w-md">
+                    {[
+                      { value: "light", label: "Light", bg: "bg-white" },
+                      { value: "dark", label: "Dark", bg: "bg-zinc-900" },
+                      { value: "system", label: "System", bg: "bg-gradient-to-r from-white to-zinc-900" },
+                    ].map((t) => (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => chooseTheme(t.value)}
+                        aria-pressed={theme === t.value}
+                        className={`border rounded-md p-2 cursor-pointer transition-colors ${
+                          theme === t.value ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
+                        }`}
+                      >
+                        <div className={`h-14 ${t.bg} rounded-md border mb-2`} />
+                        <div className="text-center text-sm font-medium">{t.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* Notifications ----------------------------------------------- */}
+              <section id="notifications" className="space-y-4">
+                <header>
+                  <h2 className="font-display text-2xl font-medium flex items-center gap-2">
+                    <Bell className="h-5 w-5" aria-hidden="true" /> Notifications
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    In-app only for now. Email notifications arrive in a later phase.
+                  </p>
+                </header>
+
+                {(
+                  [
+                    { key: "resources", label: "New resources in your interests" },
+                    { key: "comments", label: "Comments on your resources" },
+                    { key: "followers", label: "New followers" },
+                    { key: "events", label: "Upcoming events in your area" },
+                  ] as const
+                ).map(({ key, label }) => (
+                  <div key={key} className="flex items-center justify-between gap-4">
+                    <Label htmlFor={`notif-${key}`}>{label}</Label>
+                    <Switch
+                      id={`notif-${key}`}
+                      aria-label={label}
+                      checked={notifPrefs[key]}
+                      onCheckedChange={(v) => updateNotif(key, v)}
+                    />
+                  </div>
+                ))}
+              </section>
+
+              {/* Compliance link --------------------------------------------- */}
+              <section id="compliance" className="space-y-2">
+                <header>
+                  <h2 className="font-display text-2xl font-medium flex items-center gap-2">
+                    <CalendarDays className="h-5 w-5" aria-hidden="true" /> Compliance
+                  </h2>
+                </header>
+                <p className="text-sm text-muted-foreground">
+                  State-by-state filings, deadlines, and what you need to keep on file.
+                </p>
+                <Button variant="outline" asChild>
+                  <Link href="/settings/compliance">
+                    Open compliance <ChevronRight className="h-4 w-4 ml-1" />
+                  </Link>
+                </Button>
+              </section>
             </div>
           </div>
         </div>
