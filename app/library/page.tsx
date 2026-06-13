@@ -149,13 +149,12 @@ export default function LibraryPage() {
             </p>
           </div>
           <Button
-            onClick={() => {
-              setEditing(undefined)
-              setAuthorOpen(true)
-            }}
+            asChild
             className="bg-[var(--sage-dd)] hover:bg-[var(--ink)] text-white"
           >
-            <Plus size={14} className="mr-1" /> New lesson
+            <Link href="/teach">
+              <Plus size={14} className="mr-1" /> New lesson
+            </Link>
           </Button>
         </header>
 

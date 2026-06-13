@@ -53,16 +53,22 @@ export default function TeachRoomPage() {
 
   useEffect(() => {
     if (searchParams?.get("justSaved")) {
-      toast({
-        title: "Saved",
-        description: "Lesson saved to the portfolio.",
-        duration: 4000,
-      })
+      // Deferred for the same reason as the ?edit= effect below: child
+      // effects run before the Toaster's listener registers on mount.
+      setTimeout(() => {
+        toast({
+          title: "Saved",
+          description: "Lesson saved to the portfolio.",
+          duration: 4000,
+        })
+      }, 0)
     }
   }, [searchParams, toast])
 
   // Open the authoring dialog for the lesson in ?edit= (Phase 6.10 redirects
   // /today's pencil icon here). One-shot — strip the param after opening.
+  // The toast is queued via setTimeout so it fires AFTER the Toaster's
+  // listener registers (parent effects run after children's in React).
   useEffect(() => {
     const editId = searchParams?.get("edit")
     if (!editId) return
@@ -70,6 +76,13 @@ export default function TeachRoomPage() {
     if (target) {
       setEditing(target)
       setAuthorOpen(true)
+    } else {
+      setTimeout(() => {
+        toast({
+          title: "Lesson not found",
+          description: "That lesson may have been deleted. Check the Library 'Recently deleted' filter.",
+        })
+      }, 0)
     }
     router.replace("/teach")
     // eslint-disable-next-line react-hooks/exhaustive-deps

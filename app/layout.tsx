@@ -15,6 +15,7 @@ import { SessionInitializer } from "@/components/session-initializer"
 import { DbInitializer } from "@/components/db-initializer"
 import QueryProvider from "@/components/query-provider"
 import BrandingApplier from "@/components/branding-applier"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -106,6 +107,7 @@ export default function RootLayout({
                       <CookieConsent />
                       <SessionInitializer />
                       <DbInitializer />
+                      <Toaster />
                     </ThemeProvider>
                   </QueryProvider>
                 </AuthProvider>

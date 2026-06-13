@@ -576,7 +576,7 @@ function AgendaView({
                 onEdit(lesson)
               }}
               aria-label="Edit lesson in Teach"
-              className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-1 text-[var(--ink-3)] hover:text-[var(--ink)]"
+              className="p-1 text-[var(--ink-4)] hover:text-[var(--ink)] focus:text-[var(--ink)] md:opacity-60 md:group-hover:opacity-100 md:focus:opacity-100 transition-opacity"
             >
               <Pencil size={14} aria-hidden="true" />
             </button>
