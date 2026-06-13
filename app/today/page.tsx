@@ -41,6 +41,7 @@ import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
 import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
 import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/contexts/auth-context"
 
 const COMPLIANCE_KEY = "atoz.complianceMode"
 
@@ -72,8 +73,20 @@ function startOfWeek(d: Date): Date {
   return copy
 }
 
+function firstNameOf(user: { displayName?: string | null; email?: string | null } | null): string {
+  const display = user?.displayName?.trim()
+  if (display) return display.split(/\s+/)[0]
+  const email = user?.email?.trim()
+  if (email) {
+    const handle = email.split("@")[0]
+    if (handle) return handle.charAt(0).toUpperCase() + handle.slice(1)
+  }
+  return "friend"
+}
+
 export default function TodayPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const { toast } = useToast()
   const kids = useKids()
   const [lessons, setLessons] = useState<Lesson[]>([])
@@ -203,7 +216,7 @@ export default function TodayPage() {
         <section className="atoz-hero">
           <div className="atoz-eyebrow">{dateEyebrow}</div>
           <h1>
-            {greetingFor()}, <em className="not-italic font-normal text-[var(--sage-dd)]">Rachel</em>.
+            {greetingFor()}, <em className="not-italic font-normal text-[var(--sage-dd)]">{firstNameOf(user)}</em>.
           </h1>
           <p className="text-[var(--ink-2)] max-w-[540px]">
             {dayTweaks.quietDay ? (
@@ -294,7 +307,7 @@ export default function TodayPage() {
                 <Plus size={14} className="mr-1" aria-hidden="true" /> New lesson
               </Button>
               <Link href="/teach" className="text-sm text-[var(--ink-3)] hover:text-[var(--ink)]">
-                Manage →
+                All lessons →
               </Link>
             </div>
           </div>
@@ -414,15 +427,7 @@ export default function TodayPage() {
         )}
 
         <section className="mt-12 pt-8 border-t border-[var(--rule)] flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--ink-4)]">
-          <div>
-            AtoZ Family ·{" "}
-            <button
-              onClick={toggleCompliance}
-              className="underline underline-offset-2 hover:text-[var(--ink)]"
-            >
-              {complianceOn ? "Turn compliance off" : "Turn compliance on"}
-            </button>
-          </div>
+          <div>AtoZ Family</div>
           <div>
             <Link href="/design-system" className="hover:text-[var(--ink)]">Design system</Link>
           </div>

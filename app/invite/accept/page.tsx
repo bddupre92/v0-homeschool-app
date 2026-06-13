@@ -95,6 +95,14 @@ export default function AcceptInvitePage() {
               <p className="mt-2 text-[var(--ink-3)]">
                 The invite may have been revoked or the URL is incomplete. Ask whoever invited you to resend.
               </p>
+              <div className="mt-6 flex gap-3">
+                <Button variant="outline" asChild>
+                  <Link href="/">Back to home</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/sign-in">Sign in</Link>
+                </Button>
+              </div>
             </>
           )}
 
@@ -106,6 +114,11 @@ export default function AcceptInvitePage() {
               <p className="mt-2 text-[var(--ink-3)]">
                 Invites are valid for 7 days. Ask {invite.name ?? "the sender"} to send a fresh one.
               </p>
+              <div className="mt-6">
+                <Button variant="outline" asChild>
+                  <Link href="/">Back to home</Link>
+                </Button>
+              </div>
             </>
           )}
 
@@ -117,6 +130,11 @@ export default function AcceptInvitePage() {
               <p className="mt-2 text-[var(--ink-3)]">
                 Access was removed before it was used. Reach out if you think this is a mistake.
               </p>
+              <div className="mt-6">
+                <Button variant="outline" asChild>
+                  <Link href="/">Back to home</Link>
+                </Button>
+              </div>
             </>
           )}
 

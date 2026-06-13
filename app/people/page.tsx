@@ -151,9 +151,9 @@ export default function PeoplePage() {
       <main className="atoz-page max-w-4xl">
         <header className="mb-10 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="atoz-eyebrow">Family · People</div>
+            <div className="atoz-eyebrow">Community</div>
             <h1 className="font-display text-5xl font-light tracking-tighter leading-[1.05] mt-2">
-              Who has access.
+              Your people.
             </h1>
             <p className="text-[var(--ink-2)] mt-2 max-w-[540px]">
               Parents, helpers, grandparents. Everyone gets only what they need.

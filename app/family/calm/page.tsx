@@ -22,13 +22,10 @@ import {
   onStorageChange,
   upsertKid,
   type Kid,
-  type Lesson,
 } from "@/lib/atoz-store"
 import { readDemoHours, useKids } from "@/lib/demo-kids"
 import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
 import WeeklyRhythm from "@/components/weekly-rhythm"
-import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
-import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -59,9 +56,6 @@ export default function CalmFamilyPage() {
   const [membersCount, setMembersCount] = useState(1)
   const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>(() => readDemoHours())
   const [editor, setEditor] = useState<Kid | null>(null)
-  const [authorOpen, setAuthorOpen] = useState(false)
-  const [editing, setEditing] = useState<Lesson | undefined>(undefined)
-  const [scheduleTarget, setScheduleTarget] = useState<Lesson | null>(null)
 
   const refresh = useCallback(() => {
     const items = listPortfolio()
@@ -112,24 +106,12 @@ export default function CalmFamilyPage() {
         <header className="atoz-hero flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="atoz-eyebrow">Family</div>
-            <h1>Your people.</h1>
+            <h1>Your kids.</h1>
             <p className="text-[var(--ink-2)] max-w-[520px]">
               Kids, parents, helpers. Tap a kid to see their portfolio and hours.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setEditing(undefined)
-                setAuthorOpen(true)
-              }}
-              disabled={kids.length === 0}
-              className="rounded-full border-[var(--rule)]"
-            >
-              <Plus size={14} className="mr-1" aria-hidden="true" /> New lesson
-            </Button>
             <Link
               href="/people"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--rule)] bg-white hover:bg-[var(--sage-ll)] text-sm font-medium"
@@ -228,32 +210,6 @@ export default function CalmFamilyPage() {
         existingId={editor && kids.some((k) => k.id === editor.id) ? editor.id : null}
       />
 
-      <LessonAuthoringDialog
-        open={authorOpen}
-        onOpenChange={(o) => {
-          setAuthorOpen(o)
-          if (!o) setEditing(undefined)
-        }}
-        kids={kids}
-        lesson={editing}
-        onSaved={(saved) => {
-          refresh()
-          setEditing(saved)
-        }}
-        onScheduleClick={(saved) => {
-          setAuthorOpen(false)
-          setScheduleTarget(saved)
-        }}
-      />
-
-      <LessonScheduleSheet
-        open={!!scheduleTarget}
-        onOpenChange={(o) => {
-          if (!o) setScheduleTarget(null)
-        }}
-        lesson={scheduleTarget}
-        onScheduled={() => refresh()}
-      />
     </div>
   )
 }
