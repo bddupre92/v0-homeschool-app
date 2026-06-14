@@ -454,6 +454,19 @@ export const db = {
     return result.rows.length > 0
   },
 
+  /** Groups the user is a member of, newest first. Used by /community. */
+  async getGroupsByMember(userId: string) {
+    const result = await sql`
+      SELECT g.*, gm.role as member_role, gm.joined_at
+      FROM groups g
+      INNER JOIN group_members gm ON gm.group_id = g.id
+      WHERE gm.user_id = ${userId}
+      ORDER BY gm.joined_at DESC
+      LIMIT 50
+    `
+    return result.rows
+  },
+
   /** Check if a user is an admin of a group */
   async isGroupAdmin(groupId: string, userId: string): Promise<boolean> {
     const result = await sql`

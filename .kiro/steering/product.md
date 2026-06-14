@@ -17,7 +17,7 @@ Source of truth: `components/navigation.tsx` (PRIMARY_ROOMS).
 | Today | `/today` | The daily slice. Read-only management — check lessons off, tap to teach. Authoring lives in Teach. |
 | Teach | `/teach` | The workshop. Drafts (auto-clear after 30 days untouched) and "This week" (next 7 days). Author, schedule, run a session, capture. |
 | Family | `/family/calm` | Kids roster with inline CRUD, weekly rhythm grid, per-kid portfolios at `/family/kid/[id]`. |
-| Community | `/people` | Co-parents, tutors, grandparents with scoped access. |
+| Community | `/community` | Co-op discovery + group coordination (announcements, rotations, field trips, shared packets). Server-side (Postgres). |
 | Library | `/library` | The catalog. Every lesson across statuses, plus "Recently deleted" with restore. Search, filter, browse — but author in Teach. |
 
 Supporting surfaces:
@@ -25,6 +25,9 @@ Supporting surfaces:
 - `/onboarding` — 3-step first-run (welcome → state → first learner).
 - `/kid/[id]` — "Kid Mode" — chromeless, big tappable tiles when the
   phone is handed to the learner.
+- `/people` — family access control (co-parents, tutors, grandparents
+  with scoped read/write). Separate from the Community room: that's
+  *your* family, Community is *other* families.
 - `/settings`, `/settings/compliance`, `/profile`.
 - Auth: `/sign-in`, `/sign-up`, `/reset-password`. Email verification
   at `/verify-email` is **opt-in**, not gated.
