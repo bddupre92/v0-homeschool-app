@@ -248,7 +248,7 @@ export async function createFieldTrip(
   data: {
     title: string
     description?: string
-    location: string
+    location?: string
     latitude?: number
     longitude?: number
     tripDate: string

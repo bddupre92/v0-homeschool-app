@@ -237,3 +237,49 @@ function rowToGroupProfile(row: any): GroupProfile {
     memberCount: row.member_count ?? 0,
   }
 }
+
+export async function joinGroup(groupId: string) {
+  if (!isPostgresConfigured()) {
+    return { success: false, error: "Community is not configured." }
+  }
+  try {
+    const auth = await requireAuth()
+    const userId = await db.resolveOrCreateUserId(auth.userId, auth.email || undefined)
+
+    const group = await db.getGroupById(groupId)
+    if (!group) return { success: false, error: "Group not found." }
+    if (group.is_private) {
+      return { success: false, error: "This group is invite-only. Ask an admin for an invite." }
+    }
+    if (group.is_accepting_members === false) {
+      return { success: false, error: "This group isn't accepting new members right now." }
+    }
+    const alreadyMember = await db.isGroupMember(groupId, userId)
+    if (alreadyMember) return { success: true, alreadyMember: true }
+
+    await db.addGroupMember(groupId, userId)
+    revalidatePath(`/community/groups/${groupId}`)
+    revalidatePath("/community")
+    return { success: true, alreadyMember: false }
+  } catch (err) {
+    console.error("[community] joinGroup failed:", err)
+    return { success: false, error: "Could not join the group. Try again." }
+  }
+}
+
+export async function leaveGroup(groupId: string) {
+  if (!isPostgresConfigured()) {
+    return { success: false, error: "Community is not configured." }
+  }
+  try {
+    const auth = await requireAuth()
+    const userId = await db.resolveOrCreateUserId(auth.userId, auth.email || undefined)
+    await db.removeGroupMember(groupId, userId)
+    revalidatePath(`/community/groups/${groupId}`)
+    revalidatePath("/community")
+    return { success: true }
+  } catch (err) {
+    console.error("[community] leaveGroup failed:", err)
+    return { success: false, error: "Could not leave the group. Try again." }
+  }
+}

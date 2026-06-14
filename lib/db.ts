@@ -696,7 +696,7 @@ export const db = {
 
   /** Create a field trip */
   async createFieldTrip(groupId: string, organizerUserId: string, data: {
-    title: string; description?: string; location: string;
+    title: string; description?: string; location?: string;
     latitude?: number; longitude?: number; tripDate: string;
     maxAttendees?: number; costPerFamily?: number; relatedPacketId?: string
   }) {
