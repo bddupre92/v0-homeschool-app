@@ -281,6 +281,100 @@ their phone without help.
 
 ---
 
+## Phase 6.9 — Hardening (DONE)
+
+Goal: strict build gates + env guards + delete generated test stubs.
+
+- `next.config.mjs` `ignoreBuildErrors` + `ignoreDuringBuilds` flipped
+  to `false`. The strict gate immediately surfaced a Next 15 async
+  params bug on `/api/lessons/[id]` and 30+ generated-stub tests with
+  invalid syntax — all fixed.
+- Deleted `pnpm-lock.yaml` (npm is the canonical PM).
+- `firebase-admin-safe.ts` now logs loud errors when admin creds are
+  missing instead of silently mocking.
+- New `/api/health` endpoint reports configured/missing integrations.
+- Removed 24 confirmed-orphaned files (Boards UI, dead actions, unused
+  shadcn primitives, unused hooks).
+- Latent `Toaster` not-mounted bug surfaced during Phase 6.10 review
+  and fixed; toast calls from useEffect now defer via `setTimeout(0)`
+  to dodge the parent-after-children effect-ordering race.
+
+## Phase 6.10 — Lesson-list consolidation (DONE)
+
+Goal: lock the three-room contract — Today daily slice, Teach
+workshop, Library catalog — before adding Community.
+
+- Pass 1: copy + `LESSON_ROW_ACTION` analytics on every per-row click
+  across Today/Teach/Library so we can see where users actually edit.
+- Pass 2: Today goes read-only (checkbox marks complete; pencil routes
+  to `/teach?edit=<id>`); Teach's Scheduled section filters to next 7
+  days; draft rows show "Auto-clears in Nd"; `pruneExpiredDrafts` runs
+  on mount.
+- Pass 3: 30-day draft TTL in `lib/atoz-store.ts`; soft-delete +
+  Library "Recently deleted" filter with Restore; doctrine codified in
+  `.kiro/steering/product.md`.
+- New tests: `lib/__tests__/draft-expiry.test.ts` (7 cases).
+- Behavioral probe: `scripts/probe-phase-6-10.mjs` (6/6 pass).
+- Settings collapse: 6 sections → 4, two save buttons → 0 (auto-save
+  with Undo toasts).
+
+## Phase 7 — Community room (DONE)
+
+Goal: restore co-op discovery + group coordination as the fifth calm
+room. ZIP-code radius matching (no maps), server-side Postgres,
+graceful degradation when unconfigured.
+
+### 7.1 Foundation
+- `lib/zipcodes.ts` (wraps the `zipcodes` npm package — local dataset).
+- `lib/postgres-guard.ts` (`isPostgresConfigured` + friendly fallback
+  copy).
+- `app/api/init-db/route.ts` extended with all Phase 7 tables and 13
+  discovery columns on `groups`. Idempotent ALTERs for existing DBs.
+- `middleware.ts` drops `/community → /people` (kept legacy
+  `/community/events`, `/community/locations`).
+- Three shell routes: `/community`, `/community/new`,
+  `/community/groups/[id]`.
+
+### 7.2 Discovery + preferences + nav swap
+- `app/actions/group-discovery-actions.ts`: createGroup, getMyGroups,
+  getUserPreferences, saveUserPreferences, discoverGroups (Haversine-
+  ranked via `lib/group-matching.rankGroups`).
+- `/community/preferences` — auto-save form (ZIP, distance, philosophy,
+  ages, subjects, day).
+- `/community` — DiscoverSection (ranked GroupMatchCard tiles) +
+  YourGroupsSection. Three empty-state branches.
+- Nav `Community` link swaps from `/people` to `/community`. `/people`
+  stays a real route, reachable from `/family/calm`'s "People · N"
+  link.
+
+### 7.3 Coordination
+- `joinGroup` + `leaveGroup` server actions.
+- New `JoinLeaveButton` (Join / Leave / disabled-private /
+  disabled-not-accepting states).
+- Group detail page rewrite: members, announcements (inline form
+  via existing `GroupAnnouncements`), teaching rotation (existing
+  `TeachingRotationCalendar`), upcoming field trips (existing
+  `GroupFieldTripCard`).
+- New `CreateFieldTripDialog` (admin-only).
+
+### 7.4 Verification + docs
+- `scripts/probe-phase-7.mjs` — 8 behavioral assertions covering nav
+  swap, all four routes' empty states, ZIP validation, legacy
+  redirect, /people reachability. 8/8 pass.
+- HANDOFF.md and DEPLOY.md updated. `DEPLOY.md §3.5` documents the
+  operator turn-on for Vercel Postgres + `/api/init-db` bootstrap +
+  `/api/health` verification.
+
+### Intentionally deferred (Phase 8)
+- `/community/join/[token]` invite-token flow.
+- Shared packets UI (`group_shared_packets` table is ready, no
+  consumer yet — waits on Lesson Packet authoring).
+- Postgres SQL injection cleanup in `db.updateGroup` and
+  `db.getGroupsByFilters` (concatenated columns; current callers are
+  trusted but worth tightening).
+
+---
+
 ## Cross-cutting tracks
 
 These run alongside the phases, not as blockers.

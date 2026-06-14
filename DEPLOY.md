@@ -76,6 +76,98 @@ when both `NODE_ENV=production` and the DSN are set.
 
 7. **Deploy.** Vercel picks the repo's default branch (main).
 
+## 3.5. Postgres (required for the Community room)
+
+As of Phase 7 the **Community** room (`/community`, `/community/new`,
+`/community/preferences`, `/community/groups/[id]`) reads and writes
+Postgres. Without `POSTGRES_URL` set, every Community page renders a
+calm "Community is being set up" empty state — the app does not crash,
+but discovery + group coordination won't work. The other four rooms
+remain fully local-first.
+
+### Connect Vercel Postgres
+
+1. **Storage tab** → **Create Database** → **Postgres** → pick a region
+   near your users.
+2. **Connect Project** → select `bddupre92/v0-homeschool-app`. Vercel
+   auto-populates three env vars in **Production**, **Preview**, and
+   **Development** scopes:
+   - `POSTGRES_URL` (pooled)
+   - `POSTGRES_PRISMA_URL` (pooled, Prisma-shaped)
+   - `POSTGRES_URL_NON_POOLING`
+   For local dev, run `vercel env pull .env.local` to mirror the
+   connection strings down.
+3. **Trigger a fresh deploy** so the new env vars take effect.
+
+### Run the one-time schema bootstrap
+
+`app/api/init-db/route.ts` is idempotent — it creates every table with
+`CREATE TABLE IF NOT EXISTS` and backfills new discovery columns via
+`ALTER TABLE ADD COLUMN IF NOT EXISTS`. Safe to call at any time.
+
+```bash
+curl -X POST https://<your-domain>/api/init-db
+# Expected: {"success": true, "message": "All tables created successfully"}
+```
+
+If `POSTGRES_URL` isn't picked up yet, the route returns
+`{ skipped: true, reason: "POSTGRES_URL not configured" }` — that means
+the env var didn't propagate; redeploy and try again.
+
+### Verify
+
+```bash
+curl https://<your-domain>/api/health
+```
+
+Expected JSON:
+
+```json
+{
+  "status": "ok",
+  "integrations": {
+    "firebaseClient": true,
+    "firebaseAdmin": true,
+    "anthropic": true,
+    "postgres": true,
+    "sentry": true,
+    "blob": false
+  },
+  "missing": ["blob"]
+}
+```
+
+Anything in `missing` won't crash the app, but the corresponding
+feature will degrade. `postgres: false` here is the single signal that
+Community discovery is non-functional.
+
+### Schema overview
+
+Tables created by `/api/init-db` (in dependency order):
+
+- `users` — Firebase UID ↔ Postgres UUID bridge.
+- `curricula`, `lessons` — legacy scaffolding (Phase 8 will use).
+- `groups` (with 13 discovery columns: `philosophy`, `age_groups`,
+  `subjects_offered`, `schedule JSONB`, `latitude`/`longitude`,
+  `zip_code`, `is_accepting_members`, `member_count`, `external_url`).
+- `group_members` — UUID ↔ UUID with role.
+- `group_shared_packets`, `group_announcements`, `teaching_rotations`,
+  `group_field_trips`, `group_field_trip_rsvps` — coordination tables.
+- `user_group_preferences` — per-user discovery prefs.
+- `state_requirements`, `lesson_packets`, `family_blueprints`,
+  `children`, `hour_logs`, `compliance_filings`, `filing_documents`,
+  `portfolio_entries`, `user_module_preferences` — earlier-phase tables.
+
+Indexes for `groups(latitude, longitude)`, `groups(zip_code)`,
+`groups(philosophy)`, and the per-group coordination queries are
+created automatically.
+
+### Roll back
+
+Vercel Postgres → Disconnect Project. Community pages fall back to the
+calm empty-state cards immediately on next request. Other rooms are
+unaffected because their data lives in localStorage / IndexedDB.
+
 ## 4. First deploy checks
 
 Visit the preview URL Vercel gives you. Verify:
@@ -122,12 +214,20 @@ Authorized domains. Sign-in will fail against unauthorized domains.
 ## 7. Analytics + monitoring
 
 - **Vercel Analytics** — enable in the Vercel project. Client +
-  server page views flow automatically. The capture-loop events
-  (`lesson_start`, `capture_taken`, `session_end`, `hours_logged`,
-  `kid_added`) fire through `window.va` on supported browsers.
+  server page views flow automatically. Calm-loop events
+  (`lesson_start`, `lesson_row_action`, `capture_taken`, `session_end`,
+  `hours_logged`, `kid_added`) plus Phase 7 community events
+  (`community_preferences_saved`, `community_discovery_queried`,
+  `community_group_created`, `community_group_joined`,
+  `community_group_left`, `community_group_viewed`,
+  `community_external_link_opened`) fire through `window.va`. All
+  community events are deliberately data-minimal — only `zip_prefix3`
+  (first 3 digits), never the full ZIP, never group descriptions or
+  member identities.
 - **Sentry dashboards** — create alerts for (a) unhandled
   exceptions, (b) the 503s on `/api/advisor/*` so you notice if the
-  Anthropic key ever gets revoked.
+  Anthropic key ever gets revoked, (c) any 5xx on `/api/init-db` or
+  `/community/*` once Postgres is wired.
 
 ## 8. Production smoke tests
 
