@@ -20,6 +20,8 @@ import { revalidatePath } from "next/cache"
 import { requireAuth } from "@/lib/auth-middleware"
 import { db } from "@/lib/db"
 import { isPostgresConfigured } from "@/lib/postgres-guard"
+import { rankGroups } from "@/lib/group-matching"
+import type { GroupMatchResult, GroupProfile, UserGroupPreferences } from "@/lib/types"
 import { lookupZip } from "@/lib/zipcodes"
 
 interface CreateGroupInput {
@@ -103,5 +105,135 @@ export async function getMyGroups() {
   } catch (err) {
     console.error("[community] getMyGroups failed:", err)
     return { success: true, groups: [] }
+  }
+}
+
+interface SavePrefsInput {
+  zipCode?: string | null
+  maxDistanceMiles?: number
+  preferredPhilosophy?: string | null
+  childAgeGroups?: string[]
+  wantedSubjects?: string[]
+  preferredDay?: string | null
+}
+
+export async function getUserPreferences() {
+  if (!isPostgresConfigured()) return { success: true, prefs: null }
+  try {
+    const auth = await requireAuth()
+    const userId = await db.resolveOrCreateUserId(auth.userId, auth.email || undefined)
+    const row = await db.getUserGroupPreferences(userId)
+    return { success: true, prefs: row }
+  } catch (err) {
+    console.error("[community] getUserPreferences failed:", err)
+    return { success: true, prefs: null }
+  }
+}
+
+export async function saveUserPreferences(input: SavePrefsInput) {
+  if (!isPostgresConfigured()) {
+    return { success: false, error: "Community is not configured." }
+  }
+  try {
+    const auth = await requireAuth()
+    const userId = await db.resolveOrCreateUserId(auth.userId, auth.email || undefined)
+    const zip = input.zipCode?.trim() || null
+    const coords = zip ? lookupZip(zip) : null
+    await db.upsertUserGroupPreferences(userId, {
+      zipCode: coords?.zip ?? zip,
+      latitude: coords?.lat ?? null,
+      longitude: coords?.lng ?? null,
+      maxDistanceMiles: input.maxDistanceMiles ?? 25,
+      preferredPhilosophy: input.preferredPhilosophy ?? null,
+      childAgeGroups: input.childAgeGroups ?? [],
+      wantedSubjects: input.wantedSubjects ?? [],
+      preferredDay: input.preferredDay ?? null,
+    })
+    revalidatePath("/community")
+    revalidatePath("/community/preferences")
+    return { success: true }
+  } catch (err) {
+    console.error("[community] saveUserPreferences failed:", err)
+    return { success: false, error: "Could not save preferences. Try again." }
+  }
+}
+
+/**
+ * Discover and rank co-ops near the user's saved ZIP. Returns `needsPrefs`
+ * when the user hasn't set a ZIP yet so the UI can route them to the
+ * preferences page instead of showing an empty list.
+ */
+export async function discoverGroups(): Promise<
+  | { success: true; needsPrefs?: false; matches: GroupMatchResult[]; centerCity?: string }
+  | { success: true; needsPrefs: true; matches: [] }
+  | { success: false; error: string; matches: [] }
+> {
+  if (!isPostgresConfigured()) {
+    return { success: false, error: "Community is not configured.", matches: [] }
+  }
+  try {
+    const auth = await requireAuth()
+    const userId = await db.resolveOrCreateUserId(auth.userId, auth.email || undefined)
+    const prefsRow = await db.getUserGroupPreferences(userId)
+    if (!prefsRow?.latitude || !prefsRow?.longitude) {
+      return { success: true, needsPrefs: true, matches: [] }
+    }
+
+    const maxMiles: number = prefsRow.max_distance_miles ?? 25
+    // ~69 mi per latitude degree; longitude scales by cos(lat).
+    const latDelta = maxMiles / 69
+    const lngDelta = maxMiles / (69 * Math.cos((prefsRow.latitude * Math.PI) / 180))
+    const box = {
+      minLat: prefsRow.latitude - latDelta,
+      maxLat: prefsRow.latitude + latDelta,
+      minLng: prefsRow.longitude - lngDelta,
+      maxLng: prefsRow.longitude + lngDelta,
+    }
+
+    const rows = await db.getNearbyGroups(box)
+    const groups: GroupProfile[] = rows.map(rowToGroupProfile)
+    const prefs: UserGroupPreferences = {
+      latitude: prefsRow.latitude,
+      longitude: prefsRow.longitude,
+      maxDistanceMiles: maxMiles,
+      preferredPhilosophy: prefsRow.preferred_philosophy ?? undefined,
+      childAgeGroups: prefsRow.child_age_groups ?? [],
+      wantedSubjects: prefsRow.wanted_subjects ?? [],
+      preferredDay: prefsRow.preferred_day ?? undefined,
+    }
+    const matches = rankGroups(prefs, groups).slice(0, 20)
+    return { success: true, matches }
+  } catch (err) {
+    console.error("[community] discoverGroups failed:", err)
+    return { success: false, error: "Discovery failed. Try again in a moment.", matches: [] }
+  }
+}
+
+function rowToGroupProfile(row: any): GroupProfile {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? "",
+    location: row.location ?? "",
+    groupType: row.group_type ?? "",
+    stateAbbreviation: row.state_abbreviation ?? undefined,
+    maxMembers: row.max_members ?? undefined,
+    isPrivate: Boolean(row.is_private),
+    imageUrl: row.image_url ?? undefined,
+    createdById: row.created_by_id,
+    createdAt: row.created_at?.toISOString?.() ?? String(row.created_at ?? ""),
+    updatedAt: row.updated_at?.toISOString?.() ?? String(row.updated_at ?? ""),
+    philosophy: row.philosophy ?? undefined,
+    ageGroups: row.age_groups ?? [],
+    subjectsOffered: row.subjects_offered ?? [],
+    schedule: row.schedule ?? undefined,
+    meetingFrequency: row.meeting_frequency ?? undefined,
+    meetingSchedule: row.meeting_schedule ?? undefined,
+    latitude: row.latitude ?? undefined,
+    longitude: row.longitude ?? undefined,
+    city: row.city ?? undefined,
+    zipCode: row.zip_code ?? undefined,
+    isAcceptingMembers: row.is_accepting_members ?? true,
+    memberCount: row.member_count ?? 0,
   }
 }

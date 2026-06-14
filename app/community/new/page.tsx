@@ -23,6 +23,7 @@ import { ArrowLeft, Plus } from "lucide-react"
 import { createGroup } from "@/app/actions/group-discovery-actions"
 import { useToast } from "@/hooks/use-toast"
 import { isValidZip } from "@/lib/zipcodes"
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
 
 const GROUP_TYPES = [
   { v: "co-op", label: "Co-op" },
@@ -104,6 +105,12 @@ export default function NewCommunityGroupPage() {
         toast({ title: "Could not create group", description: result.error })
         return
       }
+      trackEvent(AnalyticsEvents.COMMUNITY_GROUP_CREATED, {
+        group_type: groupType,
+        philosophy: philosophy ?? null,
+        is_private: isPrivate,
+        zip_prefix3: zipCode.slice(0, 3) || null,
+      })
       toast({ title: "Group created", description: `"${name}" is live.` })
       router.push(`/community/groups/${result.groupId}`)
     })

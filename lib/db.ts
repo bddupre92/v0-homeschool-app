@@ -467,6 +467,84 @@ export const db = {
     return result.rows
   },
 
+  /** Get a user's discovery preferences row, or null if not set. */
+  async getUserGroupPreferences(userId: string) {
+    const result = await sql`
+      SELECT * FROM user_group_preferences WHERE user_id = ${userId}
+    `
+    return result.rows[0] ?? null
+  },
+
+  /** Upsert discovery preferences for the current user. */
+  async upsertUserGroupPreferences(
+    userId: string,
+    prefs: {
+      zipCode?: string | null
+      latitude?: number | null
+      longitude?: number | null
+      maxDistanceMiles?: number
+      preferredPhilosophy?: string | null
+      childAgeGroups?: string[]
+      wantedSubjects?: string[]
+      preferredDay?: string | null
+    },
+  ) {
+    // sql`` template doesn't bind arrays; use sql.query with positional
+    // parameters so child_age_groups + wanted_subjects pass cleanly to
+    // Postgres TEXT[] columns.
+    const result = await sql.query(
+      `INSERT INTO user_group_preferences (
+        user_id, zip_code, latitude, longitude, max_distance_miles,
+        preferred_philosophy, child_age_groups, wanted_subjects, preferred_day,
+        updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id) DO UPDATE SET
+        zip_code = EXCLUDED.zip_code,
+        latitude = EXCLUDED.latitude,
+        longitude = EXCLUDED.longitude,
+        max_distance_miles = EXCLUDED.max_distance_miles,
+        preferred_philosophy = EXCLUDED.preferred_philosophy,
+        child_age_groups = EXCLUDED.child_age_groups,
+        wanted_subjects = EXCLUDED.wanted_subjects,
+        preferred_day = EXCLUDED.preferred_day,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *`,
+      [
+        userId,
+        prefs.zipCode ?? null,
+        prefs.latitude ?? null,
+        prefs.longitude ?? null,
+        prefs.maxDistanceMiles ?? 25,
+        prefs.preferredPhilosophy ?? null,
+        prefs.childAgeGroups ?? [],
+        prefs.wantedSubjects ?? [],
+        prefs.preferredDay ?? null,
+      ],
+    )
+    return result.rows[0]
+  },
+
+  /**
+   * Public + accepting-members groups inside a bounding box. Caller is
+   * responsible for converting (user lat/lng, max miles) → bbox; this
+   * keeps the SQL parameterized (boundingBox-via-string path in
+   * getGroupsByFilters is currently SQL-concatenated).
+   */
+  async getNearbyGroups(box: { minLat: number; maxLat: number; minLng: number; maxLng: number }) {
+    const result = await sql`
+      SELECT g.*, u.display_name AS creator_name
+      FROM groups g
+      LEFT JOIN users u ON g.created_by_id = u.id
+      WHERE g.is_private = false
+        AND g.is_accepting_members = true
+        AND g.latitude BETWEEN ${box.minLat} AND ${box.maxLat}
+        AND g.longitude BETWEEN ${box.minLng} AND ${box.maxLng}
+      ORDER BY g.member_count DESC, g.created_at DESC
+      LIMIT 100
+    `
+    return result.rows
+  },
+
   /** Check if a user is an admin of a group */
   async isGroupAdmin(groupId: string, userId: string): Promise<boolean> {
     const result = await sql`

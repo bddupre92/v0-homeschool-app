@@ -14,6 +14,7 @@ const BASE_URL = process.env.REVIEW_BASE_URL ?? "http://localhost:3000"
 
 const ROUTES = [
   "/", "/today", "/teach", "/family/calm", "/people", "/library",
+  "/community", "/community/new", "/community/preferences",
   "/onboarding", "/settings", "/settings/compliance", "/profile",
   "/sign-in", "/sign-up", "/reset-password", "/verify-email",
   "/invite/accept", "/design-system", "/admin", "/admin/backups",

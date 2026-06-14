@@ -14,6 +14,7 @@ export enum EventCategory {
   User = "user",
   Error = "error",
   CalmLoop = "calm_loop",
+  Community = "community",
 }
 
 // Define common events
@@ -51,6 +52,17 @@ export const AnalyticsEvents = {
   // Phase 6.10 to see which room users actually edit/schedule/delete
   // from, so we can lock the Teach=workshop boundary on real signal.
   LESSON_ROW_ACTION: `${EventCategory.CalmLoop}_lesson_row_action`,
+
+  // Community events (Phase 7). Deliberately data-minimal — never log
+  // a full ZIP, only its first three digits, and never log group
+  // descriptions / member identities.
+  COMMUNITY_PREFERENCES_SAVED: `${EventCategory.Community}_preferences_saved`,
+  COMMUNITY_DISCOVERY_QUERIED: `${EventCategory.Community}_discovery_queried`,
+  COMMUNITY_GROUP_CREATED: `${EventCategory.Community}_group_created`,
+  COMMUNITY_GROUP_VIEWED: `${EventCategory.Community}_group_viewed`,
+  COMMUNITY_GROUP_JOINED: `${EventCategory.Community}_group_joined`,
+  COMMUNITY_GROUP_LEFT: `${EventCategory.Community}_group_left`,
+  COMMUNITY_EXTERNAL_LINK_OPENED: `${EventCategory.Community}_external_link_opened`,
 
   // User events
   UPDATE_PROFILE: `${EventCategory.User}_update_profile`,

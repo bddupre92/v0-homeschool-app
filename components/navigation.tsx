@@ -55,7 +55,7 @@ const PRIMARY_ROOMS: RoomLink[] = [
   { name: "Today", href: "/today", matchPrefix: "/today", icon: Home },
   { name: "Teach", href: "/teach", matchPrefix: "/teach", icon: Presentation },
   { name: "Family", href: "/family/calm", matchPrefix: "/family", icon: Heart },
-  { name: "Community", href: "/people", matchPrefix: "/people", icon: Users },
+  { name: "Community", href: "/community", matchPrefix: "/community", icon: Users },
   { name: "Library", href: "/library", matchPrefix: "/library", icon: BookMarked },
 ]
 
