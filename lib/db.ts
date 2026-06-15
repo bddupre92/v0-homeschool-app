@@ -787,4 +787,92 @@ export const db = {
   async deleteFieldTrip(fieldTripId: string) {
     await sql`DELETE FROM group_field_trips WHERE id = ${fieldTripId}`
   },
+
+  // ── Compliance filings (Phase 8) ─────────────────────────────────
+
+  /** Create a filing record with its frozen source snapshot. */
+  async createFiling(
+    userId: string,
+    data: {
+      stateCode: string
+      filingType: string
+      schoolYear: string
+      childId?: string | null
+      sourceDataSnapshot: Record<string, any>
+      rulesVersion?: string | null
+      notes?: string | null
+    },
+  ) {
+    const result = await sql`
+      INSERT INTO compliance_filings (
+        user_id, state_abbreviation, state_code, filing_type, school_year,
+        child_id, source_data_snapshot, rules_version, status, notes
+      ) VALUES (
+        ${userId},
+        ${data.stateCode.toUpperCase()},
+        ${data.stateCode.toLowerCase()},
+        ${data.filingType},
+        ${data.schoolYear},
+        ${data.childId ?? null},
+        ${JSON.stringify(data.sourceDataSnapshot)}::jsonb,
+        ${data.rulesVersion ?? null},
+        'generated',
+        ${data.notes ?? null}
+      )
+      RETURNING *
+    `
+    return result.rows[0]
+  },
+
+  async getFilingById(filingId: string) {
+    const result = await sql`SELECT * FROM compliance_filings WHERE id = ${filingId}`
+    return result.rows[0] ?? null
+  },
+
+  /** Filings for a user, newest first. Filterable by school year + state. */
+  async listFilings(
+    userId: string,
+    opts: { schoolYear?: string; stateCode?: string } = {},
+  ) {
+    if (opts.schoolYear && opts.stateCode) {
+      const result = await sql`
+        SELECT * FROM compliance_filings
+        WHERE user_id = ${userId}
+          AND school_year = ${opts.schoolYear}
+          AND state_code = ${opts.stateCode.toLowerCase()}
+        ORDER BY created_at DESC
+      `
+      return result.rows
+    }
+    if (opts.schoolYear) {
+      const result = await sql`
+        SELECT * FROM compliance_filings
+        WHERE user_id = ${userId} AND school_year = ${opts.schoolYear}
+        ORDER BY created_at DESC
+      `
+      return result.rows
+    }
+    if (opts.stateCode) {
+      const result = await sql`
+        SELECT * FROM compliance_filings
+        WHERE user_id = ${userId} AND state_code = ${opts.stateCode.toLowerCase()}
+        ORDER BY created_at DESC
+      `
+      return result.rows
+    }
+    const result = await sql`
+      SELECT * FROM compliance_filings
+      WHERE user_id = ${userId}
+      ORDER BY created_at DESC
+    `
+    return result.rows
+  },
+
+  async markFilingSubmitted(filingId: string, when: string) {
+    await sql`
+      UPDATE compliance_filings
+      SET submitted_at = ${when}, status = 'submitted', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${filingId}
+    `
+  },
 }

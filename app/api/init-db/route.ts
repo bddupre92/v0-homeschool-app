@@ -290,6 +290,24 @@ export async function POST() {
     await sql`CREATE INDEX IF NOT EXISTS idx_portfolio_entries_child_id ON portfolio_entries(child_id)`
     await sql`CREATE INDEX IF NOT EXISTS idx_family_blueprints_user_id ON family_blueprints(user_id)`
 
+    // ─── Phase 8 State Compliance Generator ────────────────────────────────
+
+    // Extend compliance_filings with the columns the form generator needs.
+    // Idempotent so existing rows are preserved.
+    await sql`
+      ALTER TABLE compliance_filings
+        ADD COLUMN IF NOT EXISTS state_code VARCHAR(2),
+        ADD COLUMN IF NOT EXISTS school_year VARCHAR(9),
+        ADD COLUMN IF NOT EXISTS quarter SMALLINT,
+        ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP WITH TIME ZONE,
+        ADD COLUMN IF NOT EXISTS generated_pdf_blob_id TEXT,
+        ADD COLUMN IF NOT EXISTS source_data_snapshot JSONB,
+        ADD COLUMN IF NOT EXISTS child_id UUID,
+        ADD COLUMN IF NOT EXISTS rules_version DATE
+    `
+    await sql`CREATE INDEX IF NOT EXISTS idx_compliance_filings_state_year ON compliance_filings(user_id, state_code, school_year)`
+    await sql`CREATE INDEX IF NOT EXISTS idx_compliance_filings_child_id ON compliance_filings(child_id)`
+
     // ─── Phase 7 Community coordination tables ─────────────────────────────
 
     // Group shared packets — link from lesson_packets to a group's library.
