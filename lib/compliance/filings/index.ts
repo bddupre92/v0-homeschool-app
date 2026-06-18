@@ -8,16 +8,19 @@
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer"
 import type { ReactElement } from "react"
 import { OR_NOTIFICATION_META, OregonNotificationPdf } from "./or-notification"
+import { NY_IHIP_META, NyIhipPdf } from "./ny-ihip"
+import { NY_QUARTERLY_META, NyQuarterlyPdf } from "./ny-quarterly"
+import { PA_PORTFOLIO_META, PaPortfolioPdf } from "./pa-portfolio"
 import type { FilingSnapshot, FilingTypeMeta } from "./types"
 
 type Renderer = (input: { snapshot: FilingSnapshot }) => ReactElement<DocumentProps>
 
 const REGISTRY: Record<string, { meta: FilingTypeMeta; render: Renderer }> = {
   "or:notification": { meta: OR_NOTIFICATION_META, render: OregonNotificationPdf },
+  "ny:ihip": { meta: NY_IHIP_META, render: NyIhipPdf },
+  "ny:quarterly": { meta: NY_QUARTERLY_META, render: NyQuarterlyPdf },
+  "pa:portfolio": { meta: PA_PORTFOLIO_META, render: PaPortfolioPdf },
   // future:
-  // "ny:ihip": { ... },
-  // "ny:quarterly": { ... },
-  // "pa:portfolio": { ... },
   // "ma:plan": { ... },
 }
 
@@ -38,4 +41,16 @@ export async function renderFilingPdf(snapshot: FilingSnapshot): Promise<Buffer>
 }
 
 export { OR_NOTIFICATION_META } from "./or-notification"
-export type { FilingSnapshot, FilingTypeMeta } from "./types"
+export { NY_IHIP_META } from "./ny-ihip"
+export { NY_QUARTERLY_META } from "./ny-quarterly"
+export { PA_PORTFOLIO_META } from "./pa-portfolio"
+export type {
+  FilingSnapshot,
+  FilingTypeMeta,
+  FilingCurriculumLine,
+  FilingHoursBySubject,
+  FilingPortfolioSample,
+  FilingTestResult,
+  FilingSubjectProgress,
+  FilingEvaluator,
+} from "./types"

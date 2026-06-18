@@ -25,8 +25,79 @@ import { generateFiling } from "@/app/actions/filings-actions"
 import { useToast } from "@/hooks/use-toast"
 
 const FILING_OPTIONS = [
+  { state: "ny" as const, filingType: "ihip", label: "NY IHIP (annual)" },
+  { state: "ny" as const, filingType: "quarterly", label: "NY Quarterly Report" },
+  { state: "pa" as const, filingType: "portfolio", label: "PA Act 169 Portfolio" },
   { state: "or" as const, filingType: "notification", label: "Oregon Notification of Intent" },
 ]
+
+const NY_REQUIRED_SUBJECTS_K6 = [
+  "Arithmetic",
+  "Reading",
+  "Spelling",
+  "Writing",
+  "English",
+  "Geography",
+  "US History",
+  "Science",
+  "Health Education",
+  "Music",
+  "Visual Arts",
+  "Physical Education",
+]
+
+const NY_REQUIRED_SUBJECTS_7_12 = [
+  "English",
+  "History & Geography",
+  "Mathematics",
+  "Science",
+  "Health Education",
+  "Music",
+  "Visual Arts",
+  "Physical Education",
+  "Library Skills",
+  "Technology",
+]
+
+const PA_REQUIRED_SUBJECTS = [
+  "English (reading)",
+  "English (writing)",
+  "English (spelling)",
+  "Arithmetic",
+  "Science",
+  "Geography",
+  "Civics",
+  "Safety",
+  "Health & Physiology",
+  "Art",
+  "Music",
+  "Physical Education",
+]
+
+interface CurriculumLineState {
+  subject: string
+  materials: string
+}
+interface HoursLineState {
+  subject: string
+  minutes: number
+}
+interface SubjectProgressLineState {
+  subject: string
+  hoursThisPeriod: number
+  narrative: string
+  grade: string
+}
+interface SampleLineState {
+  date: string
+  title: string
+  subject: string
+}
+interface TestResultLineState {
+  testName: string
+  date: string
+  grade: string
+}
 
 function currentSchoolYear(): string {
   const now = new Date()
@@ -58,6 +129,20 @@ export default function NewFilingPage() {
   const [instructionStart, setInstructionStart] = useState(new Date().toISOString().slice(0, 10))
   const [notes, setNotes] = useState("")
 
+  // Filing-type-specific fields
+  const [quarter, setQuarter] = useState(1)
+  const [periodStart, setPeriodStart] = useState("")
+  const [periodEnd, setPeriodEnd] = useState("")
+  const [daysOfInstruction, setDaysOfInstruction] = useState<string>("")
+  const [curriculum, setCurriculum] = useState<CurriculumLineState[]>([])
+  const [hoursBySubject, setHoursBySubject] = useState<HoursLineState[]>([])
+  const [subjectProgress, setSubjectProgress] = useState<SubjectProgressLineState[]>([])
+  const [samples, setSamples] = useState<SampleLineState[]>([])
+  const [testResults, setTestResults] = useState<TestResultLineState[]>([])
+  const [evaluatorName, setEvaluatorName] = useState("")
+  const [evaluatorCert, setEvaluatorCert] = useState("")
+  const [evaluatorDate, setEvaluatorDate] = useState("")
+
   // Hydrate parent name from auth user once it's available.
   useEffect(() => {
     if (user?.displayName && !parentName) setParentName(user.displayName)
@@ -76,6 +161,26 @@ export default function NewFilingPage() {
   const canSubmit =
     childName.trim().length > 0 && parentName.trim().length > 0 && !pending
 
+  // When the filing type changes, seed sensible per-state subject lists.
+  useEffect(() => {
+    if (selected.state === "ny" && selected.filingType === "ihip" && curriculum.length === 0) {
+      const isUpper = childGrade && parseInt(childGrade, 10) >= 7
+      const subjects = isUpper ? NY_REQUIRED_SUBJECTS_7_12 : NY_REQUIRED_SUBJECTS_K6
+      setCurriculum(subjects.map((subject) => ({ subject, materials: "" })))
+    }
+    if (selected.state === "ny" && selected.filingType === "quarterly" && subjectProgress.length === 0) {
+      const isUpper = childGrade && parseInt(childGrade, 10) >= 7
+      const subjects = isUpper ? NY_REQUIRED_SUBJECTS_7_12 : NY_REQUIRED_SUBJECTS_K6
+      setSubjectProgress(
+        subjects.map((subject) => ({ subject, hoursThisPeriod: 0, narrative: "", grade: "" })),
+      )
+    }
+    if (selected.state === "pa" && selected.filingType === "portfolio" && hoursBySubject.length === 0) {
+      setHoursBySubject(PA_REQUIRED_SUBJECTS.map((subject) => ({ subject, minutes: 0 })))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected.state, selected.filingType, childGrade])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit) return
@@ -85,6 +190,10 @@ export default function NewFilingPage() {
         state: selected.state,
         filingType: selected.filingType,
         schoolYear,
+        quarter: selected.filingType === "quarterly" ? quarter : undefined,
+        periodStartDate: periodStart || undefined,
+        periodEndDate: periodEnd || undefined,
+        daysOfInstruction: daysOfInstruction ? Number(daysOfInstruction) : undefined,
         childId: selectedKidId || undefined,
         child: {
           name: childName.trim(),
@@ -102,6 +211,25 @@ export default function NewFilingPage() {
           zip: parentZip || undefined,
         },
         instructionStartDate: instructionStart || undefined,
+        curriculumBySubject: curriculum.filter((c) => c.materials.trim()),
+        hoursBySubject: hoursBySubject.filter((h) => h.minutes > 0),
+        subjectProgress: subjectProgress
+          .filter((p) => p.hoursThisPeriod > 0 || p.narrative.trim() || p.grade.trim())
+          .map((p) => ({
+            subject: p.subject,
+            hoursThisPeriod: p.hoursThisPeriod || undefined,
+            narrative: p.narrative.trim() || undefined,
+            grade: p.grade.trim() || undefined,
+          })),
+        portfolioSamples: samples.filter((s) => s.title.trim()),
+        testResults: testResults.filter((t) => t.testName.trim()),
+        evaluator: evaluatorName.trim()
+          ? {
+              name: evaluatorName.trim(),
+              certificationNumber: evaluatorCert.trim() || undefined,
+              evaluationDate: evaluatorDate || undefined,
+            }
+          : undefined,
         notes: notes.trim() || undefined,
       })
       if (!result.success) {
@@ -149,7 +277,7 @@ export default function NewFilingPage() {
             </div>
             <p className="text-xs text-[var(--ink-4)] mt-2">
               <FileText size={11} className="inline mr-1" aria-hidden="true" />
-              NY IHIP + quarterlies, PA Act 169 portfolio, MA education plan land next.
+              MA education plan + OR standardized-test submission land in Phase 8.3.
             </p>
           </Field>
 
@@ -238,6 +366,339 @@ export default function NewFilingPage() {
               <Input value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} />
             </Field>
           </fieldset>
+
+          {selected.state === "ny" && selected.filingType === "ihip" && (
+            <fieldset className="space-y-3 border-t border-[var(--rule)] pt-6">
+              <legend className="font-display text-lg font-medium">Curriculum by subject</legend>
+              <p className="text-xs text-[var(--ink-3)]">
+                List the materials, syllabi, or plan of instruction for each required subject. The
+                NY IHIP requires every § 100.10 subject to be addressed.
+              </p>
+              {curriculum.map((line, idx) => (
+                <div key={line.subject} className="space-y-1">
+                  <Label className="text-sm font-medium">{line.subject}</Label>
+                  <Textarea
+                    value={line.materials}
+                    rows={2}
+                    onChange={(e) => {
+                      const next = [...curriculum]
+                      next[idx] = { ...next[idx], materials: e.target.value }
+                      setCurriculum(next)
+                    }}
+                    placeholder="Curriculum / materials"
+                  />
+                </div>
+              ))}
+            </fieldset>
+          )}
+
+          {selected.state === "ny" && selected.filingType === "quarterly" && (
+            <fieldset className="space-y-3 border-t border-[var(--rule)] pt-6">
+              <legend className="font-display text-lg font-medium">Quarter</legend>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4].map((q) => (
+                  <Chip key={q} active={quarter === q} onClick={() => setQuarter(q)}>
+                    Q{q}
+                  </Chip>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Period start">
+                  <Input
+                    type="date"
+                    value={periodStart}
+                    onChange={(e) => setPeriodStart(e.target.value)}
+                  />
+                </Field>
+                <Field label="Period end">
+                  <Input
+                    type="date"
+                    value={periodEnd}
+                    onChange={(e) => setPeriodEnd(e.target.value)}
+                  />
+                </Field>
+              </div>
+              <Field label="Days of instruction in this period">
+                <Input
+                  type="number"
+                  min="0"
+                  value={daysOfInstruction}
+                  onChange={(e) => setDaysOfInstruction(e.target.value)}
+                  placeholder="45"
+                />
+              </Field>
+
+              <Label className="font-medium mt-4 block">Progress by subject</Label>
+              <p className="text-xs text-[var(--ink-3)]">
+                Hours covered this quarter, plus a brief narrative or grade per subject.
+              </p>
+              {subjectProgress.map((row, idx) => (
+                <div key={row.subject} className="rounded-lg border border-[var(--rule)] p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{row.subject}</span>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        className="w-20"
+                        value={row.hoursThisPeriod || ""}
+                        onChange={(e) => {
+                          const next = [...subjectProgress]
+                          next[idx] = { ...next[idx], hoursThisPeriod: Number(e.target.value) || 0 }
+                          setSubjectProgress(next)
+                        }}
+                        placeholder="hrs"
+                      />
+                      <Input
+                        className="w-20"
+                        value={row.grade}
+                        onChange={(e) => {
+                          const next = [...subjectProgress]
+                          next[idx] = { ...next[idx], grade: e.target.value }
+                          setSubjectProgress(next)
+                        }}
+                        placeholder="grade"
+                      />
+                    </div>
+                  </div>
+                  <Textarea
+                    value={row.narrative}
+                    rows={2}
+                    onChange={(e) => {
+                      const next = [...subjectProgress]
+                      next[idx] = { ...next[idx], narrative: e.target.value }
+                      setSubjectProgress(next)
+                    }}
+                    placeholder="What was covered. e.g., long division, chapters 4-6 of Charlotte's Web."
+                  />
+                </div>
+              ))}
+
+              {quarter === 4 && (
+                <div className="border-t border-[var(--rule)] pt-4 mt-4">
+                  <Label className="font-medium block">Annual assessment (required Q4)</Label>
+                  <p className="text-xs text-[var(--ink-3)] mb-2">
+                    Standardized test results or written evaluation — listed here, attached
+                    separately.
+                  </p>
+                  {testResults.map((t, idx) => (
+                    <div key={idx} className="grid grid-cols-3 gap-2 mb-2">
+                      <Input
+                        value={t.testName}
+                        onChange={(e) => {
+                          const next = [...testResults]
+                          next[idx] = { ...next[idx], testName: e.target.value }
+                          setTestResults(next)
+                        }}
+                        placeholder="Test name"
+                      />
+                      <Input
+                        type="date"
+                        value={t.date}
+                        onChange={(e) => {
+                          const next = [...testResults]
+                          next[idx] = { ...next[idx], date: e.target.value }
+                          setTestResults(next)
+                        }}
+                      />
+                      <Input
+                        value={t.grade}
+                        onChange={(e) => {
+                          const next = [...testResults]
+                          next[idx] = { ...next[idx], grade: e.target.value }
+                          setTestResults(next)
+                        }}
+                        placeholder="Grade / score"
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setTestResults((prev) => [...prev, { testName: "", date: "", grade: "" }])
+                    }
+                  >
+                    Add test result
+                  </Button>
+                </div>
+              )}
+            </fieldset>
+          )}
+
+          {selected.state === "pa" && selected.filingType === "portfolio" && (
+            <fieldset className="space-y-3 border-t border-[var(--rule)] pt-6">
+              <legend className="font-display text-lg font-medium">Portfolio summary</legend>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Period start">
+                  <Input
+                    type="date"
+                    value={periodStart}
+                    onChange={(e) => setPeriodStart(e.target.value)}
+                  />
+                </Field>
+                <Field label="Period end">
+                  <Input
+                    type="date"
+                    value={periodEnd}
+                    onChange={(e) => setPeriodEnd(e.target.value)}
+                  />
+                </Field>
+              </div>
+              <Field label="Days of instruction (target: 180)">
+                <Input
+                  type="number"
+                  min="0"
+                  value={daysOfInstruction}
+                  onChange={(e) => setDaysOfInstruction(e.target.value)}
+                  placeholder="180"
+                />
+              </Field>
+
+              <Label className="font-medium mt-4 block">Hours by required subject</Label>
+              <p className="text-xs text-[var(--ink-3)]">Annual target: 900 hrs (K-6) or 990 hrs (7-12).</p>
+              {hoursBySubject.map((row, idx) => (
+                <div key={row.subject} className="flex items-center justify-between gap-2">
+                  <span className="text-sm flex-1">{row.subject}</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    className="w-24"
+                    value={(row.minutes / 60).toFixed(1)}
+                    onChange={(e) => {
+                      const next = [...hoursBySubject]
+                      next[idx] = { ...next[idx], minutes: Math.round(Number(e.target.value) * 60) || 0 }
+                      setHoursBySubject(next)
+                    }}
+                    placeholder="hrs"
+                  />
+                </div>
+              ))}
+
+              <Label className="font-medium mt-4 block">Work samples (optional)</Label>
+              {samples.map((s, idx) => (
+                <div key={idx} className="grid grid-cols-[1fr_2fr_1fr_auto] gap-2">
+                  <Input
+                    type="date"
+                    value={s.date}
+                    onChange={(e) => {
+                      const next = [...samples]
+                      next[idx] = { ...next[idx], date: e.target.value }
+                      setSamples(next)
+                    }}
+                  />
+                  <Input
+                    value={s.title}
+                    onChange={(e) => {
+                      const next = [...samples]
+                      next[idx] = { ...next[idx], title: e.target.value }
+                      setSamples(next)
+                    }}
+                    placeholder="Sample title"
+                  />
+                  <Input
+                    value={s.subject}
+                    onChange={(e) => {
+                      const next = [...samples]
+                      next[idx] = { ...next[idx], subject: e.target.value }
+                      setSamples(next)
+                    }}
+                    placeholder="Subject"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSamples((prev) => prev.filter((_, i) => i !== idx))}
+                  >
+                    ×
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setSamples((prev) => [...prev, { date: "", title: "", subject: "" }])}
+              >
+                Add sample
+              </Button>
+
+              <div className="border-t border-[var(--rule)] pt-4 mt-4">
+                <Label className="font-medium block">Standardized test results (grades 3/5/8)</Label>
+                {testResults.map((t, idx) => (
+                  <div key={idx} className="grid grid-cols-3 gap-2 mb-2 mt-2">
+                    <Input
+                      value={t.testName}
+                      onChange={(e) => {
+                        const next = [...testResults]
+                        next[idx] = { ...next[idx], testName: e.target.value }
+                        setTestResults(next)
+                      }}
+                      placeholder="Test name"
+                    />
+                    <Input
+                      type="date"
+                      value={t.date}
+                      onChange={(e) => {
+                        const next = [...testResults]
+                        next[idx] = { ...next[idx], date: e.target.value }
+                        setTestResults(next)
+                      }}
+                    />
+                    <Input
+                      value={t.grade}
+                      onChange={(e) => {
+                        const next = [...testResults]
+                        next[idx] = { ...next[idx], grade: e.target.value }
+                        setTestResults(next)
+                      }}
+                      placeholder="Score"
+                    />
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setTestResults((prev) => [...prev, { testName: "", date: "", grade: "" }])
+                  }
+                >
+                  Add test result
+                </Button>
+              </div>
+
+              <div className="border-t border-[var(--rule)] pt-4 mt-4">
+                <Label className="font-medium block">Evaluator (optional — fill if known)</Label>
+                <p className="text-xs text-[var(--ink-3)] mb-2">
+                  Per § 13-1327.1(e), evaluator must be a PA-certified teacher (2+ yrs), licensed
+                  psychologist, or superintendent-authorized.
+                </p>
+                <Input
+                  value={evaluatorName}
+                  onChange={(e) => setEvaluatorName(e.target.value)}
+                  placeholder="Evaluator full name"
+                  className="mb-2"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    value={evaluatorCert}
+                    onChange={(e) => setEvaluatorCert(e.target.value)}
+                    placeholder="Certification #"
+                  />
+                  <Input
+                    type="date"
+                    value={evaluatorDate}
+                    onChange={(e) => setEvaluatorDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            </fieldset>
+          )}
 
           <fieldset className="space-y-3 border-t border-[var(--rule)] pt-6">
             <legend className="font-display text-lg font-medium">Instruction</legend>

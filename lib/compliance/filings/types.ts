@@ -59,19 +59,50 @@ export interface FilingSnapshot {
   filingType: string
   /** 'YYYY-YYYY', e.g. '2026-2027'. */
   schoolYear: string
+  /** Quarter number 1-4 for NY quarterlies. */
+  quarter?: number
+  /** Period covered (used by NY quarterlies + PA portfolios). */
+  periodStartDate?: string
+  periodEndDate?: string
   /** ISO timestamp the parent generated this filing. */
   generatedAt: string
   /** Date the homeschool year started, ISO. */
   instructionStartDate?: string
   parent: FilingParent
   child: FilingChild
+  /** Curriculum / materials chosen per subject (NY IHIP). */
+  curriculumBySubject?: FilingCurriculumLine[]
   hoursBySubject?: FilingHoursBySubject[]
   portfolioSamples?: FilingPortfolioSample[]
   testResults?: FilingTestResult[]
+  /** Per-subject narrative or grade — NY quarterlies use this. */
+  subjectProgress?: FilingSubjectProgress[]
+  /** Days of instruction in the period (PA + NY hour-targets). */
+  daysOfInstruction?: number
   /** ISO date the state rules data was last reviewed by us. */
   rulesVersion?: string
   /** Optional free-text notes the parent wants on the filing. */
   notes?: string
+  /** Evaluator info — PA portfolios reference the evaluator's certification. */
+  evaluator?: FilingEvaluator
+}
+
+export interface FilingCurriculumLine {
+  subject: string
+  materials: string
+}
+
+export interface FilingSubjectProgress {
+  subject: string
+  hoursThisPeriod?: number
+  narrative?: string
+  grade?: string
+}
+
+export interface FilingEvaluator {
+  name: string
+  certificationNumber?: string
+  evaluationDate?: string
 }
 
 export interface FilingTypeMeta {

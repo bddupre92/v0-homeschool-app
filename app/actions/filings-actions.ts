@@ -20,6 +20,12 @@ interface GenerateInput {
   state: FilingSnapshot["state"]
   filingType: string
   schoolYear: string
+  /** 1-4 for NY quarterlies. */
+  quarter?: number
+  /** Period covered (NY quarterlies + PA portfolio). */
+  periodStartDate?: string
+  periodEndDate?: string
+  daysOfInstruction?: number
   childId?: string
   child: { name: string; birthDate?: string; age?: number; grade?: string }
   parent: {
@@ -33,6 +39,23 @@ interface GenerateInput {
     zip?: string
   }
   instructionStartDate?: string
+  /** NY IHIP curriculum-by-subject. */
+  curriculumBySubject?: { subject: string; materials: string }[]
+  /** PA portfolio: hours per subject in minutes (so a 1.5h block stays integer). */
+  hoursBySubject?: { subject: string; minutes: number }[]
+  /** PA portfolio work samples. */
+  portfolioSamples?: { date: string; title: string; subject?: string; notes?: string }[]
+  /** Standardized test results (PA grades 3/5/8, NY 4th-quarter assessment). */
+  testResults?: { testName: string; date: string; grade?: string; notes?: string }[]
+  /** NY quarterly per-subject narrative. */
+  subjectProgress?: {
+    subject: string
+    hoursThisPeriod?: number
+    narrative?: string
+    grade?: string
+  }[]
+  /** PA evaluator — supervisor enters this before sending to the evaluator. */
+  evaluator?: { name: string; certificationNumber?: string; evaluationDate?: string }
   notes?: string
 }
 
@@ -56,6 +79,10 @@ export async function generateFiling(input: GenerateInput) {
       state: input.state,
       filingType: input.filingType,
       schoolYear: input.schoolYear,
+      quarter: input.quarter,
+      periodStartDate: input.periodStartDate,
+      periodEndDate: input.periodEndDate,
+      daysOfInstruction: input.daysOfInstruction,
       generatedAt: new Date().toISOString(),
       instructionStartDate: input.instructionStartDate,
       parent: {
@@ -77,6 +104,12 @@ export async function generateFiling(input: GenerateInput) {
         age: input.child.age,
         grade: input.child.grade,
       },
+      curriculumBySubject: input.curriculumBySubject,
+      hoursBySubject: input.hoursBySubject,
+      portfolioSamples: input.portfolioSamples,
+      testResults: input.testResults,
+      subjectProgress: input.subjectProgress,
+      evaluator: input.evaluator,
       rulesVersion: getRulesVersionFor(input.state),
       notes: input.notes,
     }
@@ -132,7 +165,9 @@ function getRulesVersionFor(state: FilingSnapshot["state"]): string {
     case "or":
       return "2026-06-14"
     case "ny":
+      return "2026-06-15"
     case "pa":
+      return "2026-06-15"
     case "ma":
     default:
       return new Date().toISOString().slice(0, 10)

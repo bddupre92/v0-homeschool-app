@@ -98,7 +98,7 @@ export default async function FilingsPage() {
           ))}
         </ul>
         <p className="text-xs text-[var(--ink-4)] mt-4">
-          NY IHIP + quarterlies, PA Act 169 portfolio, and MA education plan land in Phase 8.2 and 8.3.
+          MA education plan and OR standardized-test submission land in Phase 8.3.
         </p>
       </section>
     </Shell>
