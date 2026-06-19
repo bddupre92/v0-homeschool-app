@@ -28,7 +28,9 @@ const FILING_OPTIONS = [
   { state: "ny" as const, filingType: "ihip", label: "NY IHIP (annual)" },
   { state: "ny" as const, filingType: "quarterly", label: "NY Quarterly Report" },
   { state: "pa" as const, filingType: "portfolio", label: "PA Act 169 Portfolio" },
+  { state: "ma" as const, filingType: "plan", label: "MA Home Education Plan" },
   { state: "or" as const, filingType: "notification", label: "Oregon Notification of Intent" },
+  { state: "or" as const, filingType: "test-results", label: "Oregon Test Results" },
 ]
 
 const NY_REQUIRED_SUBJECTS_K6 = [
@@ -72,6 +74,21 @@ const PA_REQUIRED_SUBJECTS = [
   "Art",
   "Music",
   "Physical Education",
+]
+
+const MA_REQUIRED_SUBJECTS = [
+  "Reading",
+  "Writing",
+  "English language and grammar",
+  "Mathematics",
+  "Geography",
+  "United States history",
+  "Science",
+  "Civics",
+  "Physical education",
+  "Health",
+  "Art",
+  "Music",
 ]
 
 interface CurriculumLineState {
@@ -178,6 +195,16 @@ export default function NewFilingPage() {
     if (selected.state === "pa" && selected.filingType === "portfolio" && hoursBySubject.length === 0) {
       setHoursBySubject(PA_REQUIRED_SUBJECTS.map((subject) => ({ subject, minutes: 0 })))
     }
+    if (selected.state === "ma" && selected.filingType === "plan" && curriculum.length === 0) {
+      setCurriculum(MA_REQUIRED_SUBJECTS.map((subject) => ({ subject, materials: "" })))
+    }
+    if (selected.state === "ma" && selected.filingType === "plan" && hoursBySubject.length === 0) {
+      // MA isn't subject-by-subject hours — seed a single "Total weekly hours" line.
+      setHoursBySubject([{ subject: "Total weekly hours", minutes: 0 }])
+    }
+    if (selected.state === "or" && selected.filingType === "test-results" && testResults.length === 0) {
+      setTestResults([{ testName: "", date: "", grade: childGrade ?? "" }])
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected.state, selected.filingType, childGrade])
 
@@ -277,7 +304,7 @@ export default function NewFilingPage() {
             </div>
             <p className="text-xs text-[var(--ink-4)] mt-2">
               <FileText size={11} className="inline mr-1" aria-hidden="true" />
-              MA education plan + OR standardized-test submission land in Phase 8.3.
+              Six filings shipped across four states. More states by demand.
             </p>
           </Field>
 
@@ -700,6 +727,148 @@ export default function NewFilingPage() {
             </fieldset>
           )}
 
+          {selected.state === "ma" && selected.filingType === "plan" && (
+            <fieldset className="space-y-3 border-t border-[var(--rule)] pt-6">
+              <legend className="font-display text-lg font-medium">Massachusetts plan</legend>
+              <p className="text-xs text-[var(--ink-3)]">
+                Submitted to your local school committee for prior approval. Each district uses
+                its own format — this is a portable plan covering the four Charles criteria. Edit
+                the sections to match your district's checklist before sending.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Period start">
+                  <Input
+                    type="date"
+                    value={periodStart}
+                    onChange={(e) => setPeriodStart(e.target.value)}
+                  />
+                </Field>
+                <Field label="Period end">
+                  <Input
+                    type="date"
+                    value={periodEnd}
+                    onChange={(e) => setPeriodEnd(e.target.value)}
+                  />
+                </Field>
+              </div>
+              <Field label="Planned days of instruction">
+                <Input
+                  type="number"
+                  min="0"
+                  value={daysOfInstruction}
+                  onChange={(e) => setDaysOfInstruction(e.target.value)}
+                  placeholder="180"
+                />
+              </Field>
+              <Field label="Planned hours per week (all subjects combined)">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={hoursBySubject[0] ? (hoursBySubject[0].minutes / 60).toString() : ""}
+                  onChange={(e) => {
+                    const mins = Math.round(Number(e.target.value) * 60) || 0
+                    setHoursBySubject([{ subject: "Total weekly hours", minutes: mins }])
+                  }}
+                  placeholder="25"
+                />
+              </Field>
+
+              <Label className="font-medium mt-4 block">Curriculum by subject</Label>
+              <p className="text-xs text-[var(--ink-3)]">
+                Massachusetts public schools cover these subjects; the plan must show at least
+                equivalent scope. Empty rows are dropped from the PDF.
+              </p>
+              {curriculum.map((line, idx) => (
+                <div key={line.subject} className="space-y-1">
+                  <Label className="text-sm font-medium">{line.subject}</Label>
+                  <Textarea
+                    value={line.materials}
+                    rows={2}
+                    onChange={(e) => {
+                      const next = [...curriculum]
+                      next[idx] = { ...next[idx], materials: e.target.value }
+                      setCurriculum(next)
+                    }}
+                    placeholder="Curriculum / materials"
+                  />
+                </div>
+              ))}
+
+              <Field label="Competence / qualifications (Charles criterion 1)">
+                <Textarea
+                  value={notes}
+                  rows={3}
+                  maxLength={1000}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder={`Background of the teaching parent — education, experience, professional/career context, why you can teach this child. (If blank, a default paragraph stands in.)`}
+                />
+              </Field>
+            </fieldset>
+          )}
+
+          {selected.state === "or" && selected.filingType === "test-results" && (
+            <fieldset className="space-y-3 border-t border-[var(--rule)] pt-6">
+              <legend className="font-display text-lg font-medium">Test results</legend>
+              <p className="text-xs text-[var(--ink-3)]">
+                Required at the end of grades 3, 5, 8, and 10. Approved tests: CAT, ITBS,
+                Stanford, Metropolitan, TerraNova. Must be administered by a qualified neutral
+                person (not the parent).
+              </p>
+              {testResults.map((t, idx) => (
+                <div key={idx} className="rounded-lg border border-[var(--rule)] p-3 space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <Input
+                      value={t.testName}
+                      onChange={(e) => {
+                        const next = [...testResults]
+                        next[idx] = { ...next[idx], testName: e.target.value }
+                        setTestResults(next)
+                      }}
+                      placeholder="Test name"
+                    />
+                    <Input
+                      type="date"
+                      value={t.date}
+                      onChange={(e) => {
+                        const next = [...testResults]
+                        next[idx] = { ...next[idx], date: e.target.value }
+                        setTestResults(next)
+                      }}
+                    />
+                    <Input
+                      value={t.grade}
+                      onChange={(e) => {
+                        const next = [...testResults]
+                        next[idx] = { ...next[idx], grade: e.target.value }
+                        setTestResults(next)
+                      }}
+                      placeholder="Grade"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setTestResults((prev) => prev.filter((_, i) => i !== idx))}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setTestResults((prev) => [...prev, { testName: "", date: "", grade: childGrade ?? "" }])
+                }
+              >
+                Add another test result
+              </Button>
+            </fieldset>
+          )}
+
           <fieldset className="space-y-3 border-t border-[var(--rule)] pt-6">
             <legend className="font-display text-lg font-medium">Instruction</legend>
             <Field label="Began home instruction">
@@ -709,15 +878,19 @@ export default function NewFilingPage() {
                 onChange={(e) => setInstructionStart(e.target.value)}
               />
             </Field>
-            <Field label="Notes (optional)">
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                maxLength={500}
-                placeholder="Anything you want on the filing — e.g., previous school, transition reason"
-              />
-            </Field>
+            {/* MA plan reuses `notes` for the Charles competence criterion, so we hide
+                the universal notes textarea there to avoid two labels for the same field. */}
+            {!(selected.state === "ma" && selected.filingType === "plan") && (
+              <Field label="Notes (optional)">
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  placeholder="Anything you want on the filing — e.g., previous school, transition reason"
+                />
+              </Field>
+            )}
           </fieldset>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--rule)]">

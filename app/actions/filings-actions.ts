@@ -163,12 +163,13 @@ export async function markFilingSubmitted(filingId: string) {
 function getRulesVersionFor(state: FilingSnapshot["state"]): string {
   switch (state) {
     case "or":
-      return "2026-06-14"
+      return "2026-06-18"
     case "ny":
       return "2026-06-15"
     case "pa":
       return "2026-06-15"
     case "ma":
+      return "2026-06-18"
     default:
       return new Date().toISOString().slice(0, 10)
   }
