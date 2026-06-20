@@ -178,31 +178,55 @@ export default function NewFilingPage() {
   const canSubmit =
     childName.trim().length > 0 && parentName.trim().length > 0 && !pending
 
-  // When the filing type changes, seed sensible per-state subject lists.
+  // When the filing type changes, seed per-state subject lists. Preserves
+  // user input — if any current row has typed content, leave the array
+  // alone; otherwise replace with the new filing type's expected subjects.
   useEffect(() => {
-    if (selected.state === "ny" && selected.filingType === "ihip" && curriculum.length === 0) {
+    const hasTypedCurriculum = curriculum.some((c) => c.materials.trim().length > 0)
+    const hasTypedHours = hoursBySubject.some((h) => h.minutes > 0)
+    const hasTypedProgress = subjectProgress.some(
+      (p) => p.hoursThisPeriod > 0 || p.narrative.trim() || p.grade.trim(),
+    )
+
+    if (selected.state === "ny" && selected.filingType === "ihip" && !hasTypedCurriculum) {
       const isUpper = childGrade && parseInt(childGrade, 10) >= 7
       const subjects = isUpper ? NY_REQUIRED_SUBJECTS_7_12 : NY_REQUIRED_SUBJECTS_K6
       setCurriculum(subjects.map((subject) => ({ subject, materials: "" })))
     }
-    if (selected.state === "ny" && selected.filingType === "quarterly" && subjectProgress.length === 0) {
+    if (
+      selected.state === "ny" &&
+      selected.filingType === "quarterly" &&
+      !hasTypedProgress
+    ) {
       const isUpper = childGrade && parseInt(childGrade, 10) >= 7
       const subjects = isUpper ? NY_REQUIRED_SUBJECTS_7_12 : NY_REQUIRED_SUBJECTS_K6
       setSubjectProgress(
         subjects.map((subject) => ({ subject, hoursThisPeriod: 0, narrative: "", grade: "" })),
       )
     }
-    if (selected.state === "pa" && selected.filingType === "portfolio" && hoursBySubject.length === 0) {
+    if (
+      selected.state === "pa" &&
+      selected.filingType === "portfolio" &&
+      !hasTypedHours
+    ) {
       setHoursBySubject(PA_REQUIRED_SUBJECTS.map((subject) => ({ subject, minutes: 0 })))
     }
-    if (selected.state === "ma" && selected.filingType === "plan" && curriculum.length === 0) {
+    if (
+      selected.state === "ma" &&
+      selected.filingType === "plan" &&
+      !hasTypedCurriculum
+    ) {
       setCurriculum(MA_REQUIRED_SUBJECTS.map((subject) => ({ subject, materials: "" })))
-    }
-    if (selected.state === "ma" && selected.filingType === "plan" && hoursBySubject.length === 0) {
       // MA isn't subject-by-subject hours — seed a single "Total weekly hours" line.
-      setHoursBySubject([{ subject: "Total weekly hours", minutes: 0 }])
+      if (!hasTypedHours) {
+        setHoursBySubject([{ subject: "Total weekly hours", minutes: 0 }])
+      }
     }
-    if (selected.state === "or" && selected.filingType === "test-results" && testResults.length === 0) {
+    if (
+      selected.state === "or" &&
+      selected.filingType === "test-results" &&
+      testResults.length === 0
+    ) {
       setTestResults([{ testName: "", date: "", grade: childGrade ?? "" }])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

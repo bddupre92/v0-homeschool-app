@@ -1,9 +1,10 @@
 # AtoZ Family — Repo Handoff
 
-This doc is the state of the repo as of **Phase 7 complete** (Community
-live, draft TTL, settings auto-save, hardening). For the phased plan
-read `ROADMAP.md`; for a design-partner brief read `DESIGN.md`; for the
-product thesis read `.kiro/steering/product.md`.
+This doc is the state of the repo as of **Phase 8 complete** (state-
+compliance generator across NY, PA, MA, OR — six filings, JSON sidecar,
+dashboard hints). For the phased plan read `ROADMAP.md`; for a design-
+partner brief read `DESIGN.md`; for the product thesis read
+`.kiro/steering/product.md`.
 
 ## The product in one sentence
 
@@ -15,10 +16,14 @@ a hand-to-learner Kid Mode. No streaks, no badges, no leaderboards.
 
 - **Build:** passes with strict TypeScript + ESLint gates on
   (`next.config.mjs` `ignoreBuildErrors: false`).
-- **Phases shipped:** 1–7 (see `ROADMAP.md`). Phase 6.10 locked the
+- **Phases shipped:** 1–8 (see `ROADMAP.md`). Phase 6.10 locked the
   three-room contract (Today read-only, Teach workshop, Library
   catalog with 30-day draft TTL). Phase 7 made Community a real room.
-- **Tests:** 69 vitest + Phase 6.10 + Phase 7 behavioral probes.
+  Phase 8 added the state-compliance generator: six filings across NY,
+  PA, MA, OR, with PDF + JSON-sidecar export and a calm `/today`
+  deadlines card.
+- **Tests:** 108 vitest + Phase 6.10 + Phase 7 + Phase 8 behavioral
+  probes (all 10/10, 8/8, 10/10 on the latest runs).
 - **Nav chrome:** `Navigation` returns `null` on `/`, `/sign-in`,
   `/sign-up`, `/reset-password`, `/verify-email`, `/onboarding`,
   `/offline`, `/kid/[id]`, and fullscreen `/teach/[id]`. Authenticated
@@ -48,6 +53,8 @@ a hand-to-learner Kid Mode. No streaks, no badges, no leaderboards.
 | Community → Group detail | `/community/groups/[groupId]` | Members + Join/Leave + Announcements + Teaching rotation + Field trips. |
 | Library | `/library` | Catalog. Filter by status (incl. Recently deleted with Restore). |
 | Family access | `/people` | Co-parents, tutors, grandparents. Reached via `/family/calm`'s "People · N" link. |
+| Filings | `/filings` | State-compliance generator landing — list of generated filings grouped by school year, PDF + JSON-sidecar download per filing. |
+| Filings → New | `/filings/new` | Picker for the six supported filings (NY IHIP, NY Quarterly, PA Act 169 portfolio, MA Charles plan, OR notification, OR test results) with state-specific extra fields. |
 | Onboarding | `/onboarding` | 3-step. |
 | Settings | `/settings` | Account · Appearance · Notifications · Compliance (auto-save). |
 | Settings → Compliance | `/settings/compliance` | |
@@ -63,6 +70,11 @@ a hand-to-learner Kid Mode. No streaks, no badges, no leaderboards.
   `{ skipped: true }` when `POSTGRES_URL` unset.
 - `GET /api/health` — integration status (firebaseClient, firebaseAdmin,
   anthropic, postgres, sentry, blob). Use this to verify a fresh deploy.
+- `GET /api/filings/[id]/download` — Phase 8. Auth-gated PDF render
+  from `source_data_snapshot`. Returns 503 when `POSTGRES_URL` unset.
+- `GET /api/filings/[id]/sidecar` — Phase 8. Auth-gated JSON sidecar
+  containing the full source snapshot + provenance envelope. The
+  "your records belong to you" wedge.
 - Legacy `/api/lessons/*`, `/api/backups` retained from earlier
   scaffolding.
 
@@ -80,9 +92,16 @@ a hand-to-learner Kid Mode. No streaks, no badges, no leaderboards.
 5. **Photos > 100KB go to IndexedDB**, ≤100KB stay inline as data URLs.
 6. **Direct `@anthropic-ai/sdk`** for advisor; routes at
    `app/api/advisor/*`.
-7. **State compliance data is hand-curated** — FL/TX/CA/NY/PA covered.
+7. **State compliance data is hand-curated** — FL/TX/CA/NY/PA covered
+   in `lib/compliance/index.ts`. Filing PDF templates ship for NY
+   (IHIP + 4 quarterlies), PA (Act 169 portfolio), MA (Charles plan),
+   and OR (notification + test results).
 8. **Community discovery is ZIP-radius only** — no map library, no
    street-level geocoding. Server-side Haversine distance scoring.
+9. **Filings carry their own source-of-truth** — every PDF is rendered
+   from a frozen `source_data_snapshot` (JSONB) so re-generation is
+   deterministic. The JSON sidecar exports the same snapshot so a
+   family can take their records to any other tool.
 
 ## Auth bypass flag
 
@@ -169,6 +188,13 @@ Note `/community` itself is now a live route, not a redirect.
 - **Community actions**: `app/actions/group-discovery-actions.ts`
   (discover / join / leave / prefs / create), `app/actions/group-
   coordination-actions.ts` (announcements / rotation / trips).
+- **Filing templates**: `lib/compliance/filings/` — one file per
+  template (`or-notification.tsx`, `ny-ihip.tsx`, `ny-quarterly.tsx`,
+  `pa-portfolio.tsx`, `ma-plan.tsx`, `or-test-results.tsx`),
+  `shared.tsx` for the common header/footer/disclaimer primitives,
+  `deadlines.ts` for the per-state deadlines knowledge.
+- **Filing actions**: `app/actions/filings-actions.ts` — generateFiling,
+  listMyFilings, markFilingSubmitted, getUpcomingFilingDeadlines.
 - **Design tokens**: `design/tokens.json` + `:root` in
   `app/globals.css`.
 - **Primitives**: `components/primitives/`.
@@ -188,6 +214,11 @@ Note `/community` itself is now a live route, not a redirect.
   assertions (nav swap, /community fallback, /community/new + prefs
   forms, group-detail fallback, legacy redirect, /people reachable,
   ZIP validation).
+- **Phase 8 probe:** `node scripts/probe-phase-8.mjs` — 10 behavioral
+  assertions (`/filings` + `/filings/new` fallbacks, /download +
+  /sidecar 503s without Postgres, per-filing-type seeding for NY
+  IHIP / NY Quarterly / PA Portfolio / MA Plan / OR Test Results,
+  FilingsDueSoon hidden without an onboarding state).
 - **Screenshots (legacy):** `scripts/review-screenshots.mjs` still
   works; outputs to gitignored `screenshots/`.
 
