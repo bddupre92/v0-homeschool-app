@@ -36,7 +36,8 @@ export default async function FilingsPage() {
             Filings.
           </h1>
           <p className="text-[var(--ink-2)] mt-2 max-w-[640px]">
-            The forms your state actually wants. Generated from what you've logged.
+            The forms your state actually wants. Generated from what you've logged. Every filing
+            also exports a JSON sidecar so your records belong to you — portable to any other tool.
           </p>
         </div>
         <Button asChild className="bg-[var(--sage-dd)] hover:bg-[var(--ink)] text-white">
@@ -113,6 +114,14 @@ function FilingsByYear({ filings }: { filings: any[] }) {
                     </Pill>
                     <Button asChild variant="outline" size="sm">
                       <a href={`/api/filings/${f.id}/download`}>Download PDF</a>
+                    </Button>
+                    <Button
+                      asChild
+                      variant="ghost"
+                      size="sm"
+                      title="Take your records with you — full source data as JSON"
+                    >
+                      <a href={`/api/filings/${f.id}/sidecar`}>Data (JSON)</a>
                     </Button>
                   </div>
                 </li>

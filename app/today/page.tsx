@@ -37,6 +37,7 @@ import { useToast } from "@/hooks/use-toast"
 import { CalendarDays, Compass, LayoutList, Pencil, Play, Sparkle, Users } from "lucide-react"
 import { useKids, readDemoHours, type DemoKid } from "@/lib/demo-kids"
 import ComplianceCountdown from "@/components/compliance-countdown"
+import FilingsDueSoon from "@/components/filings-due-soon"
 import { CapturePhoto } from "@/components/capture-media"
 import DayTweaks, { formatDateKey } from "@/components/day-tweaks"
 import { AnalyticsEvents, trackEvent } from "@/lib/analytics"
@@ -250,6 +251,10 @@ export default function TodayPage() {
 
         <section className="mb-6">
           <ComplianceCountdown />
+        </section>
+
+        <section className="mb-6">
+          <FilingsDueSoon />
         </section>
 
         {complianceOn ? (

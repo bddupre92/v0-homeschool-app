@@ -15,6 +15,7 @@ import { requireAuth } from "@/lib/auth-middleware"
 import { db } from "@/lib/db"
 import { isPostgresConfigured } from "@/lib/postgres-guard"
 import { getFilingMeta, type FilingSnapshot } from "@/lib/compliance/filings"
+import { upcomingDeadlines, type DeadlineOccurrence } from "@/lib/compliance/filings/deadlines"
 
 interface GenerateInput {
   state: FilingSnapshot["state"]
@@ -142,6 +143,54 @@ export async function listMyFilings(opts: { schoolYear?: string; stateCode?: str
   } catch (err) {
     console.error("[filings] listMyFilings failed:", err)
     return { success: true, filings: [] }
+  }
+}
+
+export interface UpcomingFilingItem extends DeadlineOccurrence {
+  /** Filing row id if already generated for this school year + filing type. */
+  filingId?: string
+  /** True if the user has already marked it submitted. */
+  submitted: boolean
+}
+
+/**
+ * Upcoming filings for a state, marked with already-filed status. Drives the
+ * /today "Filings due soon" card. Returns the next 4 deadlines so the card
+ * never grows beyond a calm height.
+ */
+export async function getUpcomingFilingDeadlines(
+  state: FilingSnapshot["state"],
+): Promise<{ success: true; items: UpcomingFilingItem[] }> {
+  const occurrences = upcomingDeadlines(state).slice(0, 4)
+  if (!isPostgresConfigured()) {
+    return { success: true, items: occurrences.map((o) => ({ ...o, submitted: false })) }
+  }
+  try {
+    const auth = await requireAuth()
+    const userId = await db.resolveOrCreateUserId(auth.userId, auth.email || undefined)
+    const existing = await db.listFilings(userId, { stateCode: state })
+
+    const items: UpcomingFilingItem[] = occurrences.map((occ) => {
+      // Match the most-recent filing of the same type that overlaps this
+      // school year. We don't try to be clever about quarter-specific
+      // matching here — that's a UI nicety for Phase 8.5.
+      const occYear = new Date(occ.date).getFullYear()
+      const occSchoolYear =
+        new Date(occ.date).getMonth() >= 6 ? `${occYear}-${occYear + 1}` : `${occYear - 1}-${occYear}`
+      const hit = existing.find(
+        (f: any) => f.filing_type === occ.filingType && f.school_year === occSchoolYear,
+      )
+      return {
+        ...occ,
+        filingId: hit?.id,
+        submitted: Boolean(hit?.submitted_at),
+      }
+    })
+
+    return { success: true, items }
+  } catch (err) {
+    console.error("[filings] getUpcomingFilingDeadlines failed:", err)
+    return { success: true, items: occurrences.map((o) => ({ ...o, submitted: false })) }
   }
 }
 
