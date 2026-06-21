@@ -281,6 +281,182 @@ their phone without help.
 
 ---
 
+## Phase 6.9 — Hardening (DONE)
+
+Goal: strict build gates + env guards + delete generated test stubs.
+
+- `next.config.mjs` `ignoreBuildErrors` + `ignoreDuringBuilds` flipped
+  to `false`. The strict gate immediately surfaced a Next 15 async
+  params bug on `/api/lessons/[id]` and 30+ generated-stub tests with
+  invalid syntax — all fixed.
+- Deleted `pnpm-lock.yaml` (npm is the canonical PM).
+- `firebase-admin-safe.ts` now logs loud errors when admin creds are
+  missing instead of silently mocking.
+- New `/api/health` endpoint reports configured/missing integrations.
+- Removed 24 confirmed-orphaned files (Boards UI, dead actions, unused
+  shadcn primitives, unused hooks).
+- Latent `Toaster` not-mounted bug surfaced during Phase 6.10 review
+  and fixed; toast calls from useEffect now defer via `setTimeout(0)`
+  to dodge the parent-after-children effect-ordering race.
+
+## Phase 6.10 — Lesson-list consolidation (DONE)
+
+Goal: lock the three-room contract — Today daily slice, Teach
+workshop, Library catalog — before adding Community.
+
+- Pass 1: copy + `LESSON_ROW_ACTION` analytics on every per-row click
+  across Today/Teach/Library so we can see where users actually edit.
+- Pass 2: Today goes read-only (checkbox marks complete; pencil routes
+  to `/teach?edit=<id>`); Teach's Scheduled section filters to next 7
+  days; draft rows show "Auto-clears in Nd"; `pruneExpiredDrafts` runs
+  on mount.
+- Pass 3: 30-day draft TTL in `lib/atoz-store.ts`; soft-delete +
+  Library "Recently deleted" filter with Restore; doctrine codified in
+  `.kiro/steering/product.md`.
+- New tests: `lib/__tests__/draft-expiry.test.ts` (7 cases).
+- Behavioral probe: `scripts/probe-phase-6-10.mjs` (6/6 pass).
+- Settings collapse: 6 sections → 4, two save buttons → 0 (auto-save
+  with Undo toasts).
+
+## Phase 7 — Community room (DONE)
+
+Goal: restore co-op discovery + group coordination as the fifth calm
+room. ZIP-code radius matching (no maps), server-side Postgres,
+graceful degradation when unconfigured.
+
+### 7.1 Foundation
+- `lib/zipcodes.ts` (wraps the `zipcodes` npm package — local dataset).
+- `lib/postgres-guard.ts` (`isPostgresConfigured` + friendly fallback
+  copy).
+- `app/api/init-db/route.ts` extended with all Phase 7 tables and 13
+  discovery columns on `groups`. Idempotent ALTERs for existing DBs.
+- `middleware.ts` drops `/community → /people` (kept legacy
+  `/community/events`, `/community/locations`).
+- Three shell routes: `/community`, `/community/new`,
+  `/community/groups/[id]`.
+
+### 7.2 Discovery + preferences + nav swap
+- `app/actions/group-discovery-actions.ts`: createGroup, getMyGroups,
+  getUserPreferences, saveUserPreferences, discoverGroups (Haversine-
+  ranked via `lib/group-matching.rankGroups`).
+- `/community/preferences` — auto-save form (ZIP, distance, philosophy,
+  ages, subjects, day).
+- `/community` — DiscoverSection (ranked GroupMatchCard tiles) +
+  YourGroupsSection. Three empty-state branches.
+- Nav `Community` link swaps from `/people` to `/community`. `/people`
+  stays a real route, reachable from `/family/calm`'s "People · N"
+  link.
+
+### 7.3 Coordination
+- `joinGroup` + `leaveGroup` server actions.
+- New `JoinLeaveButton` (Join / Leave / disabled-private /
+  disabled-not-accepting states).
+- Group detail page rewrite: members, announcements (inline form
+  via existing `GroupAnnouncements`), teaching rotation (existing
+  `TeachingRotationCalendar`), upcoming field trips (existing
+  `GroupFieldTripCard`).
+- New `CreateFieldTripDialog` (admin-only).
+
+### 7.4 Verification + docs
+- `scripts/probe-phase-7.mjs` — 8 behavioral assertions covering nav
+  swap, all four routes' empty states, ZIP validation, legacy
+  redirect, /people reachability. 8/8 pass.
+- HANDOFF.md and DEPLOY.md updated. `DEPLOY.md §3.5` documents the
+  operator turn-on for Vercel Postgres + `/api/init-db` bootstrap +
+  `/api/health` verification.
+
+### Intentionally deferred (Phase 8 / later)
+- `/community/join/[token]` invite-token flow.
+- Shared packets UI (`group_shared_packets` table is ready, no
+  consumer yet — waits on Lesson Packet authoring).
+- Postgres SQL injection cleanup in `db.updateGroup` and
+  `db.getGroupsByFilters` (concatenated columns; current callers are
+  trusted but worth tightening).
+
+## Phase 8 — State Compliance Generator (DONE)
+
+Goal: become the only tool that actually generates state filings
+(competitors only display requirements). Span the regulation spectrum
+to demonstrate the platform handles the hardest cases and scales down.
+
+### 8.1 Foundation + Oregon notification
+- `@react-pdf/renderer` server-side render pipeline.
+- `lib/compliance/filings/types.ts` — `FilingSnapshot` (frozen JSONB
+  input) + shared shapes.
+- `lib/compliance/filings/shared.tsx` — per-page provenance footer
+  + first-page disclaimer block + citation/recipient framing.
+- `lib/compliance/filings/or-notification.tsx` — proof-of-concept.
+- Schema: extended `compliance_filings` with `state_code`,
+  `school_year`, `quarter`, `submitted_at`, `generated_pdf_blob_id`,
+  `source_data_snapshot JSONB`, `child_id`, `rules_version`.
+- Server actions: `generateFiling`, `listMyFilings`,
+  `markFilingSubmitted`.
+- `/api/filings/[id]/download` — auth-gated, ownership-checked,
+  deterministic regeneration from snapshot.
+- `/filings` + `/filings/new` — server-component shells with calm
+  Postgres-unset fallbacks.
+
+### 8.2 NY + PA — the highest-paperwork states
+- `ny-ihip.tsx` — Individualized Home Instruction Plan per 8 NYCRR
+  § 100.10. Required subjects per grade band (K-6, 7-12) seeded into
+  the form.
+- `ny-quarterly.tsx` — Quarterly Report per § 100.10(g). Q-chip 1-4,
+  per-subject hours/grade/narrative, Q4 annual-assessment block.
+- `pa-portfolio.tsx` — Act 169 portfolio per 24 P.S. § 13-1327.1.
+  Activity log (hours vs grade-band target), work samples, standardized
+  test results, fillable evaluator-certification block.
+- Form (`/filings/new`) grew state-specific fieldsets that conditionally
+  render based on the chosen filing type.
+
+### 8.3 MA + OR test results + UI polish
+- `ma-plan.tsx` — Charles plan covering the four criteria from
+  Care and Protection of Charles, 399 Mass. 324 (1987): parent
+  competence, curriculum, hours/days, evaluation method.
+- `or-test-results.tsx` — ORS 339.035 standardized-test submission.
+  Required at grades 3/5/8/10; stacked test rows + parent attestation.
+- `/filings` now groups generated filings by school year (newest first).
+
+### 8.4 JSON sidecar + /today filings-due card
+- `/api/filings/[id]/sidecar` — full snapshot wrapped in a provenance
+  envelope (`generator`, `generator_version`, `generated_at`, etc.).
+  Marketing wedge: "your records belong to you."
+- `lib/compliance/filings/deadlines.ts` — hand-curated per-state
+  recurring deadlines. `upcomingDeadlines(state, now)` rolls past dates
+  forward.
+- `components/filings-due-soon.tsx` on `/today` — 4 upcoming deadlines
+  for the user's onboarding state, with already-filed status pills and
+  one-tap Generate links. Hides itself when no state is set.
+
+### 8.5 Behavioral probe + docs
+- `scripts/probe-phase-8.mjs` — 10 behavioral assertions:
+  /filings + /filings/new fallback render, /download + /sidecar 503
+  when Postgres unset, per-filing-type seeding (NY IHIP K-6, NY
+  Quarterly Q1-Q4, PA subjects + evaluator, MA subjects + competence,
+  OR test row), FilingsDueSoon hidden without an onboarding state.
+  10/10 pass.
+- One real bug fixed during the probe round: switching from NY IHIP to
+  MA Plan kept NY's curriculum subjects (seed effect bailed when
+  `length === 0` was false). Now reseeds when prior content is empty.
+- HANDOFF + DEPLOY + ROADMAP updated. `DEPLOY.md §3.6` documents the
+  six filings, the per-page provenance + disclaimer pattern, and the
+  three-file edit recipe for keeping rules-version stamps in sync.
+
+### Intentionally deferred
+- `filing_generated`, `filing_downloaded`, `filing_sidecar_downloaded`,
+  `filing_marked_submitted` analytics events — small to add, scoped
+  out of v1 to keep the surface tight.
+- Auto-population from existing `hour_logs` + `portfolio_entries`
+  (today the form is manual entry). When the data plumbing for
+  Firebase → Postgres is settled (Phase 9), the form should default
+  the per-subject hours from the user's actual log.
+- Per-district MA variants. MA has no statewide form; we ship a
+  portable plan. As families upload their district's exact wording,
+  we can add district-specific renderers.
+- States beyond NY/PA/MA/OR. Each adds ~3-5 days of curation +
+  template work; add by demand.
+
+---
+
 ## Cross-cutting tracks
 
 These run alongside the phases, not as blockers.

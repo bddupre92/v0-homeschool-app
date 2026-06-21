@@ -295,47 +295,51 @@ const sampleReviews = [
 // Function to seed all data
 export async function seedDatabase() {
   try {
-    const batch = writeBatch(db)
+    const firestore = db
+    if (!firestore) {
+      throw new Error("Firestore is not initialized — check NEXT_PUBLIC_FIREBASE_* env vars")
+    }
+    const batch = writeBatch(firestore)
 
     // Seed users
     for (const user of sampleUsers) {
-      const userRef = doc(db, "users", user.id)
+      const userRef = doc(firestore, "users", user.id)
       batch.set(userRef, user)
     }
 
     // Seed resources
     for (const resource of sampleResources) {
-      const resourceRef = doc(db, "resources", resource.id)
+      const resourceRef = doc(firestore, "resources", resource.id)
       batch.set(resourceRef, resource)
     }
 
     // Seed boards
     for (const board of sampleBoards) {
-      const boardRef = doc(db, "boards", board.id)
+      const boardRef = doc(firestore, "boards", board.id)
       batch.set(boardRef, board)
     }
 
     // Seed events
     for (const event of sampleEvents) {
-      const eventRef = doc(db, "events", event.id)
+      const eventRef = doc(firestore, "events", event.id)
       batch.set(eventRef, event)
     }
 
     // Seed locations
     for (const location of sampleLocations) {
-      const locationRef = doc(db, "locations", location.id)
+      const locationRef = doc(firestore, "locations", location.id)
       batch.set(locationRef, location)
     }
 
     // Seed posts
     for (const post of samplePosts) {
-      const postRef = doc(db, "posts", post.id)
+      const postRef = doc(firestore, "posts", post.id)
       batch.set(postRef, post)
     }
 
     // Seed reviews
     for (const review of sampleReviews) {
-      const reviewRef = doc(db, "reviews", review.id)
+      const reviewRef = doc(firestore, "reviews", review.id)
       batch.set(reviewRef, review)
     }
 
@@ -353,10 +357,14 @@ export async function seedDatabase() {
 // Function to seed a specific collection
 export async function seedCollection(collectionName: string, data: any[]) {
   try {
-    const batch = writeBatch(db)
+    const firestore = db
+    if (!firestore) {
+      throw new Error("Firestore is not initialized — check NEXT_PUBLIC_FIREBASE_* env vars")
+    }
+    const batch = writeBatch(firestore)
 
     for (const item of data) {
-      const docRef = doc(db, collectionName, item.id)
+      const docRef = doc(firestore, collectionName, item.id)
       batch.set(docRef, item)
     }
 

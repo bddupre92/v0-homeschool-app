@@ -7,10 +7,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { CheckCircle, AlertCircle, Mail, RefreshCw, ArrowLeft } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
+import { sendEmailVerification } from "firebase/auth"
 import { Progress } from "@/components/ui/progress"
 
 export default function EmailVerification() {
-  const { user, sendEmailVerification } = useAuth()
+  const { user } = useAuth()
   const [verificationSent, setVerificationSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [countdown, setCountdown] = useState(60)
@@ -81,7 +82,7 @@ export default function EmailVerification() {
     if (!user) return
 
     try {
-      await sendEmailVerification()
+      await sendEmailVerification(user)
       setVerificationSent(true)
       setError(null)
       setIsCountingDown(true)
@@ -110,7 +111,29 @@ export default function EmailVerification() {
     }
   }
 
-  if (!user) return null
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-muted/40 px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Sign in to verify your email</CardTitle>
+            <CardDescription>
+              Email verification is tied to your account. Sign in first, then come back to send the
+              verification link. (Verification is optional — you can use AtoZ Family without it.)
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="flex flex-col gap-2">
+            <Button className="w-full" onClick={() => router.push("/sign-in")}>
+              Go to sign in
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => router.push("/today")}>
+              Skip for now
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted/40">

@@ -97,6 +97,10 @@ export default function ProfilePage() {
 
       <main className="flex-1 container py-8 px-4 md:px-6">
         <div className="flex flex-col gap-6">
+          <header>
+            <div className="atoz-eyebrow mb-2">Profile</div>
+            <h1 className="font-display text-3xl font-normal tracking-tight">Your account.</h1>
+          </header>
           <div className="flex flex-col md:flex-row gap-6">
             <div className="md:w-1/3 space-y-6">
               <Card>
@@ -136,26 +140,6 @@ export default function ProfilePage() {
                       {totalHours}h logged this year
                     </div>
                   </div>
-                  {loading ? (
-                    <div className="flex justify-center py-4">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-4 pt-2">
-                      <div className="flex flex-col items-center">
-                        <span className="font-bold">{childrenCount}</span>
-                        <span className="text-xs text-muted-foreground">Children</span>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="font-bold">{subjectCount}</span>
-                        <span className="text-xs text-muted-foreground">Subjects</span>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="font-bold">{totalHours}h</span>
-                        <span className="text-xs text-muted-foreground">Hours</span>
-                      </div>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 

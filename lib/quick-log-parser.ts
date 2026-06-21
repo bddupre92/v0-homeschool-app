@@ -135,7 +135,7 @@ export function parseQuickLog(text: string, kids: Kid[]): ParsedLog {
   let lastKid: Kid | null = null
 
   for (const raw of segments) {
-    const kid = findKid(raw, kids) ?? lastKid
+    const kid: Kid | null = findKid(raw, kids) ?? lastKid
     if (kid) lastKid = kid
 
     const { subject, matchText } = findSubject(raw)

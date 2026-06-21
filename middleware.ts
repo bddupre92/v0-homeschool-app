@@ -17,8 +17,12 @@ const LEGACY_REDIRECTS: Record<string, string> = {
   "/scroll": "/library",
   "/search": "/library",
   "/about": "/",
-  "/community": "/people",
   "/settings/modules": "/settings",
+  // /community is a live route as of Phase 7 (Community room).
+  // Legacy subpaths that don't have new homes still 308 to /people for
+  // family-access flows.
+  "/community/events": "/people",
+  "/community/locations": "/people",
 }
 
 // Exact-match redirects (don't follow the `prefix + "/"` rule because it would

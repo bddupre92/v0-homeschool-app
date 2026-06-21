@@ -16,10 +16,13 @@ import LessonAuthoringDialog from "@/components/lesson-authoring-dialog"
 import LessonScheduleSheet from "@/components/lesson-schedule-sheet"
 import {
   type Lesson,
+  deleteLesson,
+  getDraftExpiryDate,
+  getLesson,
   listLessons,
   onStorageChange,
+  pruneExpiredDrafts,
   startSession,
-  deleteLesson,
 } from "@/lib/atoz-store"
 import { useToast } from "@/hooks/use-toast"
 import { Plus, Play, Trash2, Edit3 } from "lucide-react"
@@ -43,25 +46,62 @@ export default function TeachRoomPage() {
   }, [])
 
   useEffect(() => {
+    pruneExpiredDrafts()
     refresh()
     return onStorageChange(refresh)
   }, [refresh])
 
   useEffect(() => {
     if (searchParams?.get("justSaved")) {
-      toast({
-        title: "Saved",
-        description: "Lesson saved to the portfolio.",
-        duration: 4000,
-      })
+      // Deferred for the same reason as the ?edit= effect below: child
+      // effects run before the Toaster's listener registers on mount.
+      setTimeout(() => {
+        toast({
+          title: "Saved",
+          description: "Lesson saved to the portfolio.",
+          duration: 4000,
+        })
+      }, 0)
     }
   }, [searchParams, toast])
 
+  // Open the authoring dialog for the lesson in ?edit= (Phase 6.10 redirects
+  // /today's pencil icon here). One-shot — strip the param after opening.
+  // The toast is queued via setTimeout so it fires AFTER the Toaster's
+  // listener registers (parent effects run after children's in React).
+  useEffect(() => {
+    const editId = searchParams?.get("edit")
+    if (!editId) return
+    const target = getLesson(editId)
+    if (target) {
+      setEditing(target)
+      setAuthorOpen(true)
+    } else {
+      setTimeout(() => {
+        toast({
+          title: "Lesson not found",
+          description: "That lesson may have been deleted. Check the Library 'Recently deleted' filter.",
+        })
+      }, 0)
+    }
+    router.replace("/teach")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   const drafts = useMemo(() => lessons.filter((l) => l.status === "draft"), [lessons])
-  const scheduled = useMemo(() => lessons.filter((l) => l.status === "scheduled"), [lessons])
+  const scheduled = useMemo(() => {
+    const cutoff = Date.now() + 7 * 24 * 60 * 60 * 1000
+    return lessons.filter(
+      (l) =>
+        l.status === "scheduled" &&
+        l.scheduledFor &&
+        new Date(l.scheduledFor).getTime() <= cutoff,
+    )
+  }, [lessons])
 
   const handleStart = useCallback(
     (lesson: Lesson) => {
+      trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "teach", action: "teach", status: lesson.status })
       if (lesson.status === "draft") {
         toast({
           title: "Schedule first",
@@ -78,11 +118,18 @@ export default function TeachRoomPage() {
   )
 
   const handleEdit = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "teach", action: "edit", status: lesson.status })
     setEditing(lesson)
     setAuthorOpen(true)
   }
 
+  const handleSchedule = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "teach", action: "schedule", status: lesson.status })
+    setScheduleTarget(lesson)
+  }
+
   const handleDelete = (lesson: Lesson) => {
+    trackEvent(AnalyticsEvents.LESSON_ROW_ACTION, { room: "teach", action: "delete", status: lesson.status })
     deleteLesson(lesson.id)
     refresh()
     toast({ title: "Removed", description: `"${lesson.title || "Untitled"}" was removed.` })
@@ -113,9 +160,12 @@ export default function TeachRoomPage() {
           </Button>
         </header>
 
-        <Section title="Scheduled" sub="Ready to teach. Kids can see these.">
+        <Section title="This week" sub="Scheduled and ready to teach. Further out lives in the Library.">
           {scheduled.length === 0 ? (
-            <EmptyHint>Nothing scheduled yet. When a lesson is ready, schedule it.</EmptyHint>
+            <EmptyHint>
+              Nothing scheduled for this week. Author a draft and schedule it, or browse the{" "}
+              <Link className="underline" href="/library">Library</Link>.
+            </EmptyHint>
           ) : (
             <ul className="space-y-2">
               {scheduled.map((l) => (
@@ -124,7 +174,7 @@ export default function TeachRoomPage() {
                   lesson={l}
                   onStart={() => handleStart(l)}
                   onEdit={() => handleEdit(l)}
-                  onReschedule={() => setScheduleTarget(l)}
+                  onReschedule={() => handleSchedule(l)}
                   onDelete={() => handleDelete(l)}
                 />
               ))}
@@ -132,7 +182,7 @@ export default function TeachRoomPage() {
           )}
         </Section>
 
-        <Section title="Drafts" sub="Autosaved. Invisible to kids until scheduled.">
+        <Section title="Drafts" sub="Work in progress. Auto-cleared after 30 days untouched.">
           {drafts.length === 0 ? (
             <EmptyHint>
               Nothing in drafts. Use <strong>New lesson</strong> to start one.
@@ -145,13 +195,18 @@ export default function TeachRoomPage() {
                   lesson={l}
                   onStart={() => handleStart(l)}
                   onEdit={() => handleEdit(l)}
-                  onReschedule={() => setScheduleTarget(l)}
+                  onReschedule={() => handleSchedule(l)}
                   onDelete={() => handleDelete(l)}
                 />
               ))}
             </ul>
           )}
         </Section>
+
+        <section className="mt-12 pt-8 border-t border-[var(--rule)] text-xs text-[var(--ink-4)] flex flex-wrap items-center justify-between gap-3">
+          <div>Drafts and "this week" only. The full catalog lives in the Library.</div>
+          <Link href="/library" className="hover:text-[var(--ink)]">Browse the library →</Link>
+        </section>
 
         <LessonAuthoringDialog
           open={authorOpen}
@@ -229,6 +284,10 @@ function LessonRow({
       })
     : null
   const isDraft = lesson.status === "draft"
+  const expiry = isDraft ? getDraftExpiryDate(lesson) : null
+  const daysToExpiry = expiry
+    ? Math.max(0, Math.ceil((expiry.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+    : null
 
   return (
     <li className="flex items-center gap-3 rounded-xl border border-[var(--rule)] bg-white px-4 py-3">
@@ -245,6 +304,18 @@ function LessonRow({
           {lesson.subject && <span>{lesson.subject}</span>}
           {lesson.durationMin && <span>· {lesson.durationMin} min</span>}
           {scheduledFor && <span>· {scheduledFor}</span>}
+          {isDraft && daysToExpiry !== null && (
+            <span
+              className={
+                daysToExpiry <= 7
+                  ? "text-[var(--terracotta-d)]"
+                  : "text-[var(--ink-4)]"
+              }
+              title={expiry?.toLocaleDateString()}
+            >
+              · Auto-clears in {daysToExpiry}d
+            </span>
+          )}
           <span className="flex items-center gap-1">
             {lesson.kidIds.map((kid) => {
               const k = kids.find((x) => x.id === kid)

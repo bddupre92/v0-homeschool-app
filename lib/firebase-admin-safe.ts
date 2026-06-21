@@ -77,6 +77,7 @@ const createMockStorage = () => {
 
 // Initialize Firebase Admin or use mocks
 let adminDb: any, adminAuth: any, adminStorage: any
+let firebaseAdminConfigured = false
 
 // Always use mocks during build or in browser
 if (skipFirebaseAdmin) {
@@ -107,17 +108,27 @@ if (skipFirebaseAdmin) {
           }),
           projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
         })
+        firebaseAdminConfigured = true
       } else {
+        console.error(
+          "[firebase-admin] FIREBASE_ADMIN_PRIVATE_KEY / FIREBASE_ADMIN_PROJECT_ID / FIREBASE_ADMIN_CLIENT_EMAIL not set. " +
+            "Server actions (family, profile) will return EMPTY data. Set these env vars in production.",
+        )
         initializeApp({
           projectId: "demo-homeschool-app",
         })
       }
+    } else {
+      firebaseAdminConfigured = Boolean(
+        process.env.FIREBASE_ADMIN_PRIVATE_KEY && process.env.FIREBASE_ADMIN_PROJECT_ID && process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      )
     }
 
     adminDb = getFirestore()
     adminAuth = getAuth()
     adminStorage = getStorage()
   } catch (error) {
+    console.error("[firebase-admin] Failed to initialize — falling back to mock (all reads return empty):", error)
     adminDb = createMockFirestore()
     adminAuth = createMockAuth()
     adminStorage = createMockStorage()
@@ -127,3 +138,5 @@ if (skipFirebaseAdmin) {
 // Export the admin services
 export const db = adminDb
 export { adminDb, adminAuth, adminStorage }
+// True only when real credentials were provided (never true during build/browser).
+export const isFirebaseAdminConfigured = firebaseAdminConfigured

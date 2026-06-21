@@ -28,15 +28,15 @@ export const db = {
   },
 
   async updateUser(firebaseUid: string, data: Record<string, any>) {
-    const updates = Object.entries(data)
-      .map(([key, value]) => `${key} = '${value}'`)
-      .join(', ')
-    const result = await sql`
-      UPDATE users 
-      SET ${sql.raw(updates)}, updated_at = CURRENT_TIMESTAMP
-      WHERE firebase_uid = ${firebaseUid}
-      RETURNING *
-    `
+    // Parameterized dynamic SET clause; column names are validated as
+    // identifiers to keep user-controlled values out of the SQL text.
+    const entries = Object.entries(data).filter(([key]) => /^[a-z_][a-z0-9_]*$/i.test(key))
+    if (entries.length === 0) return undefined
+    const setClause = entries.map(([key], i) => `${key} = $${i + 1}`).join(', ')
+    const result = await sql.query(
+      `UPDATE users SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE firebase_uid = $${entries.length + 1} RETURNING *`,
+      [...entries.map(([, value]) => value), firebaseUid],
+    )
     return result.rows[0]
   },
 
@@ -75,15 +75,13 @@ export const db = {
   },
 
   async updateLesson(lessonId: string, data: Record<string, any>) {
-    const updates = Object.entries(data)
-      .map(([key, value]) => `${key} = '${value}'`)
-      .join(', ')
-    const result = await sql`
-      UPDATE lessons 
-      SET ${sql.raw(updates)}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${lessonId}
-      RETURNING *
-    `
+    const entries = Object.entries(data).filter(([key]) => /^[a-z_][a-z0-9_]*$/i.test(key))
+    if (entries.length === 0) return undefined
+    const setClause = entries.map(([key], i) => `${key} = $${i + 1}`).join(', ')
+    const result = await sql.query(
+      `UPDATE lessons SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = $${entries.length + 1} RETURNING *`,
+      [...entries.map(([, value]) => value), lessonId],
+    )
     return result.rows[0]
   },
 
@@ -367,8 +365,8 @@ export const db = {
         ${userId}, ${data.name}, ${data.description || null}, ${data.groupType || 'co-op'},
         ${data.location || null}, ${data.stateAbbreviation || null},
         ${data.maxMembers || null}, ${data.isPrivate || false},
-        ${data.philosophy || null}, ${data.ageGroups || []},
-        ${data.subjectsOffered || []}, ${data.schedule ? JSON.stringify(data.schedule) : null},
+        ${data.philosophy || null}, ${(data.ageGroups || []) as unknown as string},
+        ${(data.subjectsOffered || []) as unknown as string}, ${data.schedule ? JSON.stringify(data.schedule) : null},
         ${data.meetingFrequency || null}, ${data.meetingSchedule || null},
         ${data.latitude || null}, ${data.longitude || null},
         ${data.city || null}, ${data.zipCode || null},
@@ -454,6 +452,97 @@ export const db = {
       SELECT 1 FROM group_members WHERE group_id = ${groupId} AND user_id = ${userId}
     `
     return result.rows.length > 0
+  },
+
+  /** Groups the user is a member of, newest first. Used by /community. */
+  async getGroupsByMember(userId: string) {
+    const result = await sql`
+      SELECT g.*, gm.role as member_role, gm.joined_at
+      FROM groups g
+      INNER JOIN group_members gm ON gm.group_id = g.id
+      WHERE gm.user_id = ${userId}
+      ORDER BY gm.joined_at DESC
+      LIMIT 50
+    `
+    return result.rows
+  },
+
+  /** Get a user's discovery preferences row, or null if not set. */
+  async getUserGroupPreferences(userId: string) {
+    const result = await sql`
+      SELECT * FROM user_group_preferences WHERE user_id = ${userId}
+    `
+    return result.rows[0] ?? null
+  },
+
+  /** Upsert discovery preferences for the current user. */
+  async upsertUserGroupPreferences(
+    userId: string,
+    prefs: {
+      zipCode?: string | null
+      latitude?: number | null
+      longitude?: number | null
+      maxDistanceMiles?: number
+      preferredPhilosophy?: string | null
+      childAgeGroups?: string[]
+      wantedSubjects?: string[]
+      preferredDay?: string | null
+    },
+  ) {
+    // sql`` template doesn't bind arrays; use sql.query with positional
+    // parameters so child_age_groups + wanted_subjects pass cleanly to
+    // Postgres TEXT[] columns.
+    const result = await sql.query(
+      `INSERT INTO user_group_preferences (
+        user_id, zip_code, latitude, longitude, max_distance_miles,
+        preferred_philosophy, child_age_groups, wanted_subjects, preferred_day,
+        updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id) DO UPDATE SET
+        zip_code = EXCLUDED.zip_code,
+        latitude = EXCLUDED.latitude,
+        longitude = EXCLUDED.longitude,
+        max_distance_miles = EXCLUDED.max_distance_miles,
+        preferred_philosophy = EXCLUDED.preferred_philosophy,
+        child_age_groups = EXCLUDED.child_age_groups,
+        wanted_subjects = EXCLUDED.wanted_subjects,
+        preferred_day = EXCLUDED.preferred_day,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *`,
+      [
+        userId,
+        prefs.zipCode ?? null,
+        prefs.latitude ?? null,
+        prefs.longitude ?? null,
+        prefs.maxDistanceMiles ?? 25,
+        prefs.preferredPhilosophy ?? null,
+        prefs.childAgeGroups ?? [],
+        prefs.wantedSubjects ?? [],
+        prefs.preferredDay ?? null,
+      ],
+    )
+    return result.rows[0]
+  },
+
+  /**
+   * Public + accepting-members groups inside a bounding box. Caller is
+   * responsible for converting (user lat/lng, max miles) → bbox; this
+   * keeps the SQL parameterized (boundingBox-via-string path in
+   * getGroupsByFilters is currently SQL-concatenated).
+   */
+  async getNearbyGroups(box: { minLat: number; maxLat: number; minLng: number; maxLng: number }) {
+    const result = await sql`
+      SELECT g.*, u.display_name AS creator_name
+      FROM groups g
+      LEFT JOIN users u ON g.created_by_id = u.id
+      WHERE g.is_private = false
+        AND g.is_accepting_members = true
+        AND g.latitude BETWEEN ${box.minLat} AND ${box.maxLat}
+        AND g.longitude BETWEEN ${box.minLng} AND ${box.maxLng}
+      ORDER BY g.member_count DESC, g.created_at DESC
+      LIMIT 100
+    `
+    return result.rows
   },
 
   /** Check if a user is an admin of a group */
@@ -607,7 +696,7 @@ export const db = {
 
   /** Create a field trip */
   async createFieldTrip(groupId: string, organizerUserId: string, data: {
-    title: string; description?: string; location: string;
+    title: string; description?: string; location?: string;
     latitude?: number; longitude?: number; tripDate: string;
     maxAttendees?: number; costPerFamily?: number; relatedPacketId?: string
   }) {
@@ -697,5 +786,93 @@ export const db = {
   /** Delete a field trip */
   async deleteFieldTrip(fieldTripId: string) {
     await sql`DELETE FROM group_field_trips WHERE id = ${fieldTripId}`
+  },
+
+  // ── Compliance filings (Phase 8) ─────────────────────────────────
+
+  /** Create a filing record with its frozen source snapshot. */
+  async createFiling(
+    userId: string,
+    data: {
+      stateCode: string
+      filingType: string
+      schoolYear: string
+      childId?: string | null
+      sourceDataSnapshot: Record<string, any>
+      rulesVersion?: string | null
+      notes?: string | null
+    },
+  ) {
+    const result = await sql`
+      INSERT INTO compliance_filings (
+        user_id, state_abbreviation, state_code, filing_type, school_year,
+        child_id, source_data_snapshot, rules_version, status, notes
+      ) VALUES (
+        ${userId},
+        ${data.stateCode.toUpperCase()},
+        ${data.stateCode.toLowerCase()},
+        ${data.filingType},
+        ${data.schoolYear},
+        ${data.childId ?? null},
+        ${JSON.stringify(data.sourceDataSnapshot)}::jsonb,
+        ${data.rulesVersion ?? null},
+        'generated',
+        ${data.notes ?? null}
+      )
+      RETURNING *
+    `
+    return result.rows[0]
+  },
+
+  async getFilingById(filingId: string) {
+    const result = await sql`SELECT * FROM compliance_filings WHERE id = ${filingId}`
+    return result.rows[0] ?? null
+  },
+
+  /** Filings for a user, newest first. Filterable by school year + state. */
+  async listFilings(
+    userId: string,
+    opts: { schoolYear?: string; stateCode?: string } = {},
+  ) {
+    if (opts.schoolYear && opts.stateCode) {
+      const result = await sql`
+        SELECT * FROM compliance_filings
+        WHERE user_id = ${userId}
+          AND school_year = ${opts.schoolYear}
+          AND state_code = ${opts.stateCode.toLowerCase()}
+        ORDER BY created_at DESC
+      `
+      return result.rows
+    }
+    if (opts.schoolYear) {
+      const result = await sql`
+        SELECT * FROM compliance_filings
+        WHERE user_id = ${userId} AND school_year = ${opts.schoolYear}
+        ORDER BY created_at DESC
+      `
+      return result.rows
+    }
+    if (opts.stateCode) {
+      const result = await sql`
+        SELECT * FROM compliance_filings
+        WHERE user_id = ${userId} AND state_code = ${opts.stateCode.toLowerCase()}
+        ORDER BY created_at DESC
+      `
+      return result.rows
+    }
+    const result = await sql`
+      SELECT * FROM compliance_filings
+      WHERE user_id = ${userId}
+      ORDER BY created_at DESC
+    `
+    return result.rows
+  },
+
+  async markFilingSubmitted(filingId: string, when: string) {
+    await sql`
+      UPDATE compliance_filings
+      SET submitted_at = ${when}, status = 'submitted', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${filingId}
+    `
   },
 }

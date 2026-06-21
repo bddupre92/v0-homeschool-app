@@ -175,7 +175,7 @@ export default function DesignSystemPage() {
               Open quick-log
             </Button>
             <Button variant="outline" asChild>
-              <Link href="/plan">Go to Plan (real data)</Link>
+              <Link href="/today">Go to Today (real data)</Link>
             </Button>
           </div>
           <LogHoursDialog
@@ -279,7 +279,7 @@ export default function DesignSystemPage() {
             <li><Link className="underline text-[var(--sage-dd)]" href="/teach">Teach (Flow 02 · lesson loop)</Link></li>
             <li><Link className="underline text-[var(--sage-dd)]" href="/library">Library (all lessons)</Link></li>
             <li><Link className="underline text-[var(--sage-dd)]" href="/people">People (Flow 03 · invite)</Link></li>
-            <li><Link className="underline text-[var(--sage-dd)]" href="/plan">Plan (Flow 01 · real data)</Link></li>
+            <li><Link className="underline text-[var(--sage-dd)]" href="/family/calm">Family (kids &amp; portfolios)</Link></li>
             <li><Link className="underline text-[var(--sage-dd)]" href="/invite/accept?token=missing">Invite landing (error state)</Link></li>
           </ul>
         </Section>

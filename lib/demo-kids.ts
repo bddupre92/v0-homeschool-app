@@ -1,16 +1,13 @@
 /**
- * Kid roster bridge. The shipping kid data source is now
- * `lib/atoz-store.ts` (localStorage-backed per the local-first
- * doctrine). This module provides:
+ * Kid roster hook + demo-mode seed.
  *
- * - `SEED_KIDS`: initial roster used the first time the store is empty
- *   on a device (Emma / Noah / Lily, matching the prototype copy).
- * - `useKids()`: reactive React hook that subscribes to store changes.
- * - `readDemoHours()` / `writeDemoHours()`: weekly-hours helpers that
- *   will migrate into real portfolio aggregation in Phase 2.
+ * Real users see an empty roster until they add a child via onboarding
+ * or /family/calm. Demo-mode (design-system showcase) opts in to a
+ * fictitious roster via `useKidsWithDemoSeed()`.
  *
- * `DEMO_KIDS` remains as a legacy named export for any mid-refactor
- * consumers but is now backed by the live store, not a static array.
+ * Previously `useKids` auto-seeded Emma/Noah/Lily into every visitor's
+ * localStorage on mount. That made fresh installs look populated with
+ * fabricated children — the original Phase 0 review's biggest finding.
  */
 
 "use client"
@@ -20,54 +17,55 @@ import { listKids, onStorageChange, seedKidsIfEmpty, type Kid } from "@/lib/atoz
 
 export type DemoKid = Kid
 
+/** Demo roster. Only used by surfaces that opt in (e.g. /design-system). */
 export const SEED_KIDS: Omit<Kid, "createdAt" | "updatedAt">[] = [
   { id: "emma", name: "Emma", color: "#d46e4d", age: 9, weeklyTarget: 17.5 },
   { id: "noah", name: "Noah", color: "#7d9e7d", age: 7, weeklyTarget: 17.5 },
   { id: "lily", name: "Lily", color: "#df8a27", age: 5, weeklyTarget: 17.5 },
 ]
 
-export function ensureSeedKids(): Kid[] {
-  seedKidsIfEmpty(SEED_KIDS)
-  return listKids()
-}
-
+/** Reactive roster from the live store. Empty for fresh installs. */
 export function useKids(): Kid[] {
-  const [kids, setKids] = useState<Kid[]>(() => {
-    if (typeof window === "undefined") return []
-    return ensureSeedKids()
-  })
+  const [kids, setKids] = useState<Kid[]>(() => (typeof window === "undefined" ? [] : listKids()))
   useEffect(() => {
-    setKids(ensureSeedKids())
+    setKids(listKids())
     return onStorageChange(() => setKids(listKids()))
   }, [])
   return kids
 }
 
-/** @deprecated Use `useKids()` in components or `listKids()` in handlers. */
-export const DEMO_KIDS: Kid[] = (() => {
-  if (typeof window === "undefined") {
-    const now = new Date().toISOString()
-    return SEED_KIDS.map((k) => ({ ...k, createdAt: now, updatedAt: now }))
-  }
-  return ensureSeedKids()
-})()
+/** Reactive roster that seeds Emma/Noah/Lily if the store is empty. Demo surfaces only. */
+export function useKidsWithDemoSeed(): Kid[] {
+  const [kids, setKids] = useState<Kid[]>(() => {
+    if (typeof window === "undefined") return []
+    seedKidsIfEmpty(SEED_KIDS)
+    return listKids()
+  })
+  useEffect(() => {
+    seedKidsIfEmpty(SEED_KIDS)
+    setKids(listKids())
+    return onStorageChange(() => setKids(listKids()))
+  }, [])
+  return kids
+}
 
 export const DEMO_HOURS_KEY = "atoz.demoWeeklyHours"
 
-const DEMO_HOURS_DEFAULT: Record<string, number> = {
-  emma: 14.5,
-  noah: 12,
-  lily: 9.5,
-}
+const DEMO_HOURS_FALLBACK: Record<string, number> = { emma: 14.5, noah: 12, lily: 9.5 }
 
 export function readDemoHours(): Record<string, number> {
-  if (typeof window === "undefined") return DEMO_HOURS_DEFAULT
+  if (typeof window === "undefined") return {}
   try {
     const raw = window.localStorage.getItem(DEMO_HOURS_KEY)
-    return raw ? JSON.parse(raw) : DEMO_HOURS_DEFAULT
-  } catch {
-    return DEMO_HOURS_DEFAULT
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  // Only return seeded hours if seeded kids actually exist in the store.
+  const ids = new Set(listKids().map((k) => k.id))
+  const seeded: Record<string, number> = {}
+  for (const [id, hours] of Object.entries(DEMO_HOURS_FALLBACK)) {
+    if (ids.has(id)) seeded[id] = hours
   }
+  return seeded
 }
 
 export function writeDemoHours(next: Record<string, number>): void {

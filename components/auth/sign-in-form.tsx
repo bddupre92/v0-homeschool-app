@@ -20,7 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 const formSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
-  rememberMe: z.boolean().default(false),
+  rememberMe: z.boolean(),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -122,7 +122,7 @@ export default function SignInForm() {
         )}
 
         {failedAttempts >= 3 && (
-          <Alert variant="warning" className="mb-4">
+          <Alert variant="default" className="mb-4">
             <Info className="h-4 w-4" />
             <AlertDescription>
               Multiple failed login attempts detected.

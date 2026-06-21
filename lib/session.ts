@@ -33,16 +33,17 @@ export function initSessionTracking() {
     setInterval(() => {
       if (isSessionExpired()) {
         // Check if auth is available before using it
-        if (!auth) {
+        const activeAuth = auth
+        if (!activeAuth) {
           return
         }
 
         // Force token refresh or sign out if session expired
-        const user = auth.currentUser
+        const user = activeAuth.currentUser
         if (user) {
           getIdToken(user, true).catch(() => {
             // If token refresh fails, sign out
-            auth.signOut()
+            activeAuth.signOut()
           })
         }
       }

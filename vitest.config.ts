@@ -11,8 +11,10 @@ export default defineConfig({
     // atoz-store / quick-log-parser / compliance unit tests sit in lib/__tests__.
     // Component tests sit in app/__tests__ and components/__tests__.
     include: ["{lib,app,components}/**/__tests__/**/*.{test,spec}.{ts,tsx}"],
-    deps: {
-      inline: ["@testing-library/react", "@testing-library/jest-dom"],
+    server: {
+      deps: {
+        inline: ["@testing-library/react", "@testing-library/jest-dom"],
+      },
     },
   },
   resolve: {

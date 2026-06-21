@@ -10,11 +10,10 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "test:generate": "node scripts/generate-tests.js",
     "test:production": "node scripts/production-test-suite.js",
-    "test:all": "node scripts/test-all.js",
+    "typecheck": "tsc --noEmit",
     "production-check": "node scripts/production-check.js",
-    "pre-deploy": "npm run test:all",
+    "pre-deploy": "npm run typecheck && npm run test:run && npm run build",
     "review:screenshots": "node scripts/review-screenshots.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
@@ -58,6 +57,7 @@
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@react-pdf/renderer": "^4.5.1",
     "@sentry/nextjs": "^10.0.0",
     "@tanstack/react-query": "^5.0.0",
     "@vercel/analytics": "^1.0.0",
@@ -81,6 +81,7 @@
     "swr": "^2.4.0",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "zipcodes": "^8.0.0",
     "zod": "^3.0.0"
   },
   "devDependencies": {
@@ -97,6 +98,7 @@
     "jsdom": "^26.1.0",
     "postcss": "^8.5",
     "tailwindcss": "^3.3.0",
+    "tsx": "^4.22.4",
     "typescript": "^5",
     "vitest": "^4.0.0"
   }

@@ -36,6 +36,12 @@ export interface Lesson {
   scheduledFor?: string // ISO timestamp
   createdAt: string
   updatedAt: string
+  /**
+   * Soft-delete timestamp. Set by softDeleteLesson and pruneExpiredDrafts;
+   * the lesson stays in the store so /library "Recently deleted" can show
+   * and restore it. listLessons() filters these out by default.
+   */
+  deletedAt?: string
 }
 
 export type CaptureKind = "note" | "photo" | "voice" | "quote"
@@ -247,17 +253,37 @@ export function seedKidsIfEmpty(seed: Omit<Kid, "createdAt" | "updatedAt">[]): v
 
 // ── lessons ──────────────────────────────────────────────────────
 
-export function listLessons(): Lesson[] {
+/** Drafts auto-expire after this many days untouched (Phase 6.10 doctrine). */
+export const DRAFT_TTL_DAYS = 30
+
+function readAllLessonsRaw(): Lesson[] {
   return read<Lesson[]>(KEY.lessons, [])
 }
 
-export function getLesson(id: string): Lesson | undefined {
-  return listLessons().find((l) => l.id === id)
+/**
+ * Returns lessons excluding soft-deleted ones by default.
+ * Pass `{ includeDeleted: true }` to surface them (used by /library
+ * "Recently deleted" filter).
+ */
+export function listLessons(opts: { includeDeleted?: boolean } = {}): Lesson[] {
+  const all = readAllLessonsRaw()
+  return opts.includeDeleted ? all : all.filter((l) => !l.deletedAt)
+}
+
+/**
+ * Look up a single lesson by id. Excludes soft-deleted lessons by default;
+ * pass `{ includeDeleted: true }` to surface them (used by Library Restore).
+ */
+export function getLesson(id: string, opts: { includeDeleted?: boolean } = {}): Lesson | undefined {
+  const match = readAllLessonsRaw().find((l) => l.id === id)
+  if (!match) return undefined
+  if (!opts.includeDeleted && match.deletedAt) return undefined
+  return match
 }
 
 export function upsertLesson(lesson: Lesson): Lesson {
   const now = new Date().toISOString()
-  const all = listLessons()
+  const all = readAllLessonsRaw()
   const idx = all.findIndex((l) => l.id === lesson.id)
   const merged = { ...lesson, updatedAt: now }
   if (idx >= 0) all[idx] = merged
@@ -266,11 +292,89 @@ export function upsertLesson(lesson: Lesson): Lesson {
   return merged
 }
 
+/** Hard delete — only used internally; prefer softDeleteLesson. */
 export function deleteLesson(id: string): void {
-  write(
-    KEY.lessons,
-    listLessons().filter((l) => l.id !== id),
+  softDeleteLesson(id)
+}
+
+/** Soft-delete: sets deletedAt; the lesson stays in the store for Restore. */
+export function softDeleteLesson(id: string): void {
+  const now = new Date().toISOString()
+  const all = readAllLessonsRaw()
+  const idx = all.findIndex((l) => l.id === id)
+  if (idx < 0) return
+  all[idx] = { ...all[idx], deletedAt: now }
+  write(KEY.lessons, all)
+}
+
+/** Restore a soft-deleted lesson. */
+export function restoreLesson(id: string): void {
+  const all = readAllLessonsRaw()
+  const idx = all.findIndex((l) => l.id === id)
+  if (idx < 0) return
+  const { deletedAt: _, ...rest } = all[idx]
+  all[idx] = rest as Lesson
+  write(KEY.lessons, all)
+}
+
+/** Returns the expiry date for a draft, or null if not a draft. */
+export function getDraftExpiryDate(lesson: Lesson): Date | null {
+  if (lesson.status !== "draft") return null
+  const base = new Date(lesson.updatedAt)
+  base.setDate(base.getDate() + DRAFT_TTL_DAYS)
+  return base
+}
+
+/**
+ * Soft-delete any draft whose updatedAt is older than DRAFT_TTL_DAYS.
+ * Returns the number of drafts that were pruned. Idempotent.
+ */
+export function pruneExpiredDrafts(now: Date = new Date()): number {
+  const cutoff = now.getTime() - DRAFT_TTL_DAYS * 24 * 60 * 60 * 1000
+  const all = readAllLessonsRaw()
+  let pruned = 0
+  const next = all.map((l) => {
+    if (l.status === "draft" && !l.deletedAt && new Date(l.updatedAt).getTime() < cutoff) {
+      pruned += 1
+      return { ...l, deletedAt: now.toISOString() }
+    }
+    return l
+  })
+  if (pruned > 0) write(KEY.lessons, next)
+  return pruned
+}
+
+/**
+ * Mark a lesson as completed today (or undo). Used by the /today checkbox.
+ * Creates a synthetic session with startedAt = endedAt = now if no session
+ * for this lesson exists today; otherwise toggles endedAt on the latest one.
+ */
+export function toggleLessonDoneToday(lessonId: string, now: Date = new Date()): void {
+  const nowIso = now.toISOString()
+  const all = listSessions()
+  const todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const sameDay = (iso: string | undefined) => {
+    if (!iso) return false
+    const d = new Date(iso)
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() === todayMs
+  }
+  const existingToday = all.find(
+    (s) => s.lessonId === lessonId && (sameDay(s.startedAt) || sameDay(s.endedAt)),
   )
+  if (existingToday) {
+    const updated = { ...existingToday, endedAt: existingToday.endedAt ? undefined : nowIso }
+    upsertSession(updated)
+    return
+  }
+  upsertSession({
+    id: uid("ses"),
+    lessonId,
+    startedAt: nowIso,
+    endedAt: nowIso,
+    pausedAtMs: 0,
+    lastPausedAt: null,
+    completedStepIds: [],
+  })
 }
 
 export function newDraftLesson(partial: Partial<Lesson> = {}): Lesson {
