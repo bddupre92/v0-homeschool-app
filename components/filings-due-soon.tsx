@@ -43,7 +43,18 @@ function urgencyLabel(date: string): { label: string; tone: "neutral" | "warn" }
   if (d === 0) return { label: "Today", tone: "warn" }
   if (d <= 14) return { label: `${d} days`, tone: "warn" }
   if (d <= 60) return { label: `${d} days`, tone: "neutral" }
-  return { label: formatDate(date), tone: "neutral" }
+  if (d < 365) {
+    const months = Math.round(d / 30)
+    return { label: `${months} mo`, tone: "neutral" }
+  }
+  const years = Math.round(d / 365)
+  return { label: years === 1 ? "1 yr" : `${years} yrs`, tone: "neutral" }
+}
+
+function shortSchoolYear(sy: string): string {
+  // "2025-2026" → "SY 25-26" for a tight inline pill.
+  const m = sy.match(/^(\d{2})(\d{2})-(\d{2})(\d{2})$/)
+  return m ? `SY ${m[2]}-${m[4]}` : sy
 }
 
 export default function FilingsDueSoon() {
@@ -92,6 +103,9 @@ export default function FilingsDueSoon() {
       <ul className="space-y-2">
         {items.map((item) => {
           const urgency = urgencyLabel(item.date)
+          const generateHref = item.filingId
+            ? `/filings`
+            : `/filings/new?state=${item.state}&filingType=${item.filingType}&schoolYear=${item.schoolYear}`
           return (
             <li
               key={`${item.filingType}-${item.date}`}
@@ -100,7 +114,7 @@ export default function FilingsDueSoon() {
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{item.label}</div>
                 <div className="text-xs text-[var(--ink-3)]">
-                  {formatDate(item.date)}
+                  {formatDate(item.date)} · {shortSchoolYear(item.schoolYear)}
                   {item.appliesToGrades?.length
                     ? ` · grades ${item.appliesToGrades.join("/")}`
                     : ""}
@@ -118,7 +132,7 @@ export default function FilingsDueSoon() {
                 )}
                 {item.submitted ? null : (
                   <Link
-                    href={item.filingId ? `/filings` : `/filings/new`}
+                    href={generateHref}
                     className="text-xs font-semibold text-[var(--sage-dd)] hover:text-[var(--ink)]"
                   >
                     {item.filingId ? "Open" : "Generate"}

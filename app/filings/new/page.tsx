@@ -11,7 +11,7 @@
 
 import { useEffect, useState, useTransition } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, FileText } from "lucide-react"
 import Navigation from "@/components/navigation"
 import { Button } from "@/components/ui/button"
@@ -116,16 +116,31 @@ interface TestResultLineState {
   grade: string
 }
 
+function schoolYearStarting(startYear: number): string {
+  return `${startYear}-${startYear + 1}`
+}
+
 function currentSchoolYear(): string {
   const now = new Date()
-  const year = now.getFullYear()
-  // School year flips in July
-  const start = now.getMonth() >= 6 ? year : year - 1
-  return `${start}-${start + 1}`
+  const start = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
+  return schoolYearStarting(start)
+}
+
+function previousSchoolYear(): string {
+  const cur = currentSchoolYear()
+  const startYear = parseInt(cur.split("-")[0], 10) - 1
+  return schoolYearStarting(startYear)
+}
+
+function nextSchoolYear(): string {
+  const cur = currentSchoolYear()
+  const startYear = parseInt(cur.split("-")[0], 10) + 1
+  return schoolYearStarting(startYear)
 }
 
 export default function NewFilingPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const { user } = useAuth()
   const kids = useKids()
@@ -165,6 +180,22 @@ export default function NewFilingPage() {
     if (user?.displayName && !parentName) setParentName(user.displayName)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.displayName])
+
+  // Hydrate filing type + school year from query params on first mount.
+  // Deep-link source: /today's FilingsDueSoon "Generate" link.
+  useEffect(() => {
+    const qState = searchParams?.get("state")
+    const qType = searchParams?.get("filingType")
+    const qYear = searchParams?.get("schoolYear")
+    if (qState && qType) {
+      const hit = FILING_OPTIONS.find((o) => o.state === qState && o.filingType === qType)
+      if (hit) setSelected(hit)
+    }
+    if (qYear && /^\d{4}-\d{4}$/.test(qYear)) {
+      setSchoolYear(qYear)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Auto-fill child fields when a kid from the roster is picked.
   useEffect(() => {
@@ -333,12 +364,32 @@ export default function NewFilingPage() {
           </Field>
 
           <Field label="School year">
+            <div className="flex flex-wrap gap-2 mb-2">
+              {[
+                { label: "Last year", value: previousSchoolYear() },
+                { label: "This year", value: currentSchoolYear() },
+                { label: "Next year", value: nextSchoolYear() },
+              ].map((opt) => (
+                <Chip
+                  key={opt.value}
+                  active={schoolYear === opt.value}
+                  onClick={() => setSchoolYear(opt.value)}
+                >
+                  {opt.label}{" "}
+                  <span className="text-[var(--ink-4)] font-normal">({opt.value})</span>
+                </Chip>
+              ))}
+            </div>
             <Input
               value={schoolYear}
               onChange={(e) => setSchoolYear(e.target.value)}
               placeholder="2026-2027"
               maxLength={9}
+              aria-label="Custom school year (YYYY-YYYY)"
             />
+            <p className="text-xs text-[var(--ink-4)] mt-1">
+              Type a custom range if you're filing for a year that isn't last / this / next.
+            </p>
           </Field>
 
           <fieldset className="space-y-3 border-t border-[var(--rule)] pt-6">

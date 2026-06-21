@@ -3,6 +3,7 @@ import {
   KNOWN_DEADLINES,
   daysUntil,
   filterByGrade,
+  schoolYearFor,
   upcomingDeadlines,
 } from "@/lib/compliance/filings/deadlines"
 
@@ -89,6 +90,45 @@ describe("daysUntil", () => {
     const today = new Date(2026, 5, 15)
     const target = "2026-06-01"
     expect(daysUntil(target, today)).toBe(-14)
+  })
+})
+
+describe("schoolYearFor", () => {
+  it("maps July-Dec dates to the year starting that summer", () => {
+    expect(schoolYearFor(new Date(2026, 6, 1))).toBe("2026-2027") // Jul 1
+    expect(schoolYearFor(new Date(2026, 7, 15))).toBe("2026-2027") // Aug 15
+    expect(schoolYearFor(new Date(2026, 10, 15))).toBe("2026-2027") // Nov 15
+    expect(schoolYearFor(new Date(2026, 11, 31))).toBe("2026-2027") // Dec 31
+  })
+
+  it("maps Jan-Jun dates to the year that started the prior summer", () => {
+    expect(schoolYearFor(new Date(2026, 0, 30))).toBe("2025-2026") // Jan 30
+    expect(schoolYearFor(new Date(2026, 5, 30))).toBe("2025-2026") // Jun 30
+  })
+})
+
+describe("upcomingDeadlines + schoolYear annotation", () => {
+  it("tags each occurrence with its school year (Jun 30 → prior-summer year)", () => {
+    const items = upcomingDeadlines("ny", new Date(2026, 5, 20)) // Jun 20 2026
+    const q4 = items.find((i) => i.label.startsWith("Q4 quarterly"))
+    expect(q4).toBeDefined()
+    expect(q4!.date).toBe("2026-06-30")
+    expect(q4!.schoolYear).toBe("2025-2026") // Q4 closes the 2025-26 year
+  })
+
+  it("tags Aug 15 IHIP as the upcoming year", () => {
+    const items = upcomingDeadlines("ny", new Date(2026, 5, 20))
+    const ihip = items.find((i) => i.filingType === "ihip")
+    expect(ihip).toBeDefined()
+    expect(ihip!.date).toBe("2026-08-15")
+    expect(ihip!.schoolYear).toBe("2026-2027") // IHIP opens the 2026-27 year
+  })
+
+  it("tags Nov 15 quarterly as belonging to 2026-2027 (started July 2026)", () => {
+    const items = upcomingDeadlines("ny", new Date(2026, 5, 20))
+    const q1 = items.find((i) => i.label.startsWith("Q1"))
+    expect(q1).toBeDefined()
+    expect(q1!.schoolYear).toBe("2026-2027")
   })
 })
 

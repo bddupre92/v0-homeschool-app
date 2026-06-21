@@ -63,7 +63,21 @@ export interface DeadlineOccurrence {
   label: string
   /** ISO date string of the next occurrence. */
   date: string
+  /** School year the deadline belongs to (e.g. "2025-2026"). */
+  schoolYear: string
   appliesToGrades?: string[]
+}
+
+/**
+ * Return the school year a given date belongs to. School years start in
+ * July — anything July-Dec belongs to the year that starts that summer;
+ * anything Jan-Jun belongs to the year that started the previous summer.
+ *
+ * Example: Aug 15 2026 → "2026-2027"; Jun 30 2026 → "2025-2026".
+ */
+export function schoolYearFor(date: Date): string {
+  const start = date.getMonth() >= 6 ? date.getFullYear() : date.getFullYear() - 1
+  return `${start}-${start + 1}`
 }
 
 /**
@@ -90,6 +104,7 @@ export function upcomingDeadlines(
         filingType: d.filingType,
         label: d.label,
         date: candidate.toISOString().slice(0, 10),
+        schoolYear: schoolYearFor(candidate),
         appliesToGrades: d.appliesToGrades,
       }
     })
